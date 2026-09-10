@@ -1,4 +1,4 @@
-<!doctype html>   
+<!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
@@ -33,7 +33,20 @@
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
   [hidden] { display: none !important; }
 
-  .bar { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 18px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 18px; }
+  .bar-right { display: flex; align-items: center; gap: 10px; }
+  .inbox-btn { position: relative; border: 0; background: none; font-size: 22px; line-height: 1; padding: 6px; cursor: pointer; }
+  .inbox-btn .badge {
+    position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px;
+    border-radius: 9px; background: var(--rosso); color: #fff; font: 700 12px/18px var(--display); text-align: center;
+  }
+  .inbox { background: #fff; border-radius: 10px; padding: 14px 16px; margin: 0 0 16px; }
+  .inbox h2 { font: 700 22px/1 var(--display); color: var(--smalto); margin: 0 0 10px; }
+  .inbox ul { list-style: none; margin: 0 0 8px; padding: 0; }
+  .inbox li { padding: 10px 0; border-top: 1px solid #DDE2E7; }
+  .inbox li:first-child { border-top: none; }
+  .inbox .when { display: block; font-size: 13px; color: var(--grigio); margin-bottom: 2px; }
+  .inbox li.unread .when::before { content: "● "; color: var(--rosso); }
   .brand { font: 700 24px/1 var(--display); color: var(--smalto); letter-spacing: .01em; }
   .progress { font: 600 18px/1 var(--display); color: var(--grigio); }
   .tag { font: 600 16px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 10px; border-radius: 4px; }
@@ -176,7 +189,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 6)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 7)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -184,8 +197,19 @@
   <section id="view-player" hidden>
     <header class="bar">
       <span class="brand">Caccia</span>
-      <span id="p-progress" class="progress"></span>
+      <span class="bar-right">
+        <span id="p-progress" class="progress"></span>
+        <button id="p-inbox-btn" class="inbox-btn" aria-label="Messaggi" hidden>
+          ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
+        </button>
+      </span>
     </header>
+
+    <div id="p-inbox" class="inbox" hidden>
+      <h2>Messaggi</h2>
+      <ul id="p-inbox-list"></ul>
+      <button id="p-inbox-close" class="link">Chiudi</button>
+    </div>
 
     <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
     <p id="p-news" class="newsbar" role="status" hidden></p>
@@ -256,6 +280,15 @@
         <input type="text" id="m-formato">
       </label>
       <p class="hint">Cambialo solo per far ripartire tutti i giocatori da zero: progressi e bottino verranno azzerati.</p>
+    </div>
+
+    <div class="current">
+      <h2>Messaggi</h2>
+      <p class="hint">Un messaggio pubblico visto da tutti i giocatori, a parte dagli oggetti della caccia.</p>
+      <ul id="m-msg-list" class="baselist"></ul>
+      <textarea id="m-msg-text" placeholder="Scrivi un annuncio per tutti…"></textarea>
+      <button id="m-msg-send" class="btn primary" disabled>Pubblica messaggio</button>
+      <p id="m-msg-status" class="status" role="status"></p>
     </div>
 
     <ol class="steps">
@@ -337,6 +370,7 @@ const MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mo
 const FORMATO = "caccia-1";   // valore iniziale: cambiarlo azzera la caccia
 const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
 const GH_API = "https://api.github.com";
+const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
@@ -511,20 +545,19 @@ function ghConfigStatus() {
   $("m-publish").textContent = c ? "Pubblica su GitHub" : "Pubblica su GitHub (configura prima)";
 }
 
-async function publishToGitHub(g) {
+// Scrive un file nel repository tramite l'API di GitHub (crea o aggiorna).
+// path: percorso del file nel repository. content: stringa da scrivere. commitMsg: messaggio del commit.
+// statusEl: elemento dove mostrare l'esito. Ritorna true/false.
+async function ghPutFile(path, content, commitMsg, statusEl) {
   const c = ghConfig();
   if (!c || !c.owner || !c.repo || !c.token) {
     $("m-cfg").open = true;
-    setStatus($("m-pub-status"), "Configura prima la pubblicazione qui sotto.", "ko");
+    setStatus(statusEl, "Configura prima la pubblicazione qui sotto.", "ko");
     return false;
   }
   const branch = c.branch || "main";
-  const path = c.path || "caccia.json";
   const url = `${GH_API}/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${encodeURIComponent(path)}`;
-  const headers = {
-    Authorization: `Bearer ${c.token}`,
-    Accept: "application/vnd.github+json"
-  };
+  const headers = { Authorization: `Bearer ${c.token}`, Accept: "application/vnd.github+json" };
 
   async function currentSha() {
     const r = await fetch(`${url}?ref=${encodeURIComponent(branch)}`, { headers });
@@ -533,21 +566,17 @@ async function publishToGitHub(g) {
     return (await r.json()).sha;
   }
 
-  setStatus($("m-pub-status"), "Pubblico su GitHub…");
+  setStatus(statusEl, "Pubblico su GitHub…");
   let sha;
   try { sha = await currentSha(); }
-  catch (e) { setStatus($("m-pub-status"), erroreGitHub(e, "Non riesco a leggere il repository")); return false; }
+  catch (e) { setStatus(statusEl, erroreGitHub(e, "Non riesco a leggere il repository")); return false; }
 
-  const body = {
-    message: `Aggiorna la caccia (${g.missioni.length} oggetti)`,
-    content: toBase64Utf8(JSON.stringify(g, null, 2)),
-    branch
-  };
+  const body = { message: commitMsg, content: toBase64Utf8(content), branch };
   if (sha) body.sha = sha;
 
   let r;
   try { r = await fetch(url, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
-  catch { setStatus($("m-pub-status"), "Connessione a GitHub non riuscita. Controlla la rete e riprova.", "ko"); return false; }
+  catch { setStatus(statusEl, "Connessione a GitHub non riuscita. Controlla la rete e riprova.", "ko"); return false; }
 
   if (r.status === 409) {
     // qualcun altro ha scritto nel frattempo: riprendo lo sha aggiornato e riprovo una volta
@@ -555,12 +584,16 @@ async function publishToGitHub(g) {
       sha = await currentSha();
       body.sha = sha;
       r = await fetch(url, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    } catch (e) { setStatus($("m-pub-status"), erroreGitHub(e, "Pubblicazione non riuscita")); return false; }
+    } catch (e) { setStatus(statusEl, erroreGitHub(e, "Pubblicazione non riuscita")); return false; }
   }
-  if (!r.ok) { setStatus($("m-pub-status"), erroreGitHub({ status: r.status }, "Pubblicazione non riuscita")); return false; }
+  if (!r.ok) { setStatus(statusEl, erroreGitHub({ status: r.status }, "Pubblicazione non riuscita")); return false; }
 
-  setStatus($("m-pub-status"), "Pubblicato. I giocatori lo vedranno entro circa un minuto.", "ok");
+  setStatus(statusEl, "Pubblicato. I giocatori lo vedranno entro circa un minuto.", "ok");
   return true;
+}
+
+async function publishToGitHub(g) {
+  return ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${g.missioni.length} oggetti)`, $("m-pub-status"));
 }
 
 function erroreGitHub(e, prefisso) {
@@ -699,6 +732,32 @@ async function ensurePlace() {
   catch { setStatus($("m-pub-status"), "Posizione non disponibile. Attiva il GPS oppure togli la spunta sulla posizione.", "ko"); return false; }
 }
 
+/* ---------- messaggi broadcast ---------- */
+let msgList = [];
+
+function renderMsgList() {
+  const ul = $("m-msg-list");
+  ul.innerHTML = "";
+  if (!msgList.length) { const li = document.createElement("li"); li.textContent = "Nessun messaggio ancora."; ul.append(li); return; }
+  for (const m of [...msgList].reverse()) {
+    const li = document.createElement("li");
+    const t = document.createElement("span");
+    const data = new Date(m.quando).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    t.textContent = `${data} — ${m.testo}`;
+    li.append(t);
+    ul.append(li);
+  }
+}
+
+async function loadMessages() {
+  try {
+    const r = await fetch(MSG_URL, { cache: "no-store" });
+    msgList = r.status === 404 ? [] : (r.ok ? await r.json() : msgList);
+  } catch { /* resta la copia già in memoria, se c'era */ }
+  if (!Array.isArray(msgList)) msgList = [];
+  renderMsgList();
+}
+
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
@@ -794,6 +853,19 @@ function initMaster() {
     location.hash = "";
   };
 
+  $("m-msg-text").oninput = () => { $("m-msg-send").disabled = !$("m-msg-text").value.trim(); };
+  $("m-msg-send").onclick = async () => {
+    const testo = $("m-msg-text").value.trim();
+    if (!testo) return;
+    $("m-msg-send").disabled = true;
+    const nuovo = { id: newId("msg"), quando: new Date().toISOString(), testo };
+    const aggiornati = [...msgList, nuovo];
+    const ok = await ghPutFile(MSG_URL, JSON.stringify(aggiornati, null, 2), "Nuovo messaggio", $("m-msg-status"));
+    if (ok) { msgList = aggiornati; renderMsgList(); $("m-msg-text").value = ""; }
+    $("m-msg-send").disabled = !$("m-msg-text").value.trim();
+  };
+  loadMessages();
+
   if (!M.baseLoaded && !M.loading) loadBase(); else { renderBase(); }
   masterRefresh();
 }
@@ -865,6 +937,43 @@ async function syncGame() {
   } finally {
     syncing = false;
   }
+}
+
+/* ---------- messaggi (lettura giocatore) ---------- */
+let inbox = [];
+const readIds = () => new Set(store.get("msg-letti") || []);
+const markRead = ids => { const s = readIds(); ids.forEach(i => s.add(i)); store.set("msg-letti", [...s]); };
+
+function renderInbox() {
+  const letti = readIds();
+  const nonLetti = inbox.filter(m => !letti.has(m.id)).length;
+  $("p-inbox-btn").hidden = !inbox.length;
+  $("p-inbox-badge").hidden = !nonLetti;
+  $("p-inbox-badge").textContent = nonLetti > 9 ? "9+" : String(nonLetti);
+
+  const ul = $("p-inbox-list");
+  ul.innerHTML = "";
+  for (const m of [...inbox].reverse()) {
+    const li = document.createElement("li");
+    if (!letti.has(m.id)) li.className = "unread";
+    const when = document.createElement("span"); when.className = "when";
+    when.textContent = new Date(m.quando).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const testo = document.createElement("span"); testo.textContent = m.testo;
+    li.append(when, testo);
+    ul.append(li);
+  }
+}
+
+async function syncMessages() {
+  if (inProva()) return;
+  try {
+    const r = await fetch(MSG_URL, { cache: "no-store" });
+    if (r.status === 404) { inbox = []; renderInbox(); return; }
+    if (!r.ok) return;
+    const list = await r.json();
+    inbox = Array.isArray(list) ? list : [];
+    renderInbox();
+  } catch { /* i messaggi già scaricati restano visibili */ }
 }
 
 function renderInventory(st) {
@@ -1027,13 +1136,22 @@ function initPlayer() {
     stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
     renderPlayer();
   };
+  $("p-inbox-btn").onclick = () => {
+    $("p-inbox").hidden = false;
+    markRead(inbox.map(m => m.id));
+    renderInbox();
+  };
+  $("p-inbox-close").onclick = () => { $("p-inbox").hidden = true; };
+
   renderPlayer();
+  renderInbox();
   syncGame();
+  syncMessages();
 }
 
 // Quando il giocatore torna sull'app, controlla se ci sono novità
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && location.hash !== "#master") syncGame();
+  if (!document.hidden && location.hash !== "#master") { syncGame(); syncMessages(); }
 });
 
 /* ---------- navigazione: #master apre il pannello del master ---------- */
