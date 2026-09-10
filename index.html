@@ -189,7 +189,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 7)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 8)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -247,6 +247,9 @@
     <div id="p-alldone" class="empty" hidden>
       <h1 class="title">Hai trovato tutto</h1>
       <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+      <button id="p-ig-share" class="btn primary">Condividi su Instagram</button>
+      <p class="hint">Tagga <a href="https://www.instagram.com/genova_cyberpunk/" target="_blank" rel="noopener">@genova_cyberpunk</a> quando lo posti.</p>
+      <p id="p-ig-status" class="status" role="status"></p>
     </div>
 
     <div id="p-todo" class="section" hidden>
@@ -1053,6 +1056,33 @@ function renderPlayer() {
   renderTodo(st, todo, cur);
 }
 
+function igCaption(st) {
+  const n = st.bottino.length;
+  const cosa = n === 1 ? "1 ricompensa trovata" : `${n} ricompense trovate`;
+  return `Ho completato la caccia al tesoro! 🏆 ${cosa}. @genova_cyberpunk`;
+}
+
+// Instagram non ha un modo diretto per pre-compilare un post da un sito web:
+// tentiamo la condivisione nativa (che su molti telefoni include Instagram fra le opzioni)
+// e copiamo comunque il testo negli appunti, così è pronto da incollare in ogni caso.
+async function shareToInstagram(st) {
+  const testo = igCaption(st);
+  const status = $("p-ig-status");
+  let copiato = false;
+  try { await navigator.clipboard.writeText(testo); copiato = true; } catch { /* niente clipboard, va bene lo stesso */ }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: testo });
+      setStatus(status, copiato ? "Testo copiato anche negli appunti, per sicurezza." : "");
+      return;
+    } catch (e) { if (e.name === "AbortError") { setStatus(status, ""); return; } }
+  }
+  setStatus(status, copiato
+    ? "Testo copiato negli appunti: apri Instagram e incollalo nel post o nella storia."
+    : `Copia questo testo e incollalo su Instagram: “${testo}”`);
+}
+
 function showReward(m, st) {
   const r = m.ricompensa, n = m.tappe.length;
   for (const id of ["p-game", "p-todo", "p-news", "p-alldone"]) $(id).hidden = true;
@@ -1120,6 +1150,7 @@ async function shoot() {
 
 function initPlayer() {
   game = null;
+  $("p-ig-share").onclick = () => shareToInstagram(stato());
   const saved = store.get(gameKey());
   if (saved) { try { loadGame(saved); } catch { game = null; } }
   $("p-empty-msg").textContent = "Controllo se il master ha pubblicato una caccia…";
