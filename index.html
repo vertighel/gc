@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16365C">
+<title>Caccia · prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --smalto: #16365C;
+    --smalto-scuro: #0E2440;
+    --bianco: #F6F7F4;
+    --cemento: #E3E7EB;
+    --grafite: #22262B;
+    --grigio: #5A6470;
+    --giallo: #F2C230;
+    --verde: #2E7A4C;
+    --rosso: #B3302A;
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --testo: "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--cemento);
+    color: var(--grafite);
+    font: 400 17px/1.5 var(--testo);
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
+  [hidden] { display: none !important; }
+
+  .bar { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 18px; }
+  .brand { font: 700 24px/1 var(--display); color: var(--smalto); letter-spacing: .01em; }
+  .progress { font: 600 18px/1 var(--display); color: var(--grigio); }
+  .tag { font: 600 16px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 10px; border-radius: 4px; }
+
+  /* La targa smaltata: l'unico elemento "forte" dell'interfaccia */
+  .plate {
+    position: relative;
+    background: var(--smalto);
+    color: var(--bianco);
+    border-radius: 14px;
+    padding: 26px 26px;
+    box-shadow: inset 0 0 0 6px var(--smalto), inset 0 0 0 8px var(--bianco), 0 3px 0 var(--smalto-scuro);
+  }
+  .plate p { margin: 0; font: 600 clamp(28px, 8.5vw, 40px)/1.08 var(--display); text-align: center; text-wrap: balance; }
+  .screw { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 30%, #aeb8c3 70%); }
+  .screw.tl { top: 15px; left: 15px; } .screw.tr { top: 15px; right: 15px; }
+  .screw.bl { bottom: 15px; left: 15px; } .screw.br { bottom: 15px; right: 15px; }
+
+  .viewfinder { position: relative; aspect-ratio: 1; background: #1B2129; border-radius: 6px; overflow: hidden; margin: 16px 0; }
+  .viewfinder video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .viewfinder .c { position: absolute; width: 30px; height: 30px; border: 0 solid rgba(255,255,255,.9); pointer-events: none; }
+  .c.tl { top: 14px; left: 14px; border-top-width: 3px; border-left-width: 3px; }
+  .c.tr { top: 14px; right: 14px; border-top-width: 3px; border-right-width: 3px; }
+  .c.bl { bottom: 14px; left: 14px; border-bottom-width: 3px; border-left-width: 3px; }
+  .c.br { bottom: 14px; right: 14px; border-bottom-width: 3px; border-right-width: 3px; }
+  .viewfinder .start { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: auto; white-space: nowrap; padding: 15px 24px; }
+  .viewfinder.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: flash .35s ease-out forwards; }
+  @keyframes flash { from { opacity: .75; } to { opacity: 0; } }
+
+  .btn {
+    appearance: none; display: block; width: 100%; min-height: 54px;
+    border: 2px solid var(--smalto); border-radius: 10px;
+    background: transparent; color: var(--smalto);
+    font: 600 20px/1 var(--display); padding: 15px 18px; cursor: pointer; text-align: center;
+  }
+  .btn.primary { background: var(--smalto); color: var(--bianco); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--giallo); outline-offset: 2px; }
+  .btn + .btn { margin-top: 10px; }
+  .link { background: none; border: 0; color: var(--grigio); font: inherit; text-decoration: underline; padding: 8px; cursor: pointer; }
+
+  .status { min-height: 1.5em; margin: 12px 0 0; }
+  .status.ok { color: var(--verde); font-weight: 600; }
+  .status.ko { color: var(--rosso); font-weight: 600; }
+  .score { font-size: 14px; color: var(--grigio); margin: 4px 0 0; }
+  .hint { color: var(--grigio); margin: 14px 0 8px; }
+
+  .empty { padding: 32px 4px; }
+  .title { font: 700 34px/1.05 var(--display); color: var(--smalto); margin: 0 0 10px; }
+
+  .reward { text-align: center; padding: 8px 0 20px; }
+  .medal {
+    width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%;
+    background: var(--giallo); display: grid; place-items: center; font-size: 62px;
+    box-shadow: inset 0 0 0 7px var(--giallo), inset 0 0 0 9px var(--smalto), 0 4px 0 #BE9118;
+    animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
+  }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+  .done { font: 600 20px/1 var(--display); color: var(--verde); margin: 0 0 6px; }
+
+  .inventory { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
+  .inventory h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
+  .inventory ul { list-style: none; margin: 0; padding: 0; }
+  .inventory li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+  .inventory .mini { width: 40px; height: 40px; border-radius: 50%; background: var(--giallo); display: grid; place-items: center; font-size: 20px; box-shadow: inset 0 0 0 3px var(--giallo), inset 0 0 0 4px var(--smalto); }
+  .foot { text-align: center; margin-top: 18px; }
+
+  /* Master: i passi sono davvero una sequenza, quindi una linea li collega */
+  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  .step { position: relative; padding: 0 0 30px 34px; border-left: 3px solid var(--smalto); margin-left: 14px; }
+  .step:last-child { border-left-color: transparent; }
+  .step h2 { font: 700 26px/1 var(--display); color: var(--smalto); margin: 0 0 12px; }
+  .step h2::before {
+    counter-increment: s; content: counter(s);
+    position: absolute; left: -17px; top: -4px; width: 31px; height: 31px; border-radius: 50%;
+    background: var(--smalto); color: var(--bianco); display: grid; place-items: center; font-size: 18px;
+  }
+  label { display: block; font-weight: 500; margin: 12px 0 0; }
+  input[type=text], textarea {
+    display: block; width: 100%; margin-top: 4px; font: inherit; padding: 10px 12px;
+    border: 1.5px solid #B4BDC6; border-radius: 8px; background: #fff; color: var(--grafite);
+  }
+  textarea { min-height: 72px; resize: vertical; }
+  label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
+  label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
+
+  .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
+  .section { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
+  .section h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
+  .todo { list-style: none; margin: 0; padding: 0; }
+  .todo button {
+    display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px;
+    text-align: left; font: inherit; color: var(--grafite); background: #fff; cursor: pointer;
+    border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .todo button[aria-current="true"] { border-color: var(--smalto); box-shadow: inset 5px 0 0 var(--smalto); }
+  .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
+  .reward .btn { margin-top: 18px; }
+  .current { background: #fff; border-radius: 10px; padding: 14px 16px; margin: 0 0 26px; }
+  .current h2 { font: 700 22px/1 var(--display); color: var(--smalto); margin: 0; }
+  .current .status { margin-top: 8px; }
+  .baselist { list-style: none; margin: 6px 0 0; padding: 0; }
+  .baselist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid #DDE2E7; }
+  .baselist .link { color: var(--rosso); flex: none; padding: 0; }
+  .testbar { background: var(--giallo); color: var(--smalto-scuro); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
+  .testbar .link { color: var(--smalto-scuro); padding: 0; }
+  .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
+  .diag { white-space: pre-wrap; word-break: break-word; background: #fff; border: 2px solid var(--rosso); color: var(--rosso); border-radius: 8px; padding: 12px; font: 14px/1.4 ui-monospace, monospace; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+<script>
+  // Diagnostica: mostra sullo schermo gli errori che su telefono non si vedrebbero
+  window.__errori = [];
+  function mostraErrore(msg) {
+    var box = document.getElementById("diag");
+    if (!box) { window.__errori.push(msg); return; }
+    box.hidden = false; box.textContent += msg + "\n";
+  }
+  window.addEventListener("error", function (e) {
+    var t = e.target;
+    if (t && t.tagName === "SCRIPT") mostraErrore("Script non caricato: " + (t.src || "script del gioco"));
+    else if (e.message) mostraErrore("Errore: " + e.message + (e.lineno ? " (riga " + e.lineno + ")" : ""));
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    mostraErrore("Errore: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    window.__errori.forEach(mostraErrore); window.__errori = [];
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+      if (!window.__avviato) mostraErrore("Il gioco non si è avviato. Browser: " + navigator.userAgent);
+    }, 3000);
+  });
+</script>
+</head>
+<body>
+<main>
+  <p id="boot" class="boot">Avvio del gioco… (versione 5)</p>
+  <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
+  <pre id="diag" class="diag" hidden></pre>
+
+  <!-- ================= GIOCATORE ================= -->
+  <section id="view-player" hidden>
+    <header class="bar">
+      <span class="brand">Caccia</span>
+      <span id="p-progress" class="progress"></span>
+    </header>
+
+    <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
+    <p id="p-news" class="newsbar" role="status" hidden></p>
+
+    <div id="p-empty" class="empty">
+      <h1 class="title">Nessuna caccia in corso</h1>
+      <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
+      <button id="p-retry" class="btn primary" hidden>Riprova</button>
+    </div>
+
+    <div id="p-game" hidden>
+      <div class="plate">
+        <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+        <p id="p-clue"></p>
+      </div>
+      <p id="p-step" class="score" hidden></p>
+      <div class="viewfinder" id="p-vf">
+        <video id="p-video" playsinline muted autoplay></video>
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+        <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
+      </div>
+      <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
+      <p id="p-status" class="status" role="status"></p>
+      <p id="p-score" class="score"></p>
+    </div>
+
+    <div id="p-reward" class="reward" hidden>
+      <div class="medal" id="p-emoji"></div>
+      <p class="done" id="p-done"></p>
+      <h1 class="title" id="p-rname"></h1>
+      <p id="p-rmsg"></p>
+      <button id="p-continue" class="btn primary">Continua la caccia</button>
+    </div>
+
+    <div id="p-alldone" class="empty" hidden>
+      <h1 class="title">Hai trovato tutto</h1>
+      <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+    </div>
+
+    <div id="p-todo" class="section" hidden>
+      <h2>Da trovare</h2>
+      <ul id="p-todo-list" class="todo"></ul>
+    </div>
+
+    <div id="p-inventory" class="section inventory" hidden>
+      <h2>Il tuo bottino</h2>
+      <ul id="p-inv-list"></ul>
+    </div>
+
+    <footer class="foot">
+      <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+    </footer>
+  </section>
+
+  <!-- ================= MASTER ================= -->
+  <section id="view-master" hidden>
+    <header class="bar">
+      <span class="brand">Caccia</span>
+      <span class="tag">Master</span>
+    </header>
+
+    <div class="current">
+      <h2>Caccia pubblicata</h2>
+      <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
+      <ul id="m-base-list" class="baselist"></ul>
+      <button id="m-base-retry" class="link" hidden>Riprova</button>
+      <label>Formato
+        <input type="text" id="m-formato">
+      </label>
+      <p class="hint">Cambialo solo per far ripartire tutti i giocatori da zero: progressi e bottino verranno azzerati.</p>
+    </div>
+
+    <ol class="steps">
+      <li class="step">
+        <h2>Registra un nuovo oggetto</h2>
+        <label>Nome dell'oggetto
+          <input type="text" id="m-name" value="Orologio da muro">
+        </label>
+        <div class="viewfinder" id="m-vf">
+          <video id="m-video" playsinline muted autoplay></video>
+          <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+          <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
+        </div>
+        <p class="hint">Inquadra l'oggetto e muoviti piano per 6 secondi: da vicino, da lontano, un po' di lato.</p>
+        <button id="m-rec-pos" class="btn primary" disabled>Registra l'oggetto</button>
+        <p class="hint">Poi inquadra ciò che c'è intorno: la parete, i mobili, oggetti simili. Serve a non confonderli.</p>
+        <button id="m-rec-neg" class="btn" disabled>Registra i dintorni</button>
+        <p id="m-train-status" class="status" role="status"></p>
+        <button id="m-test" class="btn" disabled>Prova il riconoscimento</button>
+        <p id="m-test-status" class="status" role="status"></p>
+      </li>
+
+      <li class="step">
+        <h2>Crea il percorso</h2>
+        <label>Indizio per il giocatore
+          <textarea id="m-clue">Trova l'orologio</textarea>
+        </label>
+        <label>Nome della ricompensa
+          <input type="text" id="m-rname" value="Chiave del tempo">
+        </label>
+        <label>Simbolo della ricompensa
+          <input type="text" id="m-remoji" value="🗝️">
+        </label>
+        <label>Messaggio al ritrovamento
+          <textarea id="m-rmsg">Hai fermato le lancette. Tieni questa chiave: servirà.</textarea>
+        </label>
+        <label class="check"><input type="checkbox" id="m-geo" checked> Valida solo entro 100 m dal punto in cui ho registrato l'oggetto</label>
+      </li>
+
+      <li class="step">
+        <h2>Pubblica</h2>
+        <p class="hint">Il file contiene gli oggetti già pubblicati più quello nuovo. Caricalo sul sito accanto a index.html: i giocatori lo ricevono in automatico.</p>
+        <button id="m-share" class="btn primary" disabled>Esporta caccia.json</button>
+        <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
+        <p id="m-pub-status" class="status" role="status"></p>
+      </li>
+    </ol>
+  </section>
+</main>
+
+<script type="module">
+const MP    = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
+const WASM  = MP + "/wasm";
+const MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
+const FORMATO = "caccia-1";   // valore iniziale: cambiarlo azzera la caccia
+const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
+const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- archivio locale (resta tutto sul telefono) ---------- */
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+
+/* ---------- fotocamera ---------- */
+let stream = null;
+async function startCamera(video) {
+  stopCamera();
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+    audio: false
+  });
+  video.srcObject = stream;
+  await video.play();
+}
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+function flash(vf) { vf.classList.remove("flash"); void vf.offsetWidth; vf.classList.add("flash"); }
+
+/* ---------- riconoscimento (tutto in locale, nel browser) ---------- */
+let embedderPromise = null;
+function getEmbedder() {
+  if (!embedderPromise) {
+    embedderPromise = (async () => {
+      const { FilesetResolver, ImageEmbedder } = await import(MP + "/vision_bundle.mjs");
+      const vision = await FilesetResolver.forVisionTasks(WASM);
+      const opts = delegate => ({ baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "IMAGE", l2Normalize: true });
+      try { return await ImageEmbedder.createFromOptions(vision, opts("GPU")); }
+      catch { return await ImageEmbedder.createFromOptions(vision, opts("CPU")); }
+    })();
+    embedderPromise.catch(() => { embedderPromise = null; });
+  }
+  return embedderPromise;
+}
+
+const grab = document.createElement("canvas");
+grab.width = grab.height = 256;
+const gctx = grab.getContext("2d", { willReadFrequently: true });
+
+// Ritaglio quadrato centrale: coincide con ciò che il giocatore vede nel mirino
+function frameVector(emb, video) {
+  const w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) throw new Error("La fotocamera non è attiva.");
+  const s = Math.min(w, h);
+  gctx.drawImage(video, (w - s) / 2, (h - s) / 2, s, s, 0, 0, 256, 256);
+  return Float32Array.from(emb.embed(grab).embeddings[0].floatEmbedding);
+}
+
+const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const maxSim = (v, list) => list.length ? Math.max(...list.map(x => dot(v, x))) : -1;
+
+// Vettori compressi a 8 bit per tenere piccolo il file del gioco
+function pack(v) {
+  let m = 0; for (const x of v) m = Math.max(m, Math.abs(x)); m = m || 1;
+  const q = new Int8Array(v.length);
+  for (let i = 0; i < v.length; i++) q[i] = Math.round(v[i] / m * 127);
+  let s = ""; for (const b of new Uint8Array(q.buffer)) s += String.fromCharCode(b);
+  return { m: +m.toPrecision(6), q: btoa(s) };
+}
+function unpack(o) {
+  const bin = atob(o.q), q = new Int8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) q[i] = (bin.charCodeAt(i) << 24) >> 24;
+  const v = new Float32Array(q.length); let n = 0;
+  for (let i = 0; i < q.length; i++) { v[i] = q[i] * o.m / 127; n += v[i] * v[i]; }
+  n = Math.sqrt(n) || 1; for (let i = 0; i < v.length; i++) v[i] /= n;
+  return v;
+}
+
+// Soglia calcolata dai dati: a metà strada tra "quanto si somigliano le foto dell'oggetto"
+// e "quanto i dintorni somigliano all'oggetto"
+function calibrate(pos, neg) {
+  const loo = pos.map((p, i) => Math.max(...pos.filter((_, j) => j !== i).map(q => dot(p, q)))).sort((a, b) => a - b);
+  const pBassa = loo[Math.floor(loo.length * 0.2)];
+  if (!neg.length) return { soglia: pBassa - 0.08, distinzione: null };
+  const negMax = Math.max(...neg.map(n => maxSim(n, pos)));
+  return { soglia: (pBassa + negMax) / 2, distinzione: pBassa - negMax };
+}
+
+// 5 fotogrammi in un secondo: l'oggetto è valido se almeno 3 lo riconoscono
+async function verify(video, obj) {
+  const emb = await getEmbedder();
+  let ok = 0, best = -1;
+  for (let i = 0; i < 5; i++) {
+    if (i) await sleep(180);
+    const v = frameVector(emb, video);
+    const sp = maxSim(v, obj.pos), sn = maxSim(v, obj.neg);
+    if (sp >= obj.soglia && sp > sn) ok++;
+    best = Math.max(best, sp);
+  }
+  return { valido: ok >= 3, somiglianza: best };
+}
+
+/* ---------- posizione (non esce mai dal telefono) ---------- */
+function getPosition() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("GPS non disponibile"));
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }),
+      rej, { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
+  });
+}
+function distance(a, b) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+const fmtDist = d => d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`;
+const fmtNum = x => x.toFixed(2).replace(".", ",");
+
+function setStatus(el, text, kind = "") { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
+
+async function cameraButton(btn, video, onReady, statusEl) {
+  if (!window.isSecureContext) { setStatus(statusEl, "La fotocamera funziona solo da un indirizzo https.", "ko"); return; }
+  btn.disabled = true;
+  try {
+    await startCamera(video);
+    btn.hidden = true;
+    setStatus(statusEl, "Preparo il riconoscimento…");
+    await getEmbedder();
+    setStatus(statusEl, "");
+    onReady();
+  } catch (e) {
+    btn.disabled = false;
+    const msg = e && e.name === "NotAllowedError"
+      ? "Accesso alla fotocamera negato. Consentilo nelle impostazioni del browser e riprova."
+      : `Non riesco ad avviare fotocamera o riconoscimento. Controlla la connessione e riprova. (${e && e.message ? e.message : e})`;
+    setStatus(statusEl, msg, "ko");
+  }
+}
+
+/* =================================================================
+   MASTER
+   ================================================================= */
+// base = la caccia già pubblicata sul sito; il nuovo oggetto si aggiunge a quella
+const M = { base: null, baseLoaded: false, loading: false, pos: [], neg: [], cal: null, luogo: null, busy: false };
+const clone = o => JSON.parse(JSON.stringify(o));
+const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+function masterRefresh() {
+  const pronto = !!M.cal;
+  const esportabile = M.baseLoaded && (pronto || !!M.base) && !M.busy;
+  $("m-test").disabled = !pronto || M.busy;
+  $("m-share").disabled = !esportabile;
+  $("m-local").disabled = !esportabile;
+  $("m-rec-pos").disabled = !stream || M.busy;
+  $("m-rec-neg").disabled = !stream || M.busy || !M.pos.length;
+}
+
+function baseSummary() {
+  const n = M.base ? M.base.missioni.length : 0;
+  return n === 0 ? "Nessun oggetto ancora." : n === 1 ? "1 oggetto nella caccia." : `${n} oggetti nella caccia.`;
+}
+
+function renderBase() {
+  const list = $("m-base-list");
+  list.innerHTML = "";
+  for (const m of (M.base ? M.base.missioni : [])) {
+    const li = document.createElement("li");
+    const t = document.createElement("span");
+    t.textContent = `${m.titolo}: ${m.tappe[0] ? m.tappe[0].indizio : ""}`;
+    const del = document.createElement("button");
+    del.className = "link"; del.textContent = "Rimuovi";
+    del.onclick = () => {
+      if (!confirm(`Rimuovere "${m.titolo}"? Sparirà dalla caccia quando carichi il nuovo file.`)) return;
+      M.base.missioni = M.base.missioni.filter(x => x.id !== m.id);
+      const usati = new Set(M.base.missioni.flatMap(x => x.tappe.map(tp => tp.oggetto)));
+      for (const k of Object.keys(M.base.oggetti)) if (!usati.has(k)) delete M.base.oggetti[k];
+      setStatus($("m-base-status"), `${baseSummary()} Esporta e carica caccia.json per applicare la rimozione.`);
+      renderBase(); masterRefresh();
+    };
+    li.append(t, del);
+    list.append(li);
+  }
+}
+
+async function loadBase() {
+  M.loading = true;
+  $("m-base-retry").hidden = true;
+  setStatus($("m-base-status"), "Leggo la caccia pubblicata…");
+  try {
+    const r = await fetch(GAME_URL, { cache: "no-store" });
+    if (r.status === 404) {
+      M.base = null;
+      setStatus($("m-base-status"), "Sul sito non c'è ancora una caccia: il primo oggetto che aggiungi la crea.");
+    } else {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const g = await r.json();
+      if (!Array.isArray(g.missioni) || !g.oggetti) throw new Error("caccia.json non valido");
+      M.base = g;
+      setStatus($("m-base-status"), baseSummary());
+    }
+    M.baseLoaded = true;
+    $("m-formato").value = (M.base && M.base.formato) || FORMATO;
+  } catch {
+    M.baseLoaded = false;
+    setStatus($("m-base-status"), "Non riesco a leggere la caccia pubblicata. Per non perdere gli oggetti esistenti, l'esportazione resta bloccata finché non riprovi con successo.", "ko");
+    $("m-base-retry").hidden = false;
+  }
+  M.loading = false;
+  renderBase(); masterRefresh();
+}
+
+async function record(n, label) {
+  const emb = await getEmbedder();
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (i) await sleep(300);
+    out.push(pack(frameVector(emb, $("m-video"))));
+    flash($("m-vf"));
+    setStatus($("m-train-status"), `${label}: ${i + 1} di ${n}`);
+  }
+  return out;
+}
+
+function recalibrate() {
+  const pos = M.pos.map(unpack), neg = M.neg.map(unpack);
+  M.cal = calibrate(pos, neg);
+  const d = M.cal.distinzione;
+  let msg, kind = "ok";
+  if (d === null) { msg = "Oggetto registrato. Ora registra i dintorni per evitare falsi riconoscimenti."; kind = ""; }
+  else if (d >= 0.12) msg = "Pronto. L'oggetto si distingue bene dai dintorni.";
+  else if (d >= 0.05) msg = "Pronto. Distinzione sufficiente: prova il riconoscimento prima di pubblicare.";
+  else { msg = "L'oggetto somiglia troppo ai dintorni. Inquadra un dettaglio più caratteristico e registralo di nuovo."; kind = "ko"; }
+  setStatus($("m-train-status"), msg, kind);
+}
+
+// Caccia pubblicata + eventuale nuovo oggetto
+function buildGame() {
+  const base = M.base ? clone(M.base) : { oggetti: {}, missioni: [] };
+  const g = {
+    formato: $("m-formato").value.trim() || FORMATO,
+    creato: new Date().toISOString(),
+    oggetti: base.oggetti,
+    missioni: base.missioni
+  };
+  if (M.cal) {
+    const oid = newId("o"), mid = newId("m");
+    const nome = $("m-name").value.trim() || "Oggetto";
+    g.oggetti[oid] = {
+      nome,
+      soglia: +M.cal.soglia.toFixed(4),
+      pos: M.pos, neg: M.neg,
+      luogo: $("m-geo").checked && M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null
+    };
+    g.missioni.push({
+      id: mid,
+      titolo: nome,
+      tappe: [{ indizio: $("m-clue").value.trim() || "Trova l'oggetto", oggetto: oid }],
+      ricompensa: {
+        nome: $("m-rname").value.trim() || "Ricompensa",
+        simbolo: $("m-remoji").value.trim() || "★",
+        messaggio: $("m-rmsg").value.trim()
+      }
+    });
+  }
+  return g;
+}
+
+// Dopo l'esportazione il nuovo oggetto entra a far parte della caccia
+function commit(g) {
+  const aggiunto = !!M.cal;
+  M.base = g;
+  M.pos = []; M.neg = []; M.cal = null; M.luogo = null;
+  setStatus($("m-train-status"), aggiunto ? "Oggetto aggiunto alla caccia. Puoi registrarne un altro." : "");
+  setStatus($("m-test-status"), "");
+  setStatus($("m-base-status"), baseSummary());
+  renderBase(); masterRefresh();
+}
+
+async function ensurePlace() {
+  if (!M.cal || !$("m-geo").checked || M.luogo) return true;
+  setStatus($("m-pub-status"), "Leggo la posizione…");
+  try { M.luogo = await getPosition(); return true; }
+  catch { setStatus($("m-pub-status"), "Posizione non disponibile. Attiva il GPS oppure togli la spunta sulla posizione.", "ko"); return false; }
+}
+
+function initMaster() {
+  $("m-cam").hidden = false; $("m-cam").disabled = false;
+  $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
+  $("m-base-retry").onclick = loadBase;
+
+  $("m-rec-pos").onclick = async () => {
+    M.busy = true; masterRefresh();
+    try {
+      M.pos = await record(FRAME_OGGETTO, "Oggetto");
+      M.neg = []; M.luogo = null;
+      getPosition().then(p => { M.luogo = p; }).catch(() => {});
+      recalibrate();
+    } catch (e) { setStatus($("m-train-status"), e.message, "ko"); }
+    M.busy = false; masterRefresh();
+  };
+
+  $("m-rec-neg").onclick = async () => {
+    M.busy = true; masterRefresh();
+    try { M.neg = await record(FRAME_DINTORNI, "Dintorni"); recalibrate(); }
+    catch (e) { setStatus($("m-train-status"), e.message, "ko"); }
+    M.busy = false; masterRefresh();
+  };
+
+  $("m-test").onclick = async () => {
+    M.busy = true; masterRefresh();
+    setStatus($("m-test-status"), "Guardo l'immagine…");
+    flash($("m-vf"));
+    const obj = { pos: M.pos.map(unpack), neg: M.neg.map(unpack), soglia: M.cal.soglia };
+    const r = await verify($("m-video"), obj);
+    setStatus($("m-test-status"),
+      `${r.valido ? "Riconosciuto" : "Non riconosciuto"}. Somiglianza ${fmtNum(r.somiglianza)}, soglia ${fmtNum(obj.soglia)}.`,
+      r.valido ? "ok" : "ko");
+    M.busy = false; masterRefresh();
+  };
+
+  $("m-share").onclick = async () => {
+    if (!(await ensurePlace())) return;
+    const g = buildGame();
+    const file = new File([JSON.stringify(g)], "caccia.json", { type: "application/json" });
+    let msg = "File caccia.json scaricato: caricalo sul sito accanto a index.html.";
+    let condiviso = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "Caccia al tesoro" }); condiviso = true; msg = "File inviato: caricalo sul sito accanto a index.html."; }
+      catch (e) { if (e.name === "AbortError") { setStatus($("m-pub-status"), ""); return; } }
+    }
+    if (!condiviso) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file); a.download = "caccia.json"; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+    commit(g);
+    setStatus($("m-pub-status"), msg, "ok");
+  };
+
+  $("m-local").onclick = async () => {
+    if (!(await ensurePlace())) return;
+    const g = buildGame();
+    const ok = store.set("gioco-prova", g) &&
+      store.set("stato-prova", { progresso: {}, bottino: [], visti: g.missioni.map(m => m.id), scelta: null }) &&
+      store.set("prova", true);
+    if (!ok) { setStatus($("m-pub-status"), "Memoria del browser non disponibile.", "ko"); return; }
+    stopCamera();
+    location.hash = "";
+  };
+
+  if (!M.baseLoaded && !M.loading) loadBase(); else { renderBase(); }
+  masterRefresh();
+}
+
+/* =================================================================
+   GIOCATORE
+   ================================================================= */
+let game = null, oggetti = {};
+
+const inProva  = () => !!store.get("prova");
+const gameKey  = () => inProva() ? "gioco-prova" : "gioco";
+const stateKey = () => inProva() ? "stato-prova" : "stato";
+
+function loadGame(g) {
+  if (!g || typeof g.formato !== "string" || !Array.isArray(g.missioni) || !g.oggetti) throw new Error("Caccia non valida");
+  const objs = {};
+  for (const [id, o] of Object.entries(g.oggetti)) {
+    objs[id] = { ...o, pos: o.pos.map(unpack), neg: (o.neg || []).map(unpack) };
+  }
+  oggetti = objs;
+  game = g;
+}
+
+// Stato del giocatore: progressi per oggetto, bottino, oggetti già visti, oggetto scelto
+function stato() {
+  const s = store.get(stateKey()) || {};
+  return {
+    progresso: s.progresso || {},
+    bottino: s.bottino || [],
+    visti: s.visti || (game ? game.missioni.map(m => m.id) : []),
+    scelta: s.scelta || null
+  };
+}
+const saveState = st => store.set(stateKey(), st);
+const freshState = g => ({ progresso: {}, bottino: [], visti: g.missioni.map(m => m.id), scelta: null });
+const daTrovare = st => game.missioni.filter(m => (st.progresso[m.id] || 0) < m.tappe.length);
+const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
+
+function showEmpty(msg, retry) {
+  game = null;
+  $("p-empty-msg").textContent = msg;
+  $("p-retry").hidden = !retry;
+  renderPlayer();
+}
+
+// Scarica caccia.json dal sito.
+// Stesso "formato": i progressi restano e gli oggetti aggiunti compaiono come nuovi.
+// "Formato" diverso: si riparte da zero. Senza rete si continua con la copia salvata.
+let syncing = false;
+async function syncGame() {
+  if (inProva() || syncing) return;
+  syncing = true;
+  try {
+    const r = await fetch(GAME_URL, { cache: "no-store" });
+    if (r.status === 404) {
+      if (!game) showEmpty("Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
+      return;
+    }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const g = await r.json();
+    if (game && game.formato === g.formato && game.creato === g.creato) return;
+    const prev = store.get("gioco");
+    loadGame(g);
+    if (!prev || prev.formato !== g.formato) store.set("stato", freshState(g));
+    store.set("gioco", g);
+    if ($("p-reward").hidden) renderPlayer();
+  } catch {
+    if (!game) showEmpty("Non riesco a scaricare la caccia. Controlla la connessione e riprova.", true);
+  } finally {
+    syncing = false;
+  }
+}
+
+function renderInventory(st) {
+  $("p-inventory").hidden = !st.bottino.length;
+  $("p-inv-list").innerHTML = "";
+  for (const r of st.bottino) {
+    const li = document.createElement("li");
+    const mini = document.createElement("span"); mini.className = "mini"; mini.textContent = r.simbolo;
+    const name = document.createElement("span"); name.textContent = r.nome;
+    li.append(mini, name);
+    $("p-inv-list").append(li);
+  }
+}
+
+function renderTodo(st, todo, cur) {
+  $("p-todo").hidden = todo.length < 2;
+  const list = $("p-todo-list");
+  list.innerHTML = "";
+  for (const m of todo) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    const k = st.progresso[m.id] || 0;
+    const t = document.createElement("span"); t.textContent = m.tappe[k].indizio;
+    b.append(t);
+    if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
+    if (m === cur) b.setAttribute("aria-current", "true");
+    b.onclick = () => {
+      const s = stato();
+      s.scelta = m.id;
+      if (!s.visti.includes(m.id)) s.visti.push(m.id);
+      saveState(s);
+      setStatus($("p-status"), ""); $("p-score").textContent = "";
+      renderPlayer();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    li.append(b);
+    list.append(li);
+  }
+}
+
+function renderPlayer() {
+  $("p-reward").hidden = true;
+  $("p-test").hidden = !inProva();
+  $("p-reset").hidden = !game;
+  $("p-empty").hidden = !!game;
+  if (!game) {
+    for (const id of ["p-game", "p-alldone", "p-todo", "p-news"]) $(id).hidden = true;
+    $("p-progress").textContent = "";
+    renderInventory(stato());
+    return;
+  }
+  const st = stato();
+  const todo = daTrovare(st);
+  const tot = game.missioni.length;
+  $("p-progress").textContent = `Trovati ${tot - todo.length} di ${tot}`;
+
+  const nuovi = todo.filter(m => !st.visti.includes(m.id));
+  $("p-news").hidden = !nuovi.length;
+  $("p-news").textContent = nuovi.length === 1 ? "C'è un nuovo oggetto da trovare." : `Ci sono ${nuovi.length} nuovi oggetti da trovare.`;
+  renderInventory(st);
+
+  if (!todo.length) {
+    stopCamera();
+    $("p-game").hidden = true; $("p-todo").hidden = true; $("p-alldone").hidden = false;
+    return;
+  }
+  $("p-alldone").hidden = true;
+  const cur = attuale(st, todo);
+  const k = st.progresso[cur.id] || 0;
+  $("p-game").hidden = false;
+  $("p-clue").textContent = cur.tappe[k].indizio;
+  $("p-step").hidden = cur.tappe.length < 2;
+  $("p-step").textContent = `Tappa ${k + 1} di ${cur.tappe.length}`;
+  $("p-shoot").disabled = !stream;
+  $("p-cam").hidden = !!stream;
+  $("p-cam").disabled = false;
+  renderTodo(st, todo, cur);
+}
+
+function showReward(m, st) {
+  const r = m.ricompensa, n = m.tappe.length;
+  for (const id of ["p-game", "p-todo", "p-news", "p-alldone"]) $(id).hidden = true;
+  $("p-reward").hidden = false;
+  $("p-emoji").textContent = r.simbolo;
+  $("p-done").textContent = `Obiettivo ${n} di ${n} raggiunto`;
+  $("p-rname").textContent = r.nome;
+  $("p-rmsg").textContent = r.messaggio;
+  const rimasti = daTrovare(st).length, tot = game.missioni.length;
+  $("p-progress").textContent = `Trovati ${tot - rimasti} di ${tot}`;
+  $("p-continue").textContent = rimasti ? "Continua la caccia" : "Fatto";
+  renderInventory(st);
+}
+
+async function shoot() {
+  const st = stato();
+  const m = attuale(st, daTrovare(st));
+  if (!m) return;
+  const k = st.progresso[m.id] || 0;
+  if (!st.visti.includes(m.id)) { st.visti.push(m.id); saveState(st); }
+  const obj = oggetti[m.tappe[k].oggetto];
+  const status = $("p-status");
+  $("p-shoot").disabled = true;
+  $("p-score").textContent = "";
+  try {
+    if (!obj) { setStatus(status, "Questo oggetto non è più nella caccia. Riapri l'app per aggiornarla.", "ko"); return; }
+    if (obj.luogo) {
+      setStatus(status, "Controllo la posizione…");
+      let p;
+      try { p = await getPosition(); }
+      catch { setStatus(status, "Non riesco a leggere la posizione. Attiva il GPS e riprova.", "ko"); return; }
+      const d = distance(p, obj.luogo);
+      if (d > obj.luogo.raggio + Math.min(p.acc, 150)) {
+        setStatus(status, `Sei a circa ${fmtDist(d)} dal punto giusto: l'oggetto non è qui.`, "ko");
+        return;
+      }
+    }
+    setStatus(status, "Guardo l'immagine…");
+    flash($("p-vf"));
+    const r = await verify($("p-video"), obj);
+    $("p-score").textContent = `Somiglianza ${fmtNum(r.somiglianza)}, soglia ${fmtNum(obj.soglia)}`;
+    if (!r.valido) {
+      setStatus(status, "Oggetto non valido. Avvicinati, inquadralo per intero ed evita il controluce.", "ko");
+      return;
+    }
+    st.progresso[m.id] = k + 1;
+    if (k + 1 >= m.tappe.length) {
+      st.bottino.push({ ...m.ricompensa, missione: m.id, quando: new Date().toISOString() });
+      st.scelta = null;
+      saveState(st);
+      setStatus(status, ""); $("p-score").textContent = "";
+      stopCamera();
+      showReward(m, st);
+    } else {
+      saveState(st);
+      setStatus(status, "Trovato! Ecco la prossima tappa.", "ok");
+      renderPlayer();
+    }
+  } catch (e) {
+    setStatus(status, e.message || "Qualcosa non ha funzionato. Riprova.", "ko");
+  } finally {
+    $("p-shoot").disabled = !stream;
+  }
+}
+
+function initPlayer() {
+  game = null;
+  const saved = store.get(gameKey());
+  if (saved) { try { loadGame(saved); } catch { game = null; } }
+  $("p-empty-msg").textContent = "Controllo se il master ha pubblicato una caccia…";
+  $("p-retry").hidden = true;
+
+  $("p-test-exit").onclick = () => { store.del("prova"); stopCamera(); initPlayer(); };
+  $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
+  $("p-continue").onclick = () => { renderPlayer(); window.scrollTo({ top: 0 }); };
+  $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; }, $("p-status"));
+  $("p-shoot").onclick = shoot;
+  $("p-reset").onclick = () => {
+    if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
+    if (game) saveState(freshState(game)); else store.del(stateKey());
+    stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
+    renderPlayer();
+  };
+  renderPlayer();
+  syncGame();
+}
+
+// Quando il giocatore torna sull'app, controlla se ci sono novità
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && location.hash !== "#master") syncGame();
+});
+
+/* ---------- navigazione: #master apre il pannello del master ---------- */
+function route() {
+  stopCamera();
+  const master = location.hash === "#master";
+  $("view-master").hidden = !master;
+  $("view-player").hidden = master;
+  if (master) initMaster(); else initPlayer();
+}
+window.addEventListener("hashchange", route);
+route();
+window.__avviato = true;
+$("boot").hidden = true;
+</script>
+</body>
+</html>
