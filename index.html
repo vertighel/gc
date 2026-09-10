@@ -132,6 +132,9 @@
   .todo button[aria-current="true"] { border-color: var(--smalto); box-shadow: inset 5px 0 0 var(--smalto); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
   .reward .btn { margin-top: 18px; }
+  #m-cfg { margin-top: 14px; }
+  #m-cfg-summary { cursor: pointer; color: var(--grigio); text-decoration: underline; padding: 8px 0; }
+  #m-cfg[open] #m-cfg-summary { margin-bottom: 4px; }
   .current { background: #fff; border-radius: 10px; padding: 14px 16px; margin: 0 0 26px; }
   .current h2 { font: 700 22px/1 var(--display); color: var(--smalto); margin: 0; }
   .current .status { margin-top: 8px; }
@@ -173,7 +176,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 5)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 6)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -294,10 +297,34 @@
 
       <li class="step">
         <h2>Pubblica</h2>
-        <p class="hint">Il file contiene gli oggetti già pubblicati più quello nuovo. Caricalo sul sito accanto a index.html: i giocatori lo ricevono in automatico.</p>
-        <button id="m-share" class="btn primary" disabled>Esporta caccia.json</button>
-        <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
+        <p class="hint">Il file contiene gli oggetti già pubblicati più quello nuovo. Pubblicandolo, i giocatori lo ricevono in automatico entro circa un minuto.</p>
+
+        <button id="m-publish" class="btn primary" disabled>Pubblica su GitHub</button>
         <p id="m-pub-status" class="status" role="status"></p>
+
+        <details id="m-cfg">
+          <summary id="m-cfg-summary">Configura la pubblicazione automatica</summary>
+          <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono.</p>
+          <label>Utente o organizzazione GitHub
+            <input type="text" id="cfg-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
+          </label>
+          <label>Nome del repository
+            <input type="text" id="cfg-repo" placeholder="gc" autocapitalize="off" autocorrect="off">
+          </label>
+          <label>Ramo
+            <input type="text" id="cfg-branch" placeholder="main" autocapitalize="off" autocorrect="off">
+          </label>
+          <label>Token
+            <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
+          </label>
+          <button id="cfg-save" class="btn">Salva configurazione</button>
+          <button id="cfg-clear" class="link">Dimentica il token da questo telefono</button>
+          <p id="cfg-status" class="status" role="status"></p>
+        </details>
+
+        <p class="hint">Se preferisci pubblicare a mano:</p>
+        <button id="m-share" class="btn" disabled>Scarica caccia.json</button>
+        <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
       </li>
     </ol>
   </section>
@@ -309,6 +336,7 @@ const WASM  = MP + "/wasm";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
 const FORMATO = "caccia-1";   // valore iniziale: cambiarlo azzera la caccia
 const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
+const GH_API = "https://api.github.com";
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
@@ -428,6 +456,13 @@ function distance(a, b) {
 const fmtDist = d => d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`;
 const fmtNum = x => x.toFixed(2).replace(".", ",");
 
+function toBase64Utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 function setStatus(el, text, kind = "") { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
 
 async function cameraButton(btn, video, onReady, statusEl) {
@@ -461,10 +496,79 @@ function masterRefresh() {
   const pronto = !!M.cal;
   const esportabile = M.baseLoaded && (pronto || !!M.base) && !M.busy;
   $("m-test").disabled = !pronto || M.busy;
+  $("m-publish").disabled = !esportabile;
   $("m-share").disabled = !esportabile;
   $("m-local").disabled = !esportabile;
   $("m-rec-pos").disabled = !stream || M.busy;
   $("m-rec-neg").disabled = !stream || M.busy || !M.pos.length;
+}
+
+/* ---------- pubblicazione diretta su GitHub ---------- */
+function ghConfig() { return store.get("gh-config") || null; }
+
+function ghConfigStatus() {
+  const c = ghConfig();
+  $("m-publish").textContent = c ? "Pubblica su GitHub" : "Pubblica su GitHub (configura prima)";
+}
+
+async function publishToGitHub(g) {
+  const c = ghConfig();
+  if (!c || !c.owner || !c.repo || !c.token) {
+    $("m-cfg").open = true;
+    setStatus($("m-pub-status"), "Configura prima la pubblicazione qui sotto.", "ko");
+    return false;
+  }
+  const branch = c.branch || "main";
+  const path = c.path || "caccia.json";
+  const url = `${GH_API}/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${encodeURIComponent(path)}`;
+  const headers = {
+    Authorization: `Bearer ${c.token}`,
+    Accept: "application/vnd.github+json"
+  };
+
+  async function currentSha() {
+    const r = await fetch(`${url}?ref=${encodeURIComponent(branch)}`, { headers });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return (await r.json()).sha;
+  }
+
+  setStatus($("m-pub-status"), "Pubblico su GitHub…");
+  let sha;
+  try { sha = await currentSha(); }
+  catch (e) { setStatus($("m-pub-status"), erroreGitHub(e, "Non riesco a leggere il repository")); return false; }
+
+  const body = {
+    message: `Aggiorna la caccia (${g.missioni.length} oggetti)`,
+    content: toBase64Utf8(JSON.stringify(g, null, 2)),
+    branch
+  };
+  if (sha) body.sha = sha;
+
+  let r;
+  try { r = await fetch(url, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+  catch { setStatus($("m-pub-status"), "Connessione a GitHub non riuscita. Controlla la rete e riprova.", "ko"); return false; }
+
+  if (r.status === 409) {
+    // qualcun altro ha scritto nel frattempo: riprendo lo sha aggiornato e riprovo una volta
+    try {
+      sha = await currentSha();
+      body.sha = sha;
+      r = await fetch(url, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } catch (e) { setStatus($("m-pub-status"), erroreGitHub(e, "Pubblicazione non riuscita")); return false; }
+  }
+  if (!r.ok) { setStatus($("m-pub-status"), erroreGitHub({ status: r.status }, "Pubblicazione non riuscita")); return false; }
+
+  setStatus($("m-pub-status"), "Pubblicato. I giocatori lo vedranno entro circa un minuto.", "ok");
+  return true;
+}
+
+function erroreGitHub(e, prefisso) {
+  const s = e && e.status;
+  if (s === 401) return `${prefisso}: token non valido o scaduto. Controlla la configurazione.`;
+  if (s === 403) return `${prefisso}: token senza permesso di scrittura su questo repository.`;
+  if (s === 404) return `${prefisso}: repository o percorso non trovati. Controlla utente, repository e ramo.`;
+  return `${prefisso} (${s || (e && e.message) || "errore sconosciuto"}).`;
 }
 
 function baseSummary() {
@@ -600,6 +704,27 @@ function initMaster() {
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
   $("m-base-retry").onclick = loadBase;
 
+  const cfg = ghConfig();
+  if (cfg) { $("cfg-owner").value = cfg.owner || ""; $("cfg-repo").value = cfg.repo || ""; $("cfg-branch").value = cfg.branch || ""; }
+  ghConfigStatus();
+
+  $("cfg-save").onclick = () => {
+    const owner = $("cfg-owner").value.trim(), repo = $("cfg-repo").value.trim();
+    const branch = $("cfg-branch").value.trim() || "main";
+    const token = $("cfg-token").value.trim() || (ghConfig() || {}).token;
+    if (!owner || !repo || !token) { setStatus($("cfg-status"), "Compila almeno utente, repository e token.", "ko"); return; }
+    store.set("gh-config", { owner, repo, branch, path: "caccia.json", token });
+    $("cfg-token").value = "";
+    setStatus($("cfg-status"), "Configurazione salvata su questo telefono.", "ok");
+    ghConfigStatus();
+  };
+  $("cfg-clear").onclick = () => {
+    store.del("gh-config");
+    $("cfg-owner").value = ""; $("cfg-repo").value = ""; $("cfg-branch").value = ""; $("cfg-token").value = "";
+    setStatus($("cfg-status"), "Token dimenticato.", "");
+    ghConfigStatus();
+  };
+
   $("m-rec-pos").onclick = async () => {
     M.busy = true; masterRefresh();
     try {
@@ -627,6 +752,15 @@ function initMaster() {
     setStatus($("m-test-status"),
       `${r.valido ? "Riconosciuto" : "Non riconosciuto"}. Somiglianza ${fmtNum(r.somiglianza)}, soglia ${fmtNum(obj.soglia)}.`,
       r.valido ? "ok" : "ko");
+    M.busy = false; masterRefresh();
+  };
+
+  $("m-publish").onclick = async () => {
+    if (!(await ensurePlace())) return;
+    M.busy = true; masterRefresh();
+    const g = buildGame();
+    const ok = await publishToGitHub(g);
+    if (ok) commit(g);
     M.busy = false; masterRefresh();
   };
 
@@ -746,7 +880,7 @@ function renderInventory(st) {
 }
 
 function renderTodo(st, todo, cur) {
-  $("p-todo").hidden = todo.length < 2;
+  $("p-todo").hidden = false;   // mostra sempre tutti gli oggetti ancora da trovare
   const list = $("p-todo-list");
   list.innerHTML = "";
   for (const m of todo) {
