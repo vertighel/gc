@@ -134,6 +134,15 @@
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
   input[type=file] { display: block; width: 100%; margin-top: 4px; font: inherit; }
   .draft-preview { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
+  .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+  .linknode .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 600; }
+  .linknode .head .link { color: var(--rosso); }
+  .linkreq { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .linkreq label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 15px; }
+  .linkreq label input { width: 18px; height: 18px; accent-color: var(--smalto); margin: 0; }
+  .linkreq .none { color: var(--grigio); font-size: 15px; }
+  details.linknew { margin-top: 18px; border-top: 2px solid #C9D0D7; padding-top: 12px; }
+  details.linknew summary { cursor: pointer; font-weight: 600; color: var(--smalto); }
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
   .section { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
@@ -191,7 +200,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 10)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 11)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -226,6 +235,7 @@
       <div class="plate">
         <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
         <p id="p-clue"></p>
+        <img id="p-clue-img" class="draft-preview" hidden>
       </div>
       <p id="p-step" class="score" hidden></p>
       <div class="viewfinder" id="p-vf">
@@ -309,6 +319,43 @@
       <img id="m-draft-preview" class="draft-preview" hidden>
       <button id="m-draft-save" class="btn primary" disabled>Salva bozza</button>
       <p id="m-draft-status" class="status" role="status"></p>
+    </div>
+
+    <div class="current">
+      <h2>Collega gli elementi</h2>
+      <p class="hint">Qui puoi collegare indizi, oggetti e ricompense fra loro per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più ricompense che ne sbloccano un'altra). Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
+
+      <div id="m-link-migra" hidden>
+        <p class="hint">La caccia pubblicata usa ancora il formato semplice (un oggetto = una missione a sé). Per collegare liberamente gli elementi serve passare al nuovo formato: i quattro oggetti esistenti restano tutti, ma <strong>i progressi dei giocatori verranno azzerati</strong> alla prossima pubblicazione.</p>
+        <button id="m-link-migra-btn" class="btn primary">Passa al formato con collegamenti</button>
+      </div>
+
+      <div id="m-link-work" hidden>
+        <p id="m-link-stale" class="hint" hidden><strong>Attenzione:</strong> la caccia pubblicata è cambiata da quando hai iniziato a collegare gli elementi (probabilmente hai usato il modulo rapido "Registra un nuovo oggetto" qui sotto nel frattempo). Pubblicando da qui rischi di perdere quella modifica: ricarica la pagina per ripartire dai collegamenti aggiornati.</p>
+        <div id="m-link-list"></div>
+
+        <details class="linknew">
+          <summary>Aggiungi una nuova ricompensa</summary>
+          <label>Nome
+            <input type="text" id="m-link-rname" placeholder="Es. Chiave del tempo">
+          </label>
+          <label>Simbolo
+            <input type="text" id="m-link-remoji" value="★">
+          </label>
+          <label>Messaggio
+            <textarea id="m-link-rmsg"></textarea>
+          </label>
+          <button id="m-link-radd" class="btn">Aggiungi ricompensa</button>
+        </details>
+
+        <details class="linknew" id="m-link-bozze-wrap">
+          <summary>Importa una bozza salvata</summary>
+          <ul id="m-link-bozze-list" class="baselist"></ul>
+        </details>
+
+        <button id="m-link-publish" class="btn primary">Pubblica i collegamenti</button>
+        <p id="m-link-status" class="status" role="status"></p>
+      </div>
     </div>
 
     <ol class="steps">
@@ -544,6 +591,7 @@ async function cameraButton(btn, video, onReady, statusEl) {
    ================================================================= */
 // base = la caccia già pubblicata sul sito; il nuovo oggetto si aggiunge a quella
 const M = { base: null, baseLoaded: false, loading: false, pos: [], neg: [], cal: null, luogo: null, busy: false };
+window.__test = { M, refresh: () => masterRefresh() }; // aggancio per i test (vedi CLAUDE.md): inietta un embedding finto in M.pos/M.neg/M.cal senza usare la fotocamera
 const clone = o => JSON.parse(JSON.stringify(o));
 const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
@@ -613,8 +661,12 @@ async function ghPutFile(path, content, commitMsg, statusEl) {
   return true;
 }
 
+function contaOggetti(g) {
+  return inCaccia2(g) ? Object.values(g.nodi).filter(x => x.tipo === "oggetto").length : g.missioni.length;
+}
+
 async function publishToGitHub(g) {
-  return ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${g.missioni.length} oggetti)`, $("m-pub-status"));
+  return ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, $("m-pub-status"));
 }
 
 function erroreGitHub(e, prefisso) {
@@ -626,14 +678,33 @@ function erroreGitHub(e, prefisso) {
 }
 
 function baseSummary() {
-  const n = M.base ? M.base.missioni.length : 0;
+  if (!M.base) return "Nessun oggetto ancora.";
+  const n = inCaccia2(M.base)
+    ? Object.values(M.base.nodi).filter(x => x.tipo === "oggetto").length
+    : M.base.missioni.length;
   return n === 0 ? "Nessun oggetto ancora." : n === 1 ? "1 oggetto nella caccia." : `${n} oggetti nella caccia.`;
 }
+
+const ICONA_NODO = { indizio: "📝", oggetto: "📷", ricompensa: "🏆" };
 
 function renderBase() {
   const list = $("m-base-list");
   list.innerHTML = "";
-  for (const m of (M.base ? M.base.missioni : [])) {
+  if (!M.base) return;
+  if (inCaccia2(M.base)) {
+    for (const n of Object.values(M.base.nodi)) {
+      const li = document.createElement("li");
+      const t = document.createElement("span");
+      t.textContent = `${ICONA_NODO[n.tipo] || ""} ${n.titolo || n.nome}`;
+      li.append(t);
+      list.append(li);
+    }
+    const hint = document.createElement("li");
+    hint.textContent = "Per collegarli o rimuoverli, usa la sezione \"Collega gli elementi\" più sotto.";
+    list.append(hint);
+    return;
+  }
+  for (const m of M.base.missioni) {
     const li = document.createElement("li");
     const t = document.createElement("span");
     t.textContent = `${m.titolo}: ${m.tappe[0] ? m.tappe[0].indizio : ""}`;
@@ -664,7 +735,8 @@ async function loadBase() {
     } else {
       if (!r.ok) throw new Error("HTTP " + r.status);
       const g = await r.json();
-      if (!Array.isArray(g.missioni) || !g.oggetti) throw new Error("caccia.json non valido");
+      const valido = (Array.isArray(g.missioni) && g.oggetti) || (g.nodi && typeof g.nodi === "object");
+      if (!valido) throw new Error("caccia.json non valido");
       M.base = g;
       setStatus($("m-base-status"), baseSummary());
     }
@@ -676,7 +748,7 @@ async function loadBase() {
     $("m-base-retry").hidden = false;
   }
   M.loading = false;
-  renderBase(); masterRefresh();
+  renderBase(); masterRefresh(); linkRefresh();
 }
 
 async function record(n, label) {
@@ -705,6 +777,31 @@ function recalibrate() {
 
 // Caccia pubblicata + eventuale nuovo oggetto
 function buildGame() {
+  if (M.base && inCaccia2(M.base)) {
+    const base = clone(M.base);
+    const g = { formato: $("m-formato").value.trim() || "caccia-2", creato: new Date().toISOString(), nodi: base.nodi };
+    if (M.cal) {
+      const nome = $("m-name").value.trim() || "Oggetto";
+      const iid = newId("n"), oid = newId("n"), rid = newId("n");
+      g.nodi[iid] = { tipo: "indizio", titolo: nome, testo: $("m-clue").value.trim() || "Trova l'oggetto", immagine: null, richiede: [] };
+      g.nodi[oid] = {
+        tipo: "oggetto", nome,
+        soglia: +M.cal.soglia.toFixed(4),
+        pos: M.pos, neg: M.neg,
+        luogo: $("m-geo").checked && M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null,
+        richiede: [iid]
+      };
+      g.nodi[rid] = {
+        tipo: "ricompensa",
+        nome: $("m-rname").value.trim() || "Ricompensa",
+        simbolo: $("m-remoji").value.trim() || "★",
+        messaggio: $("m-rmsg").value.trim(),
+        richiede: [oid]
+      };
+    }
+    return g;
+  }
+  // formato caccia-1, invariato: resta così finché il master non passa esplicitamente ai collegamenti
   const base = M.base ? clone(M.base) : { oggetti: {}, missioni: [] };
   const g = {
     formato: $("m-formato").value.trim() || FORMATO,
@@ -739,11 +836,13 @@ function buildGame() {
 function commit(g) {
   const aggiunto = !!M.cal;
   M.base = g;
+  $("m-formato").value = g.formato; // il campo va tenuto allineato: buildGame() lo rilegge alla pubblicazione successiva
   M.pos = []; M.neg = []; M.cal = null; M.luogo = null;
+  if (inCaccia2(g)) { L.nodi = clone(g.nodi); L.baseCreato = g.creato; } // riallinea la copia di lavoro dei collegamenti
   setStatus($("m-train-status"), aggiunto ? "Oggetto aggiunto alla caccia. Puoi registrarne un altro." : "");
   setStatus($("m-test-status"), "");
   setStatus($("m-base-status"), baseSummary());
-  renderBase(); masterRefresh();
+  renderBase(); masterRefresh(); linkRefresh();
 }
 
 async function ensurePlace() {
@@ -751,6 +850,49 @@ async function ensurePlace() {
   setStatus($("m-pub-status"), "Leggo la posizione…");
   try { M.luogo = await getPosition(); return true; }
   catch { setStatus($("m-pub-status"), "Posizione non disponibile. Attiva il GPS oppure togli la spunta sulla posizione.", "ko"); return false; }
+}
+
+/* ---------- formato a nodi collegabili (caccia-2) ---------- */
+const inCaccia2 = g => !!(g && g.formato === "caccia-2" && g.nodi);
+
+// Traduce le missioni caccia-1 in altrettante catene indizio -> oggetto -> ricompensa.
+// Riusa l'id esistente dell'oggetto, così resta "lo stesso" oggetto nel nuovo formato.
+function migraANodi(g) {
+  const nodi = {};
+  for (const m of g.missioni) {
+    const oid = m.tappe[0].oggetto, o = g.oggetti[oid];
+    if (!o) continue;
+    const iid = newId("n");
+    nodi[iid] = { tipo: "indizio", titolo: m.titolo, testo: m.tappe[0].indizio, immagine: null, richiede: [] };
+    nodi[oid] = { tipo: "oggetto", nome: o.nome, soglia: o.soglia, pos: o.pos, neg: o.neg, luogo: o.luogo, richiede: [iid] };
+    const rid = newId("n");
+    nodi[rid] = { tipo: "ricompensa", nome: m.ricompensa.nome, simbolo: m.ricompensa.simbolo, messaggio: m.ricompensa.messaggio, richiede: [oid] };
+  }
+  return { formato: "caccia-2", creato: new Date().toISOString(), nodi };
+}
+
+// Vista a nodi di una caccia, qualunque sia il suo formato di partenza
+function nodiDi(g) { return g.nodi || migraANodi(g).nodi; }
+
+// Cerca un ciclo nel grafo "richiede". Ritorna un elenco di titoli/nomi coinvolti, o null se non ce n'è.
+function trovaCiclo(nodi) {
+  const stato = {}; // 0 = non visitato, 1 = in corso, 2 = fatto
+  const pila = [];
+  function visita(id) {
+    stato[id] = 1; pila.push(id);
+    for (const r of (nodi[id].richiede || [])) {
+      if (!nodi[r]) continue;
+      if (stato[r] === 1) {
+        const i = pila.indexOf(r);
+        return pila.slice(i).map(x => nodi[x].titolo || nodi[x].nome);
+      }
+      if (stato[r] !== 2) { const c = visita(r); if (c) return c; }
+    }
+    pila.pop(); stato[id] = 2;
+    return null;
+  }
+  for (const id of Object.keys(nodi)) if (!stato[id]) { const c = visita(id); if (c) return c; }
+  return null;
 }
 
 /* ---------- messaggi broadcast ---------- */
@@ -834,6 +976,99 @@ async function loadDrafts() {
   } catch { /* resta la copia già in memoria, se c'era */ }
   if (!Array.isArray(draftList)) draftList = [];
   renderDraftList();
+  linkRefresh();
+}
+
+/* ---------- collegamenti fra elementi (formato caccia-2) ---------- */
+// L.nodi è la copia di lavoro: si pubblica solo quando il master preme "Pubblica i collegamenti"
+const L = { nodi: null, bozzeUsate: [], baseCreato: null };
+
+function linkRefresh() {
+  if (!M.baseLoaded) return;
+  if (!L.nodi) {
+    if (inCaccia2(M.base)) { L.nodi = clone(M.base.nodi); L.baseCreato = M.base.creato; }
+    else { $("m-link-migra").hidden = false; $("m-link-work").hidden = true; return; }
+  }
+  $("m-link-migra").hidden = true;
+  $("m-link-work").hidden = false;
+  $("m-link-stale").hidden = !(M.base && M.base.creato !== L.baseCreato);
+  renderLinkList();
+  renderLinkBozze();
+}
+
+function renderLinkList() {
+  const wrap = $("m-link-list");
+  wrap.innerHTML = "";
+  const ids = Object.keys(L.nodi);
+  if (!ids.length) {
+    const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessun elemento ancora.";
+    wrap.append(p); return;
+  }
+  for (const id of ids) {
+    const n = L.nodi[id];
+    const card = document.createElement("div"); card.className = "linknode";
+
+    const head = document.createElement("div"); head.className = "head";
+    const t = document.createElement("span"); t.textContent = `${ICONA_NODO[n.tipo] || ""} ${n.titolo || n.nome}`;
+    const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
+    del.onclick = () => {
+      const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+      if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.titolo || o.nome).join(", ")}.`); return; }
+      if (!confirm(`Rimuovere "${n.titolo || n.nome}"?`)) return;
+      delete L.nodi[id];
+      renderLinkList();
+    };
+    head.append(t, del);
+    card.append(head);
+
+    const cap = document.createElement("p"); cap.className = "hint"; cap.style.margin = "8px 0 4px"; cap.textContent = "Richiede:";
+    card.append(cap);
+
+    const req = document.createElement("div"); req.className = "linkreq";
+    const altri = ids.filter(x => x !== id);
+    if (!altri.length) {
+      const none = document.createElement("span"); none.className = "none"; none.textContent = "Nessun altro elemento.";
+      req.append(none);
+    }
+    for (const oid of altri) {
+      const o = L.nodi[oid];
+      const label = document.createElement("label");
+      const cb = document.createElement("input"); cb.type = "checkbox";
+      cb.checked = (n.richiede || []).includes(oid);
+      cb.onchange = () => {
+        n.richiede = n.richiede || [];
+        if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
+        else n.richiede = n.richiede.filter(x => x !== oid);
+      };
+      const txt = document.createElement("span"); txt.textContent = `${ICONA_NODO[o.tipo] || ""} ${o.titolo || o.nome}`;
+      label.append(cb, txt);
+      req.append(label);
+    }
+    card.append(req);
+    wrap.append(card);
+  }
+}
+
+function renderLinkBozze() {
+  const ul = $("m-link-bozze-list");
+  ul.innerHTML = "";
+  const disponibili = draftList.filter(d => !L.bozzeUsate.includes(d.id));
+  if (!disponibili.length) {
+    const li = document.createElement("li"); li.textContent = "Nessuna bozza da importare."; ul.append(li); return;
+  }
+  for (const d of disponibili) {
+    const li = document.createElement("li");
+    const t = document.createElement("span"); t.textContent = (d.immagine ? "📷 " : "") + d.titolo;
+    const add = document.createElement("button"); add.className = "link"; add.textContent = "Aggiungi ai collegamenti";
+    add.onclick = () => {
+      const id = newId("n");
+      L.nodi[id] = { tipo: "indizio", titolo: d.titolo, testo: d.testo, immagine: d.immagine || null, richiede: [] };
+      L.bozzeUsate.push(d.id);
+      renderLinkList(); renderLinkBozze();
+    };
+    li.append(t, add);
+    ul.append(li);
+  }
 }
 
 function initMaster() {
@@ -924,7 +1159,7 @@ function initMaster() {
     if (!(await ensurePlace())) return;
     const g = buildGame();
     const ok = store.set("gioco-prova", g) &&
-      store.set("stato-prova", { progresso: {}, bottino: [], visti: g.missioni.map(m => m.id), scelta: null }) &&
+      store.set("stato-prova", freshState(g)) &&
       store.set("prova", true);
     if (!ok) { setStatus($("m-pub-status"), "Memoria del browser non disponibile.", "ko"); return; }
     stopCamera();
@@ -968,7 +1203,7 @@ function initMaster() {
     const aggiornate = [...draftList, nuova];
     const ok = await ghPutFile(DRAFT_URL, JSON.stringify(aggiornate, null, 2), "Nuova bozza indizio", $("m-draft-status"));
     if (ok) {
-      draftList = aggiornate; renderDraftList();
+      draftList = aggiornate; renderDraftList(); renderLinkBozze();
       $("m-draft-title").value = ""; $("m-draft-text").value = ""; $("m-draft-img").value = "";
       draftImg = null; $("m-draft-preview").hidden = true; $("m-draft-preview").src = "";
     }
@@ -976,42 +1211,124 @@ function initMaster() {
   };
   loadDrafts();
 
-  if (!M.baseLoaded && !M.loading) loadBase(); else { renderBase(); }
+  $("m-link-migra-btn").onclick = () => {
+    if (!confirm("Passare al nuovo formato azzererà i progressi di tutti i giocatori alla prossima pubblicazione. Continuare?")) return;
+    L.nodi = migraANodi(M.base || { oggetti: {}, missioni: [] }).nodi;
+    L.baseCreato = M.base ? M.base.creato : null;
+    linkRefresh();
+  };
+
+  $("m-link-radd").onclick = () => {
+    const nome = $("m-link-rname").value.trim();
+    if (!nome) { setStatus($("m-link-status"), "Dai un nome alla ricompensa.", "ko"); return; }
+    const id = newId("n");
+    L.nodi[id] = { tipo: "ricompensa", nome, simbolo: $("m-link-remoji").value.trim() || "★", messaggio: $("m-link-rmsg").value.trim(), richiede: [] };
+    $("m-link-rname").value = ""; $("m-link-remoji").value = "★"; $("m-link-rmsg").value = "";
+    renderLinkList();
+    setStatus($("m-link-status"), "Ricompensa aggiunta: collegala qui sopra prima di pubblicare.", "ok");
+  };
+
+  $("m-link-publish").onclick = async () => {
+    const ciclo = trovaCiclo(L.nodi);
+    if (ciclo) { setStatus($("m-link-status"), `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return; }
+    $("m-link-publish").disabled = true;
+    const formatoAttuale = inCaccia2(M.base) ? M.base.formato : "caccia-2";
+    const g = { formato: formatoAttuale, creato: new Date().toISOString(), nodi: L.nodi };
+    const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, $("m-link-status"));
+    if (ok) {
+      M.base = g;
+      $("m-formato").value = g.formato; // altrimenti il campo resta con il valore vecchio (es. ancora "caccia-1")
+      L.baseCreato = g.creato;
+      if (L.bozzeUsate.length) {
+        const restanti = draftList.filter(d => !L.bozzeUsate.includes(d.id));
+        const ok2 = await ghPutFile(DRAFT_URL, JSON.stringify(restanti, null, 2), "Rimuovi bozze incorporate", $("m-link-status"));
+        if (ok2) { draftList = restanti; L.bozzeUsate = []; }
+      }
+      renderBase(); renderDraftList(); masterRefresh();
+    }
+    linkRefresh();
+    $("m-link-publish").disabled = false;
+  };
+
+  if (!M.baseLoaded && !M.loading) loadBase(); else { renderBase(); linkRefresh(); }
   masterRefresh();
 }
 
 /* =================================================================
    GIOCATORE
    ================================================================= */
-let game = null, oggetti = {};
+let game = null;
 
 const inProva  = () => !!store.get("prova");
 const gameKey  = () => inProva() ? "gioco-prova" : "gioco";
 const stateKey = () => inProva() ? "stato-prova" : "stato";
 
+// Traduce qualunque caccia (vecchio formato missioni/tappe, o il nuovo a nodi)
+// in una mappa unica di nodi, con pos/neg già decompressi per gli oggetti.
 function loadGame(g) {
-  if (!g || typeof g.formato !== "string" || !Array.isArray(g.missioni) || !g.oggetti) throw new Error("Caccia non valida");
-  const objs = {};
-  for (const [id, o] of Object.entries(g.oggetti)) {
-    objs[id] = { ...o, pos: o.pos.map(unpack), neg: (o.neg || []).map(unpack) };
+  const valido = g && typeof g.formato === "string" &&
+    ((Array.isArray(g.missioni) && g.oggetti) || (g.nodi && typeof g.nodi === "object"));
+  if (!valido) throw new Error("Caccia non valida");
+  const grezzi = nodiDi(g);
+  const nodi = {};
+  for (const [id, n] of Object.entries(grezzi)) {
+    nodi[id] = n.tipo === "oggetto" ? { ...n, pos: n.pos.map(unpack), neg: (n.neg || []).map(unpack) } : n;
   }
-  oggetti = objs;
-  game = g;
+  game = { formato: g.formato, creato: g.creato, nodi };
 }
 
-// Stato del giocatore: progressi per oggetto, bottino, oggetti già visti, oggetto scelto
+// Chiusura a punto fisso: un oggetto entra nell'insieme "posseduto" solo dopo
+// la validazione reale (foto/GPS); indizio e ricompensa vi entrano da soli
+// appena tutto ciò che richiedono è già posseduto.
+function calcolaRaggiungibili(nodi, trovati) {
+  const ok = new Set(trovati);
+  let cambiato = true;
+  while (cambiato) {
+    cambiato = false;
+    for (const [id, n] of Object.entries(nodi)) {
+      if (ok.has(id) || n.tipo === "oggetto") continue;
+      if ((n.richiede || []).every(r => ok.has(r))) { ok.add(id); cambiato = true; }
+    }
+  }
+  return ok;
+}
+
+// Gli indizio collegati direttamente a un oggetto: è il "testo" mostrato al giocatore.
+function indiziPer(oggettoId) {
+  const n = game.nodi[oggettoId];
+  return (n.richiede || []).map(id => game.nodi[id]).filter(x => x && x.tipo === "indizio");
+}
+function etichettaOggetto(id) {
+  const testi = indiziPer(id).map(i => i.testo).filter(Boolean);
+  return testi.length ? testi.join(" — ") : "Trova questo oggetto";
+}
+
+// Stato del giocatore: quali oggetti sono stati validati fisicamente, bottino, visti, scelta
 function stato() {
   const s = store.get(stateKey()) || {};
   return {
-    progresso: s.progresso || {},
+    trovati: s.trovati || [],
     bottino: s.bottino || [],
-    visti: s.visti || (game ? game.missioni.map(m => m.id) : []),
+    visti: s.visti || [],
     scelta: s.scelta || null
   };
 }
 const saveState = st => store.set(stateKey(), st);
-const freshState = g => ({ progresso: {}, bottino: [], visti: g.missioni.map(m => m.id), scelta: null });
-const daTrovare = st => game.missioni.filter(m => (st.progresso[m.id] || 0) < m.tappe.length);
+const freshState = g => {
+  const nodi = nodiDi(g);
+  return {
+    trovati: [],
+    bottino: [],
+    visti: Object.entries(nodi).filter(([, n]) => n.tipo === "oggetto").map(([id]) => id),
+    scelta: null
+  };
+};
+function daTrovare(st) {
+  const ok = calcolaRaggiungibili(game.nodi, st.trovati);
+  return Object.entries(game.nodi)
+    .filter(([id, n]) => n.tipo === "oggetto" && !ok.has(id) && (n.richiede || []).every(r => ok.has(r)))
+    .map(([id, n]) => ({ id, ...n }));
+}
 const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
 
 function showEmpty(msg, retry) {
@@ -1039,7 +1356,7 @@ async function syncGame() {
     if (game && game.formato === g.formato && game.creato === g.creato) return;
     const prev = store.get("gioco");
     loadGame(g);
-    if (!prev || prev.formato !== g.formato) store.set("stato", freshState(g));
+    if (!prev || prev.formato !== g.formato) store.set("stato", freshState(game));
     store.set("gioco", g);
     if ($("p-reward").hidden) renderPlayer();
   } catch {
@@ -1105,11 +1422,10 @@ function renderTodo(st, todo, cur) {
   for (const m of todo) {
     const li = document.createElement("li");
     const b = document.createElement("button");
-    const k = st.progresso[m.id] || 0;
-    const t = document.createElement("span"); t.textContent = m.tappe[k].indizio;
+    const t = document.createElement("span"); t.textContent = etichettaOggetto(m.id);
     b.append(t);
     if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
-    if (m === cur) b.setAttribute("aria-current", "true");
+    if (cur && m.id === cur.id) b.setAttribute("aria-current", "true");
     b.onclick = () => {
       const s = stato();
       s.scelta = m.id;
@@ -1137,7 +1453,7 @@ function renderPlayer() {
   }
   const st = stato();
   const todo = daTrovare(st);
-  const tot = game.missioni.length;
+  const tot = Object.values(game.nodi).filter(n => n.tipo === "oggetto").length;
   $("p-progress").textContent = `Trovati ${tot - todo.length} di ${tot}`;
 
   const nuovi = todo.filter(m => !st.visti.includes(m.id));
@@ -1152,28 +1468,35 @@ function renderPlayer() {
   }
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
-  const k = st.progresso[cur.id] || 0;
   $("p-game").hidden = false;
-  $("p-clue").textContent = cur.tappe[k].indizio;
-  $("p-step").hidden = cur.tappe.length < 2;
-  $("p-step").textContent = `Tappa ${k + 1} di ${cur.tappe.length}`;
+  const indizi = indiziPer(cur.id);
+  $("p-clue").textContent = etichettaOggetto(cur.id);
+  const conImmagine = indizi.find(i => i.immagine);
+  $("p-clue-img").hidden = !conImmagine;
+  $("p-clue-img").src = conImmagine ? conImmagine.immagine : "";
+  $("p-step").hidden = true; // nessun equivalente pulito di "tappa X di Y" in un grafo libero
   $("p-shoot").disabled = !stream;
   $("p-cam").hidden = !!stream;
   $("p-cam").disabled = false;
   renderTodo(st, todo, cur);
 }
 
-function showReward(m, st) {
-  const r = m.ricompensa, n = m.tappe.length;
+// Più ricompense possono sbloccarsi con un solo scatto (es. una ricompensa che ne richiede
+// altre due): si mostrano una alla volta, riusando la stessa schermata.
+let codaRicompense = [];
+
+function showReward(st) {
+  const r = codaRicompense[0];
   for (const id of ["p-game", "p-todo", "p-news", "p-alldone"]) $(id).hidden = true;
   $("p-reward").hidden = false;
   $("p-emoji").textContent = r.simbolo;
-  $("p-done").textContent = `Obiettivo ${n} di ${n} raggiunto`;
+  $("p-done").textContent = "Ricompensa sbloccata!";
   $("p-rname").textContent = r.nome;
   $("p-rmsg").textContent = r.messaggio;
-  const rimasti = daTrovare(st).length, tot = game.missioni.length;
+  const rimasti = daTrovare(st).length;
+  const tot = Object.values(game.nodi).filter(n => n.tipo === "oggetto").length;
   $("p-progress").textContent = `Trovati ${tot - rimasti} di ${tot}`;
-  $("p-continue").textContent = rimasti ? "Continua la caccia" : "Fatto";
+  $("p-continue").textContent = codaRicompense.length > 1 ? "Prossima ricompensa" : (rimasti ? "Continua la caccia" : "Fatto");
   renderInventory(st);
 }
 
@@ -1181,9 +1504,8 @@ async function shoot() {
   const st = stato();
   const m = attuale(st, daTrovare(st));
   if (!m) return;
-  const k = st.progresso[m.id] || 0;
   if (!st.visti.includes(m.id)) { st.visti.push(m.id); saveState(st); }
-  const obj = oggetti[m.tappe[k].oggetto];
+  const obj = game.nodi[m.id];
   const status = $("p-status");
   $("p-shoot").disabled = true;
   $("p-score").textContent = "";
@@ -1208,17 +1530,24 @@ async function shoot() {
       setStatus(status, "Oggetto non valido. Avvicinati, inquadralo per intero ed evita il controluce.", "ko");
       return;
     }
-    st.progresso[m.id] = k + 1;
-    if (k + 1 >= m.tappe.length) {
-      st.bottino.push({ ...m.ricompensa, missione: m.id, quando: new Date().toISOString() });
-      st.scelta = null;
-      saveState(st);
-      setStatus(status, ""); $("p-score").textContent = "";
+    const primaOk = calcolaRaggiungibili(game.nodi, st.trovati);
+    st.trovati.push(m.id);
+    const dopoOk = calcolaRaggiungibili(game.nodi, st.trovati);
+    const nuoveRicompense = Object.entries(game.nodi)
+      .filter(([id, n]) => n.tipo === "ricompensa" && dopoOk.has(id) && !primaOk.has(id))
+      .map(([id, n]) => ({ id, ...n }));
+    for (const rc of nuoveRicompense) {
+      st.bottino.push({ nome: rc.nome, simbolo: rc.simbolo, messaggio: rc.messaggio, ricompensa: rc.id, quando: new Date().toISOString() });
+    }
+    st.scelta = null;
+    saveState(st);
+    setStatus(status, ""); $("p-score").textContent = "";
+    if (nuoveRicompense.length) {
       stopCamera();
-      showReward(m, st);
+      codaRicompense = nuoveRicompense;
+      showReward(st);
     } else {
-      saveState(st);
-      setStatus(status, "Trovato! Ecco la prossima tappa.", "ok");
+      setStatus(status, "Trovato! Continua a cercare.", "ok");
       renderPlayer();
     }
   } catch (e) {
@@ -1237,7 +1566,11 @@ function initPlayer() {
 
   $("p-test-exit").onclick = () => { store.del("prova"); stopCamera(); initPlayer(); };
   $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
-  $("p-continue").onclick = () => { renderPlayer(); window.scrollTo({ top: 0 }); };
+  $("p-continue").onclick = () => {
+    codaRicompense.shift();
+    if (codaRicompense.length) showReward(stato());
+    else { renderPlayer(); window.scrollTo({ top: 0 }); }
+  };
   $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; }, $("p-status"));
   $("p-shoot").onclick = shoot;
   $("p-reset").onclick = () => {

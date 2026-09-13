@@ -1,12 +1,21 @@
 # Modello dati attuale
 
-Oggi tutto vive in due file JSON pubblici, scritti solo dal master, e nel
+Oggi tutto vive in file JSON pubblici, scritti solo dal master, e nel
 `localStorage` di ogni telefono (mai condiviso). Questo documento descrive
-entrambi, e a fondo pagina indica come si tradurrebbero in tabelle quando
+tutti i file, e a fondo pagina indica come si tradurrebbero in tabelle quando
 arriverà un database vero — non per farlo subito, ma perché conviene tenere
 la forma dei dati già compatibile con quella futura.
 
-## `caccia.json` (pubblicato dal master, letto da tutti)
+`caccia.json` può trovarsi in due formati diversi, entrambi letti sia dal
+giocatore sia dal master: il vecchio `caccia-1` (missioni a tappa singola,
+tuttora quello pubblicato finché il master non sceglie di cambiare) e il
+nuovo `caccia-2` (nodi collegabili liberamente, implementato ma **attivato
+solo su scelta esplicita del master**, dalla sezione "Collega gli elementi"
+del pannello — vedi `docs/STATO.md` e `docs/ROADMAP.md` punto 5). Il
+giocatore legge entrambi senza differenze visibili: `loadGame()` traduce al
+volo un `caccia-1` nella stessa forma a nodi usata internamente.
+
+## `caccia.json`, formato `caccia-1` (il più vecchio, ancora quello pubblicato oggi)
 
 ```jsonc
 {
@@ -36,9 +45,7 @@ la forma dei dati già compatibile con quella futura.
     {
       "id": "m1def45",            // id stabile, generato alla registrazione
       "titolo": "Orologio da muro",
-      "tappe": [                  // oggi SEMPRE un solo elemento: sarà
-                                   // sostituito dal formato "nodi" più
-                                   // sotto, vedi ROADMAP.md punto 5
+      "tappe": [                  // SEMPRE un solo elemento in questo formato
         { "indizio": "Trova l'orologio", "oggetto": "o1abc23" }
       ],
       "ricompensa": {
@@ -56,15 +63,98 @@ compresso a interi a 8 bit (`q`, base64) più un fattore di scala (`m`).
 Funzioni `pack()`/`unpack()` nel codice. Non contengono mai pixel di
 immagini: da un embedding non si ricostruisce una foto. Vedi
 `memory.md`, sezione "Perché niente server per le immagini", per il perché
-di questa scelta.
+di questa scelta. Lo stesso formato di `pos`/`neg` vale identico nel nodo
+`oggetto` del formato `caccia-2` qui sotto: non è cambiato.
+
+## `caccia.json`, formato `caccia-2` (nodi collegabili, implementato)
+
+```jsonc
+{
+  "formato": "caccia-2",
+  "creato": "2026-09-13T…",
+  "nodi": {
+    "n1": {
+      "tipo": "indizio",
+      "titolo": "Indizio per l'orologio",   // uso interno (liste del master), mai mostrato al giocatore
+      "testo": "Cerca qualcosa che segna il tempo",
+      "immagine": "data:image/jpeg;base64,…",   // null se non allegata
+      "richiede": []                             // [] = raggiungibile da subito
+    },
+    "o1abc23": {
+      "tipo": "oggetto",
+      "nome": "Orologio da muro",
+      "soglia": 0.8123,
+      "pos": [ /* ~20 embedding, formato invariato */ ],
+      "neg": [ /* ~10 embedding, formato invariato */ ],
+      "luogo": null,                 // o { lat, lon, raggio } come in caccia-1
+      "richiede": ["n1"]
+    },
+    "n3": {
+      "tipo": "ricompensa",
+      "nome": "Chiave del tempo",
+      "simbolo": "🗝️",
+      "messaggio": "Hai fermato le lancette.",
+      "richiede": ["o1abc23"]
+    }
+  }
+}
+```
+
+Nota sulla forma di `indizio`: è piatta (`titolo`/`testo`/`immagine`
+direttamente sul nodo), non l'incapsulamento `contenuto: {tipo, ...}`
+immaginato in una versione precedente di questo documento — è la forma già
+in uso in `bozze.json`, e si è scelto di non introdurne una diversa solo
+per i nodi pubblicati. Non esiste ancora un tipo `audio` (fuori dall'ambito
+di questo lavoro, vedi `docs/ROADMAP.md`).
+
+Regole del formato:
+
+- `richiede` è sempre in **AND**: un nodo diventa raggiungibile solo
+  quando *tutti* i nodi elencati sono "posseduti" da quel giocatore. Niente
+  OR.
+- **Aciclicità non garantita per costruzione**: il pannello master permette
+  di ricollegare fra loro anche nodi già esistenti (checkbox "richiede" per
+  ognuno), quindi un ciclo è tecnicamente possibile da creare per errore.
+  Prima di ogni pubblicazione dalla sezione "Collega gli elementi" viene
+  eseguito un controllo esplicito (`trovaCiclo()`, una DFS sul grafo
+  `richiede`): se trova un ciclo, blocca la pubblicazione ed elenca i nodi
+  coinvolti.
+- Cosa vuol dire "posseduto", per tipo:
+  - `oggetto`: solo dopo la validazione reale (foto + eventuale GPS).
+  - `indizio`: appena diventa raggiungibile — è testo/immagine, non c'è
+    nulla da convalidare.
+  - `ricompensa`: appena tutti i `richiede` sono posseduti.
+- **Non ancora implementati** (progettati, vedi `docs/ROADMAP.md` punto 3):
+  `scorta` (limite di istanze), `trasferibile`/`condivisibile` (scambio fra
+  giocatori), contenuto `audio`. Aggiungerli non richiede di cambiare
+  ulteriormente `formato`: sono campi opzionali in più sullo stesso
+  `caccia-2`.
+
+### Come si passa da `caccia-1` a `caccia-2`
+
+Solo su azione esplicita del master (bottone "Passa al formato con
+collegamenti" nella sezione "Collega gli elementi"), mai automaticamente:
+la funzione `migraANodi()` traduce ogni missione esistente in una catena
+`indizio → oggetto → ricompensa`, riusando l'id già esistente dell'oggetto
+(così l'oggetto "resta lo stesso" anche nel nuovo formato: stessi embedding,
+stessa soglia). Come sempre, cambiare `formato` azzera i progressi di tutti
+i giocatori — per questo l'azione è protetta da una conferma esplicita e
+non scatta mai dal normale pulsante "Pubblica su GitHub" del modulo rapido
+"Registra un nuovo oggetto", che resta utilizzabile in `caccia-1` finché
+il master non fa quella scelta.
+
+Una volta in `caccia-2`, lo stesso modulo rapido continua a funzionare
+identico nell'interfaccia, ma produce la sua catena di tre nodi dentro
+`nodi` invece che una voce in `oggetti`/`missioni`.
 
 ## `bozze.json` (pubblicato dal master, mai letto dai giocatori)
 
-Implementato (sezione "Indizi (bozze)" del pannello master). Non è il
-formato a nodi finale descritto più sotto — è deliberatamente più semplice,
-un primo passo scollegato dal resto: salva un indizio con titolo, testo e
-un'eventuale foto, senza ancora collegarlo a nessun oggetto/ricompensa né
-pubblicarlo nella caccia vera.
+Salva un indizio con titolo, testo e un'eventuale foto, **senza pubblicarlo
+nella caccia**: resta a parte finché il master non lo importa dalla sezione
+"Collega gli elementi" (diventa lì un nodo `indizio`, con un nuovo id) e
+pubblica. L'importazione toglie la bozza da questo file solo al momento
+della pubblicazione riuscita, non prima, per non perdere lavoro se la
+pagina si ricarica senza pubblicare.
 
 ```jsonc
 [
@@ -81,124 +171,23 @@ pubblicarlo nella caccia vera.
 
 `immagine`, se presente, è già ridimensionata (lato massimo 800px) e
 compressa in JPEG **nel browser prima del salvataggio**, per non
-appesantire il file. A differenza di `pos`/`neg` degli oggetti, qui *è* una
-vera immagine visibile (non un embedding): è pensata per essere mostrata al
-giocatore, non per il riconoscimento — vedi la sezione "Formato futuro" più
-sotto per come si inserirà nel campo `contenuto` una volta assemblata.
+appesantire il file.
 
-Nessuna interfaccia oggi legge questo file per costruire `caccia.json`: è
-un deposito, non ancora un editor. Vedi `docs/ROADMAP.md`, punto 5, per il
-seguito previsto (assemblaggio, `richiede`, pubblicazione).
+## Contenuto multimediale: solo testo e immagine per ora
 
-## Formato futuro: nodi e prerequisiti (`caccia-2`, progettato, non ancora implementato)
-
-Non ancora in `index.html`: è il disegno concordato in conversazione
-(2026-09-11) per generalizzare il formato sopra (`oggetti` + `missioni` a
-tappa singola). Sostituirà quella sezione quando si deciderà di
-implementarlo (vedi `docs/ROADMAP.md`, punto 5) — cambiare `formato` azzera
-i progressi di tutti, come sempre.
-
-```jsonc
-{
-  "formato": "caccia-2",
-  "nodi": {
-    "n1": {
-      "tipo": "indizio",
-      "contenuto": { "tipo": "testo", "testo": "Cerca qualcosa che segna il tempo" },
-      "richiede": []                 // [] = visibile/raggiungibile da subito
-    },
-    "n2": {
-      "tipo": "oggetto",
-      "nome": "Orologio da muro",
-      "soglia": 0.8123,
-      "pos": [ /* ~20 embedding, formato invariato rispetto a oggi */ ],
-      "neg": [ /* ~10 embedding, formato invariato rispetto a oggi */ ],
-      "luogo": null,                 // o { lat, lon, raggio } come oggi
-      "contenuto": { "tipo": "immagine", "file": "media/n2.jpg" }, // opzionale,
-                                      // solo un aiuto visivo: non sostituisce
-                                      // pos/neg/soglia, che restano il
-                                      // meccanismo di riconoscimento
-      "richiede": ["n1"]
-    },
-    "n3": {
-      "tipo": "ricompensa",
-      "nome": "Chiave del tempo",
-      "simbolo": "🗝️",
-      "contenuto": { "tipo": "audio", "file": "media/n3.mp3" },
-      "richiede": ["n2"],
-      "scorta": 3,                   // null = infinita (default)
-      "trasferibile": true,          // default false
-      "condivisibile": true          // default false
-    }
-  }
-}
-```
-
-Regole del formato:
-
-- `richiede` è sempre in **AND**: un nodo diventa raggiungibile solo
-  quando *tutti* i nodi elencati sono "posseduti" da quel giocatore. Niente
-  OR, per tenere gestibili sia l'editor sia la logica di sblocco.
-- **Aciclicità garantita per costruzione**: un nodo può comparire nel
-  `richiede` di un altro solo se esiste già al momento in cui quest'ultimo
-  viene creato. Non serve un algoritmo di validazione a parte.
-- Cosa vuol dire "posseduto", per tipo:
-  - `oggetto`: solo dopo la validazione reale (foto + eventuale GPS),
-    esattamente come oggi.
-  - `indizio`: appena diventa raggiungibile — è testo, non c'è nulla da
-    convalidare.
-  - `ricompensa`: appena tutti i `richiede` sono posseduti — genera
-    un'istanza, a meno che la `scorta` sia esaurita.
-- `scorta` / `trasferibile` / `condivisibile`: semantica completa in
-  `docs/ROADMAP.md`, punto 3. In sintesi: `scorta` è un budget di
-  creazione condiviso fra "ottenuto direttamente" e "ricevuto in
-  condivisione" — **condividere consuma una unità di scorta** (crea una
-  nuova istanza), **trasferire no** (sposta un'istanza esistente, il
-  totale in circolazione non cambia). Oggi il gioco intende attivare
-  condivisione/trasferimento solo per `tipo: "ricompensa"`: lo schema li
-  permette anche su `oggetto`/`indizio`, ma restano disattivati per scelta
-  del committente (snaturerebbero la ricerca fisica).
-
-### `contenuto`: testo, immagine o audio, con lo stesso involucro
-
-Per `indizio` e `ricompensa`, `contenuto` sostituisce il campo testo
-attuale (`testo` / `messaggio`):
-
-```jsonc
-{ "tipo": "testo",     "testo": "…" }
-{ "tipo": "immagine",  "file": "media/n2.jpg" }
-{ "tipo": "audio",     "file": "media/n3.mp3" }
-```
-
-Per `oggetto`, `contenuto` è **sempre facoltativo e puramente illustrativo**
-(es. una foto di riferimento, un indizio sonoro alla scoperta): non
-sostituisce mai `pos`/`neg`/`soglia`/`luogo`, che restano l'unico
-meccanismo di riconoscimento. Un modo economico di popolarlo: riusare uno
-dei fotogrammi già catturati in `pos` durante la calibrazione come
-miniatura, senza una cattura dedicata.
-
-**I file (`immagine`/`audio`) non stanno dentro `caccia.json`**, a
-differenza degli embedding: verrebbero scaricati per intero da ogni
-giocatore ad ogni controllo, un peso inutile su dati mobili. Vivono come
-file separati nel repository (es. `media/n2.jpg`), pubblicati con lo stesso
-meccanismo già usato per `caccia.json`/`messaggi.json` — `ghPutFile`
-generalizzato ad accettare anche contenuto binario, non solo testo/JSON,
-dato che l'API di GitHub tratta entrambi allo stesso modo (base64 nel
-corpo della `PUT`). `caccia.json` contiene solo il percorso.
-
-Due vincoli reali da tenere in conto quando si implementa, non solo
-dettagli:
-
-- **Autoplay audio sui telefoni**: i browser mobili non fanno mai partire
-  un audio da soli quando un nodo si sblocca — serve sempre un tocco
-  esplicito ("▶ Ascolta"). Non è aggirabile, va progettato così da subito.
-- **Offline**: oggi "funziona offline con l'ultima copia scaricata" (vedi
-  `docs/STATO.md`) perché tutto lo stato di gioco sta nel `localStorage`.
-  Un file media caricato con `src` esterno dipende invece dalla cache HTTP
-  del browser, che può svuotarsi in qualsiasi momento — per mantenere la
-  stessa garanzia di offline anche sui media serve un prefetch esplicito
-  (es. `Cache Storage`/IndexedDB) dei file dei nodi già raggiungibili, non
-  basta il comportamento di default del browser.
+Un `indizio` (in bozza o già nodo) porta testo e/o un'immagine inline in
+base64. Non c'è ancora l'audio, né la distinzione fra "immagine inline
+piccola" e "file media separato" discussa in una fase di progettazione
+precedente: con testo e immagini di piccole dimensioni, tenerle inline in
+`caccia.json`/`bozze.json` si è rivelato semplice a sufficienza per ora.
+Se in futuro le immagini o l'audio dovessero appesantire troppo i file,
+riprendere l'idea di file media separati pubblicati a parte (vedi la
+cronologia di questo documento nei commit precedenti), con due vincoli
+reali da tenere in conto quando ci si arriva: l'**autoplay audio non
+funziona sui telefoni** (serve sempre un tocco esplicito), e per restare
+**offline** un file caricato con `src` esterno avrebbe bisogno di un
+prefetch esplicito (`Cache Storage`/IndexedDB), a differenza del testo che
+sta già tutto in `localStorage`.
 
 ## `messaggi.json` (pubblicato dal master, letto da tutti)
 
@@ -221,14 +210,20 @@ esiste un campo "destinatario": sono **tutti broadcast**, per scelta (vedi
 
 | Chiave | Contenuto |
 |---|---|
-| `gioco` | l'ultimo `caccia.json` scaricato |
-| `stato` | `{ progresso, bottino, visti, scelta }` — vedi sotto |
+| `gioco` | l'ultimo `caccia.json` scaricato (formato originale, `caccia-1` o `caccia-2`) |
+| `stato` | `{ trovati, bottino, visti, scelta }` — vedi sotto |
 | `msg-letti` | array di `id` di messaggi già letti |
 | `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master |
 
-`stato.progresso` è una mappa `{ id_missione: numero_di_tappe_completate }`.
-`stato.bottino` è un array di ricompense ottenute (copie del campo
-`ricompensa` della missione, con `missione` e `quando` aggiunti).
+`stato.trovati` è un array di id di nodi **`oggetto`** validati fisicamente
+dal giocatore (foto + eventuale GPS) — è l'unico stato che serve salvare:
+tutto il resto (quali indizio sono visibili, quali ricompense sono state
+sbloccate) si ricalcola ad ogni apertura con una chiusura a punto fisso sul
+grafo `richiede` (`calcolaRaggiungibili()`), a partire da `trovati`.
+`stato.bottino` resta un array di ricompense ottenute (copie dei campi
+`nome`/`simbolo`/`messaggio` del nodo, con l'id del nodo e `quando`
+aggiunti) — un solo scatto può aggiungerne più di una in un colpo solo, se
+sblocca più ricompense contemporaneamente.
 
 ## `localStorage` del master (mai condiviso, chiavi principali)
 
@@ -239,22 +234,23 @@ esiste un campo "destinatario": sono **tutti broadcast**, per scelta (vedi
 ## Come si tradurrebbe in tabelle, quando arriverà il database
 
 Non farlo finché non serve davvero (vedi `docs/ROADMAP.md`), ma per
-orientarsi. Il modello a `nodi` (sopra) si presta bene alla traduzione,
-meglio di quello a `missioni`: è già un grafo, non serve normalizzare
-oggetti annidati dentro missioni dentro ricompense.
+orientarsi. Il modello a `nodi` si presta bene alla traduzione, meglio di
+quello a `missioni`: è già un grafo, non serve normalizzare oggetti
+annidati dentro missioni dentro ricompense.
 
 - `nodi` → probabilmente resta pubblicato come file statico anche col
   database: **non serve un database solo per far leggere i nodi ai
   giocatori**, il database serve per ciò che segue. L'unica eccezione è se
   si deciderà di nascondere lo spoiler (vedi ultimo punto).
-- `stato.progresso` + `stato.bottino`, oggi solo locali → tabella `eventi`
+- `stato.trovati` + `stato.bottino`, oggi solo locali → tabella `eventi`
   (chi, quale nodo, quando) scritta dal giocatore via Supabase, con RLS
   che permette a ognuno di scrivere solo le proprie righe.
-- Le istanze scambiabili/scarse (vedi `docs/ROADMAP.md`, punto 3) →
-  tabella `istanze` (nodo di origine, proprietario attuale) + tabella
-  `scambi` (storico condivisioni/trasferimenti). La `scorta` di un nodo
-  diventa un contatore decrementato in un'unica transazione, sia quando
-  nasce da un evento di gioco sia quando nasce da una condivisione.
+- Le istanze scambiabili/scarse (`scorta`/`trasferibile`/`condivisibile`,
+  non ancora implementate — vedi `docs/ROADMAP.md`, punto 3) → tabella
+  `istanze` (nodo di origine, proprietario attuale) + tabella `scambi`
+  (storico condivisioni/trasferimenti). La `scorta` di un nodo diventerebbe
+  un contatore decrementato in un'unica transazione, sia quando nasce da un
+  evento di gioco sia quando nasce da una condivisione.
 - L'identità del giocatore, oggi assente → tabella `giocatori`, con un id
   stabile assegnato all'iscrizione. È il prerequisito di tutto il punto
   precedente: senza un id di chi scrive, non si può dire "questa istanza

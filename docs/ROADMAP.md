@@ -96,48 +96,47 @@ sul telefono del giocatore nel momento in cui gioca. Con il database in
 piedi, diventano query semplici sulla tabella `eventi`/`istanze`/`scambi`.
 Non c'è modo onesto di farlo prima, senza database (vedi `memory.md`).
 
-## 5. Generalizzazione del modello dati: nodi e prerequisiti
+## 5. Generalizzazione del modello dati: nodi e prerequisiti — FATTO (2026-09-13)
 
-Non dipende da database o identità: è un cambiamento al modello dati di
-`caccia.json` e alla logica del pannello master. Si può fare **prima
-ancora** del database, se si vuole: è un lavoro sul file statico e sul
-pannello master, indipendente dal resto della lista. Ha senso farlo per
-primo solo se il committente lo chiede esplicitamente prima di 1-2-3-4:
-altrimenti, seguire l'ordine di dipendenza sopra.
+Implementato: sostituisce l'idea precedente di "missioni composte" (flussi
+B e C del disegno originale). Non più una missione con tappe fisse che
+sblocca una sola ricompensa, ma un grafo libero di **nodi tipizzati**
+(`indizio`, `oggetto`, `ricompensa`) collegabili a piacimento tramite un
+elenco di prerequisiti su ciascun nodo (`richiede: [id, ...]`, sempre in
+AND). Copre in un colpo solo tutti gli esempi del disegno originale — un
+indizio unico che porta a più oggetti, più oggetti che convergono su una
+ricompensa, ricompense che ne sbloccano altre, catene miste — senza dover
+inventare un "flusso" nuovo ogni volta. Formato completo in
+`docs/MODELLO-DATI.md`.
 
-Sostituisce l'idea precedente di "missioni composte" (flussi B e C del
-disegno originale): non più una missione con tappe fisse che sblocca una
-sola ricompensa, ma un grafo libero di **nodi tipizzati** (`indizio`,
-`oggetto`, `ricompensa`) collegabili a piacimento tramite un elenco di
-prerequisiti su ciascun nodo (`richiede: [id, ...]`, sempre in AND). Copre
-in un colpo solo tutti gli esempi del disegno originale — un indizio unico
-che porta a più oggetti, più oggetti che convergono su una ricompensa,
-ricompense che ne sbloccano altre, catene miste oggetto+ricompensa →
-ricompensa → indizio — senza dover inventare un "flusso" nuovo ogni volta.
-Formato completo, semantica di "posseduto" per ciascun tipo, e aciclicità
-garantita per costruzione (si può richiedere solo un nodo già esistente al
-momento della sua creazione): vedi `docs/MODELLO-DATI.md`.
+Ripensamento rispetto al disegno originale: **l'aciclicità non è garantita
+per costruzione** come si era immaginato — il pannello master permette di
+ricollegare fra loro anche nodi già esistenti, quindi un ciclo è possibile
+crearlo per errore. Al suo posto, un controllo esplicito (`trovaCiclo()`,
+DFS sul grafo) blocca la pubblicazione se ne trova uno.
 
-**Pannello master**: form guidato che estende quello attuale (si crea un
-nodo alla volta, come oggi si registra un oggetto), con un elenco a
-checkbox "richiede" per scegliere i prerequisiti fra i nodi già creati.
-Scartato **di proposito** un editor grafico drag-and-drop (esistono
-librerie vanilla-JS caricabili da CDN, es. Drawflow/Litegraph, quindi
-sarebbero compatibili con "niente bundler") perché il master lavora dal
-telefono sul campo, e trascinare nodi/collegare fili col dito su schermo
-piccolo è scomodo anche nelle migliori implementazioni touch. Da valutare
-in futuro, se servirà, solo un'**anteprima grafica in sola lettura** (SVG
-generato automaticamente), mai un editor visuale.
+**Pannello master**: due sezioni.
+- **"Indizi (bozze)"**: salva titolo + testo + foto facoltativa su
+  `bozze.json`, senza pubblicare — pensata per essere usata sul campo.
+- **"Collega gli elementi"**: pensata per un computer, non per il telefono
+  (scartato di proposito un editor grafico drag-and-drop per lo stesso
+  motivo per cui non conviene sul campo: trascinare nodi/collegare fili col
+  dito è scomodo; qui però va bene perché quest'area è dichiaratamente per
+  laptop). Mostra ogni nodo con un elenco a checkbox "richiede" verso gli
+  altri, permette di aggiungere una ricompensa scollegata e di importare le
+  bozze salvate. La prima volta che la caccia pubblicata è ancora
+  `caccia-1`, richiede un'azione esplicita e confermata ("Passa al formato
+  con collegamenti", tramite `migraANodi()`) prima di poter collegare
+  nulla — non scatta mai in automatico dal normale pulsante "Pubblica su
+  GitHub" del modulo rapido "Registra un nuovo oggetto", che resta
+  utilizzabile in `caccia-1` finché questa scelta non viene fatta
+  esplicitamente. Una volta passati a `caccia-2`, lo stesso modulo rapido
+  continua a funzionare ma produce nodi invece di missioni.
 
-Cambiare formato (es. `caccia-2`) azzera i progressi di tutti i giocatori,
-come da regola già in vigore (vedi `docs/STATO.md`).
-
-**Primo passo già fatto (2026-09-13)**: la sezione "Indizi (bozze)" del
-pannello master salva un indizio (titolo + testo + foto facoltativa) su un
-file a parte, `bozze.json`, senza pubblicarlo — vedi `docs/STATO.md` e
-`docs/MODELLO-DATI.md`. È solo il deposito: manca ancora tutto il resto di
-questo punto — assegnare un ruolo finale alla bozza, collegare i `richiede`,
-e pubblicare davvero in `caccia.json` nel formato a nodi.
+Non implementate in questo passaggio (restano progettate, vedi punto 3):
+scarsità (`scorta`), scambio/condivisione (`trasferibile`/`condivisibile`),
+contenuto audio. Il formato le prevede come campi aggiuntivi facoltativi,
+senza bisogno di un altro cambio di `formato` quando arriveranno.
 
 ## 6. Narrazione, coinvolgimento social
 
