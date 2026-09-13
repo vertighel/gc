@@ -132,6 +132,8 @@
   textarea { min-height: 72px; resize: vertical; }
   label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
+  input[type=file] { display: block; width: 100%; margin-top: 4px; font: inherit; }
+  .draft-preview { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
   .section { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
@@ -189,7 +191,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 9)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 10)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -291,6 +293,24 @@
       <p id="m-msg-status" class="status" role="status"></p>
     </div>
 
+    <div class="current">
+      <h2>Indizi (bozze)</h2>
+      <p class="hint">Una bozza si salva subito ma non entra nella caccia pubblicata: resta da parte, pronta per essere assemblata con calma in un secondo momento.</p>
+      <ul id="m-draft-list" class="baselist"></ul>
+      <label>Titolo
+        <input type="text" id="m-draft-title" placeholder="Es. Indizio per l'orologio">
+      </label>
+      <label>Testo dell'indizio
+        <textarea id="m-draft-text" placeholder="Cerca qualcosa che segna il tempo…"></textarea>
+      </label>
+      <label>Foto (facoltativa)
+        <input type="file" accept="image/*" capture="environment" id="m-draft-img">
+      </label>
+      <img id="m-draft-preview" class="draft-preview" hidden>
+      <button id="m-draft-save" class="btn primary" disabled>Salva bozza</button>
+      <p id="m-draft-status" class="status" role="status"></p>
+    </div>
+
     <ol class="steps">
       <li class="step">
         <h2>Registra un nuovo oggetto</h2>
@@ -371,6 +391,7 @@ const FORMATO = "caccia-1";   // valore iniziale: cambiarlo azzera la caccia
 const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
 const GH_API = "https://api.github.com";
 const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json
+const DRAFT_URL = "bozze.json";    // bozze non pubblicate: mai letto dai giocatori
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
@@ -758,6 +779,63 @@ async function loadMessages() {
   renderMsgList();
 }
 
+/* ---------- indizi in bozza (non pubblicati, solo salvati) ---------- */
+let draftList = [];
+let draftImg = null; // foto compressa in attesa di essere salvata con la bozza, o null
+
+// Ridimensiona e comprime lato client, per non appesantire bozze.json
+function readAndCompressImage(file, maxDim = 800, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scala = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scala), h = Math.round(img.height * scala);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Immagine non valida.")); };
+    img.src = url;
+  });
+}
+
+function draftCanSave() {
+  return !!($("m-draft-title").value.trim() && $("m-draft-text").value.trim());
+}
+
+function renderDraftList() {
+  const ul = $("m-draft-list");
+  ul.innerHTML = "";
+  if (!draftList.length) { const li = document.createElement("li"); li.textContent = "Nessuna bozza ancora."; ul.append(li); return; }
+  for (const d of [...draftList].reverse()) {
+    const li = document.createElement("li");
+    const t = document.createElement("span");
+    t.textContent = (d.immagine ? "📷 " : "") + d.titolo;
+    const del = document.createElement("button");
+    del.className = "link"; del.textContent = "Rimuovi";
+    del.onclick = async () => {
+      if (!confirm(`Rimuovere la bozza "${d.titolo}"?`)) return;
+      const aggiornati = draftList.filter(x => x.id !== d.id);
+      const ok = await ghPutFile(DRAFT_URL, JSON.stringify(aggiornati, null, 2), "Rimuovi bozza", $("m-draft-status"));
+      if (ok) { draftList = aggiornati; renderDraftList(); }
+    };
+    li.append(t, del);
+    ul.append(li);
+  }
+}
+
+async function loadDrafts() {
+  try {
+    const r = await fetch(DRAFT_URL, { cache: "no-store" });
+    draftList = r.status === 404 ? [] : (r.ok ? await r.json() : draftList);
+  } catch { /* resta la copia già in memoria, se c'era */ }
+  if (!Array.isArray(draftList)) draftList = [];
+  renderDraftList();
+}
+
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
@@ -865,6 +943,38 @@ function initMaster() {
     $("m-msg-send").disabled = !$("m-msg-text").value.trim();
   };
   loadMessages();
+
+  $("m-draft-title").oninput = () => { $("m-draft-save").disabled = !draftCanSave(); };
+  $("m-draft-text").oninput = () => { $("m-draft-save").disabled = !draftCanSave(); };
+  $("m-draft-img").onchange = async () => {
+    const file = $("m-draft-img").files[0];
+    if (!file) return;
+    try {
+      draftImg = await readAndCompressImage(file);
+      $("m-draft-preview").src = draftImg;
+      $("m-draft-preview").hidden = false;
+    } catch (e) { setStatus($("m-draft-status"), e.message, "ko"); }
+  };
+  $("m-draft-save").onclick = async () => {
+    $("m-draft-save").disabled = true;
+    const nuova = {
+      id: newId("b"),
+      creato: new Date().toISOString(),
+      tipo: "indizio",
+      titolo: $("m-draft-title").value.trim(),
+      testo: $("m-draft-text").value.trim(),
+      immagine: draftImg || null
+    };
+    const aggiornate = [...draftList, nuova];
+    const ok = await ghPutFile(DRAFT_URL, JSON.stringify(aggiornate, null, 2), "Nuova bozza indizio", $("m-draft-status"));
+    if (ok) {
+      draftList = aggiornate; renderDraftList();
+      $("m-draft-title").value = ""; $("m-draft-text").value = ""; $("m-draft-img").value = "";
+      draftImg = null; $("m-draft-preview").hidden = true; $("m-draft-preview").src = "";
+    }
+    $("m-draft-save").disabled = !draftCanSave();
+  };
+  loadDrafts();
 
   if (!M.baseLoaded && !M.loading) loadBase(); else { renderBase(); }
   masterRefresh();
