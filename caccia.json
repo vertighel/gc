@@ -1,8 +1,16 @@
 {
-  "formato": "caccia-1",
-  "creato": "2026-09-11T07:51:47.915Z",
-  "oggetti": {
+  "formato": "caccia-2",
+  "creato": "2026-09-13T14:57:22.417Z",
+  "nodi": {
+    "nmtzxqvmywi2": {
+      "tipo": "indizio",
+      "titolo": "Catai",
+      "testo": "La via per il catai",
+      "immagine": null,
+      "richiede": []
+    },
     "omtwn5dlkr6p": {
+      "tipo": "oggetto",
       "nome": "Catai",
       "soglia": 0.7759,
       "pos": [
@@ -133,9 +141,31 @@
         "lat": 45.4114528,
         "lon": 11.8715177,
         "raggio": 100
-      }
+      },
+      "richiede": [
+        "nmtzxqvmywi2"
+      ]
+    },
+    "nmtzxqvmytje": {
+      "tipo": "ricompensa",
+      "nome": "Chiave catai",
+      "simbolo": "🗝️",
+      "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà.",
+      "richiede": [
+        "omtwn5dlkr6p"
+      ]
+    },
+    "nmtzxqvmy3k3": {
+      "tipo": "indizio",
+      "titolo": "Riviera 61 tag viola",
+      "testo": "Trova la tag",
+      "immagine": null,
+      "richiede": [
+        "nmtzxqvmytje"
+      ]
     },
     "omtwnbzhrwr4": {
+      "tipo": "oggetto",
       "nome": "Riviera 61 tag viola",
       "soglia": 0.7457,
       "pos": [
@@ -266,9 +296,31 @@
         "lat": 45.4093785,
         "lon": 11.8682869,
         "raggio": 100
-      }
+      },
+      "richiede": [
+        "nmtzxqvmy3k3"
+      ]
+    },
+    "nmtzxqvmy5uq": {
+      "tipo": "ricompensa",
+      "nome": "Chiave del tempo",
+      "simbolo": "🗝️",
+      "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà.",
+      "richiede": [
+        "omtwnbzhrwr4"
+      ]
+    },
+    "nmtzxqvmy3fx": {
+      "tipo": "indizio",
+      "titolo": "Murale verde",
+      "testo": "Trova il murale",
+      "immagine": null,
+      "richiede": [
+        "omtwn5dlkr6p"
+      ]
     },
     "omtwnmsw9cf9": {
+      "tipo": "oggetto",
       "nome": "Murale verde",
       "soglia": 0.8409,
       "pos": [
@@ -399,9 +451,33 @@
         "lat": 45.40333,
         "lon": 11.8688841,
         "raggio": 100
-      }
+      },
+      "richiede": [
+        "nmtzxqvmy3fx"
+      ]
+    },
+    "nmtzxqvmy58h": {
+      "tipo": "ricompensa",
+      "nome": "Chiave del tempo",
+      "simbolo": "🗝️",
+      "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà.",
+      "richiede": [
+        "omtwnmsw9cf9"
+      ]
+    },
+    "nmtzxqvmybdn": {
+      "tipo": "indizio",
+      "titolo": "Specola",
+      "testo": "Foto della Specola",
+      "immagine": null,
+      "richiede": [
+        "nmtzxqvmytje",
+        "nmtzxqvmy5uq",
+        "nmtzxqvmy58h"
+      ]
     },
     "omtwnr16zcbt": {
+      "tipo": "oggetto",
       "nome": "Specola",
       "soglia": 0.7517,
       "pos": [
@@ -532,69 +608,19 @@
         "lat": 45.4019464,
         "lon": 11.867649,
         "raggio": 100
-      }
+      },
+      "richiede": [
+        "nmtzxqvmybdn"
+      ]
+    },
+    "nmtzxqvmy5d7": {
+      "tipo": "ricompensa",
+      "nome": "Chiave del tempo",
+      "simbolo": "🗝️",
+      "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà.",
+      "richiede": [
+        "omtwnr16zcbt"
+      ]
     }
-  },
-  "missioni": [
-    {
-      "id": "mmtwn5dlkqrr",
-      "titolo": "Catai",
-      "tappe": [
-        {
-          "indizio": "La via per il catai",
-          "oggetto": "omtwn5dlkr6p"
-        }
-      ],
-      "ricompensa": {
-        "nome": "Chiave catai",
-        "simbolo": "🗝️",
-        "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà."
-      }
-    },
-    {
-      "id": "mmtwnbzhr22m",
-      "titolo": "Riviera 61 tag viola",
-      "tappe": [
-        {
-          "indizio": "Trova la tag",
-          "oggetto": "omtwnbzhrwr4"
-        }
-      ],
-      "ricompensa": {
-        "nome": "Chiave del tempo",
-        "simbolo": "🗝️",
-        "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà."
-      }
-    },
-    {
-      "id": "mmtwnmsw9u1k",
-      "titolo": "Murale verde",
-      "tappe": [
-        {
-          "indizio": "Trova il murale",
-          "oggetto": "omtwnmsw9cf9"
-        }
-      ],
-      "ricompensa": {
-        "nome": "Chiave del tempo",
-        "simbolo": "🗝️",
-        "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà."
-      }
-    },
-    {
-      "id": "mmtwnr16zccs",
-      "titolo": "Specola",
-      "tappe": [
-        {
-          "indizio": "Foto della Specola",
-          "oggetto": "omtwnr16zcbt"
-        }
-      ],
-      "ricompensa": {
-        "nome": "Chiave del tempo",
-        "simbolo": "🗝️",
-        "messaggio": "Hai fermato le lancette. Tieni questa chiave: servirà."
-      }
-    }
-  ]
+  }
 }
