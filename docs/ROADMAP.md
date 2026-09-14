@@ -138,6 +138,16 @@ scarsità (`scorta`), scambio/condivisione (`trasferibile`/`condivisibile`),
 contenuto audio. Il formato le prevede come campi aggiuntivi facoltativi,
 senza bisogno di un altro cambio di `formato` quando arriveranno.
 
+**Superato da `caccia-3` (2026-09-14)**: il resto di questo punto descrive
+`caccia-2`, non più il formato pubblicato. `caccia-3` va oltre l'idea di
+tre `tipo` di nodo: indizio/oggetto/ricompensa sono diventati lo stesso
+tipo di nodo, distinto solo da flag (`daValidare`/`conThumb`/
+`richiedePosizione`) invece che da un `tipo` fisso — "Indizi (bozze)" e
+`bozze.json` sono stati eliminati di conseguenza (ogni nodo nasce ora dalla
+stessa cattura fotocamera+GPS, sul campo). Vedi `docs/STATO.md` per lo
+stato attuale, `docs/MODELLO-DATI.md` per lo schema e `memory.md` per il
+perché.
+
 ## 6. Narrazione, coinvolgimento social
 
 La scarsità, discussa qui in precedenza insieme a questo punto, ha ora un

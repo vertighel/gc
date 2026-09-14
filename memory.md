@@ -111,6 +111,48 @@ costo di risolverlo bene (che richiede il database: indizi cifrati, sbloccati
 solo al momento giusto). Se il gruppo di giocatori cambia natura, questo va
 riconsiderato.
 
+## Perché `caccia-3` unifica indizio/oggetto/ricompensa in un solo tipo di nodo
+
+Discusso a fondo con il committente prima di scriverlo (non una scelta
+tecnica unilaterale): indizio, oggetto e ricompensa avevano già oggi la
+stessa regola di possesso di base ("appena `richiede` è soddisfatto"),
+tranne che per l'oggetto, che in più richiede una validazione reale
+(foto/GPS). Da lì l'idea del committente: e se **l'oggetto trovato fosse
+esso stesso la ricompensa** (mostrato come thumb nel bottino), e indizio e
+ricompensa fossero la stessa cosa? Il modello risultante, `caccia-3`: un
+solo tipo di nodo, con tre flag booleani (`daValidare`, `conThumb`,
+`richiedePosizione`) al posto del `tipo` fisso. Vedi
+`docs/MODELLO-DATI.md` per lo schema.
+
+Decisioni collegate, prese esplicitamente durante la discussione (non
+dedotte da sole):
+
+- **`richiedePosizione` implica sempre `daValidare`**: non esiste (e non è
+  stato costruito) un flusso "controlla solo la posizione, senza
+  fotocamera" — il controllo GPS oggi vive solo dentro lo scatto-e-verifica.
+- **Il possesso si festeggia sempre, per tutti**, non solo per le vecchie
+  "ricompense": ogni nodo appena posseduto (anche a cascata da un solo
+  scatto) genera una schermata di sblocco, con **tutti** i nodi ottenuti
+  insieme mostrati nella stessa schermata invece che in coda uno alla
+  volta com'era prima.
+- **Ogni nodo, senza eccezioni, nasce dalla cattura sul campo** (foto +
+  posizione GPS, sempre entrambe, indipendentemente da come verrà poi
+  usato): niente più un modo di creare un nodo scrivendo solo testo da un
+  computer. Per questo la sezione "Indizi (bozze)" e `bozze.json` sono
+  stati eliminati, non solo lasciati com'erano.
+- **Nessuna migrazione automatica da `caccia-2`**, per scelta esplicita
+  del committente ("non migrare"): pubblicare in `caccia-3` azzera la
+  caccia esistente, il master la ricostruisce da zero con il nuovo
+  flusso. Coerente con lo status di "prototipo, produzione limitata" (vedi
+  `CLAUDE.md`) — non è stato giudicato un costo che valesse la pena di
+  scrivere codice di conversione per attraversarlo una volta sola.
+- **Un premio "sintetico"** (che prima sarebbe stata una `ricompensa`
+  composita, richiesta da più oggetti insieme) nasce comunque dalla stessa
+  cattura fotocamera+GPS: il master fotografa qualcosa — l'oggetto fisico
+  del premio, un simbolo, non importa cosa — e lo marca `daValidare:
+  false`. Non esiste (e non è stato aggiunto) un modo di creare un nodo
+  senza passare dalla fotocamera, nemmeno per questo caso.
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare

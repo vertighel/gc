@@ -6,16 +6,101 @@ tutti i file, e a fondo pagina indica come si tradurrebbero in tabelle quando
 arriverà un database vero — non per farlo subito, ma perché conviene tenere
 la forma dei dati già compatibile con quella futura.
 
-`caccia.json` può trovarsi in due formati diversi, entrambi letti sia dal
-giocatore sia dal master: il vecchio `caccia-1` (missioni a tappa singola,
-tuttora quello pubblicato finché il master non sceglie di cambiare) e il
-nuovo `caccia-2` (nodi collegabili liberamente, implementato ma **attivato
-solo su scelta esplicita del master**, dalla sezione "Collega gli elementi"
-del pannello — vedi `docs/STATO.md` e `docs/ROADMAP.md` punto 5). Il
-giocatore legge entrambi senza differenze visibili: `loadGame()` traduce al
-volo un `caccia-1` nella stessa forma a nodi usata internamente.
+`caccia.json` è oggi nel formato `caccia-3` (nodi **unificati**: non esiste
+più una distinzione di `tipo` fra indizio/oggetto/ricompensa, vedi sotto).
+I formati precedenti (`caccia-1`, missioni a tappa singola; `caccia-2`,
+nodi ancora divisi per tipo) restano descritti più sotto solo come
+**archivio storico**, per chi legge vecchi commit o vecchie copie di
+`caccia.json`: il codice attuale non li legge più, e **non esiste
+migrazione automatica** fra un formato e l'altro (decisione esplicita: vedi
+`memory.md`). Ogni cambio di `formato` — incluso passare a `caccia-3` —
+azzera i progressi di tutti i giocatori, come sempre.
 
-## `caccia.json`, formato `caccia-1` (il più vecchio, ancora quello pubblicato oggi)
+## `caccia.json`, formato `caccia-3` (attuale)
+
+Un solo tipo di nodo, non più tre. Indizio, oggetto e ricompensa sono la
+**stessa cosa**: ogni nodo nasce dallo stesso rito di cattura sul campo
+(fotocamera + posizione GPS, sempre entrambi, mai in modo condizionale) e
+si comporta in un modo o nell'altro solo in base a tre flag booleani
+espliciti, non più in base a un `tipo` fisso.
+
+```jsonc
+{
+  "formato": "caccia-3",
+  "creato": "2026-09-14T…",
+  "nodi": {
+    "n1": {
+      "nome": "Oggetto-1",              // editabile dal master, default "Oggetto-N" alla cattura
+      "testo": "Cerca qualcosa che segna il tempo",  // indizio mostrato a chi deve
+                                         // ancora raggiungere un nodo che lo richiede — facoltativo
+      "messaggio": "Hai fermato le lancette.",        // testo mostrato alla PROPRIA
+                                         // schermata di sblocco — facoltativo
+      "immagine": "data:image/jpeg;base64,…",  // sempre presente: scattata in automatico
+                                         // durante la registrazione, non è un embedding
+      "pos": [ /* ~20 embedding, formato invariato dalle versioni precedenti */ ],
+      "neg": [ /* ~10 embedding, formato invariato */ ],
+      "soglia": 0.8123,
+      "luogo": { "lat": 44.4056, "lon": 8.9463, "raggio": 100 },  // sempre presente
+                                         // (posizione del master al momento dello scatto)
+      "daValidare": true,   // true = serve foto+match per essere posseduto;
+                             // false = posseduto in automatico appena "richiede" è soddisfatto
+      "conThumb": true,     // true = al giocatore si mostra `immagine`; false = solo testo/colore
+      "richiedePosizione": false,  // true = in aggiunta al match fotografico, il giocatore deve
+                                    // essere entro `luogo.raggio` — IMPLICA daValidare: true
+      "richiede": []        // AND verso altri id di nodi, come nei formati precedenti
+    }
+  }
+}
+```
+
+Regole:
+
+- **Ogni nodo nasce dalla cattura sul campo** (fotocamera + GPS): non
+  esiste più un modo di creare un nodo scrivendo solo testo da un
+  computer (la vecchia sezione "Indizi (bozze)"/`bozze.json` è stata
+  eliminata insieme a `caccia-2`, vedi `memory.md`). Anche un premio
+  "sintetico" che richiede più altri nodi insieme (l'equivalente di una
+  vecchia `ricompensa` composita) nasce così: il master fotografa
+  *qualcosa* — l'oggetto fisico del premio, un simbolo, qualunque cosa —
+  e poi imposta `daValidare: false` così diventa posseduto in automatico
+  quando i suoi `richiede` sono soddisfatti, invece che dopo uno scatto
+  del giocatore.
+- **`richiedePosizione: true` implica sempre `daValidare: true`**: non ha
+  senso richiedere una posizione senza passare comunque dalla verifica
+  fotografica, perché oggi il controllo GPS avviene solo *dentro* il
+  flusso "Scatta e verifica" — non esiste (e non è stato costruito) un
+  flusso separato "controlla solo la posizione, senza fotocamera". Il
+  pannello del master impedisce di spuntare l'una senza l'altra.
+- **"Posseduto" non dipende più dal tipo, ma da `daValidare`**: con
+  `daValidare: true` serve la validazione reale del giocatore (foto, più
+  GPS se `richiedePosizione`); con `daValidare: false` il nodo diventa
+  posseduto da solo, appena tutti i suoi `richiede` lo sono.
+- **Il possesso si festeggia sempre**, per ogni nodo, validato o
+  automatico: appena un nodo passa da non-posseduto a posseduto (anche a
+  cascata, per effetto di un solo scatto), il giocatore vede una
+  schermata di sblocco cumulativa con **tutti** i nodi appena ottenuti
+  insieme in quel momento (non più uno alla volta in coda) e ognuno entra
+  nel bottino. Se `conThumb` è vero e c'è `immagine`, si mostra la foto
+  vera; altrimenti un colore calcolato in automatico dal `nome`
+  (`coloreNodo()`, hash del nome → tinta HSL → RGB — nessun campo
+  "Simbolo" da scegliere a mano, eliminato con `caccia-2`).
+- **`testo` e `messaggio` sono campi indipendenti, non alternativi**: un
+  nodo può avere entrambi. `testo` è ciò che si mostra come indizio a chi
+  sta ancora cercando di raggiungere *lui* (letto da qualunque nodo lo
+  richieda, tramite il proprio `richiede`); `messaggio` è ciò che si
+  mostra sulla schermata di sblocco quando è *lui stesso* a diventare
+  posseduto. Sono momenti diversi: niente impedisce a un nodo di fare da
+  indizio per il successivo *e* avere un proprio messaggio di sblocco.
+- **Aciclicità non garantita per costruzione**, stessa cosa delle versioni
+  precedenti: `trovaCiclo()` controlla prima di ogni pubblicazione.
+- **Nessuna migrazione da `caccia-1`/`caccia-2`**: se la caccia pubblicata
+  non è già `caccia-3`, il pannello del master la tratta come
+  incompatibile (non prova a leggerne i nodi) e riparte da un elenco
+  vuoto — pubblicare da lì sostituisce interamente il file esistente.
+
+## Formati precedenti (solo archivio storico, il codice attuale non li legge più)
+
+### `caccia.json`, formato `caccia-1`
 
 ```jsonc
 {
@@ -66,7 +151,7 @@ immagini: da un embedding non si ricostruisce una foto. Vedi
 di questa scelta. Lo stesso formato di `pos`/`neg` vale identico nel nodo
 `oggetto` del formato `caccia-2` qui sotto: non è cambiato.
 
-## `caccia.json`, formato `caccia-2` (nodi collegabili, implementato)
+### `caccia.json`, formato `caccia-2`
 
 ```jsonc
 {
@@ -130,7 +215,7 @@ Regole del formato:
   ulteriormente `formato`: sono campi opzionali in più sullo stesso
   `caccia-2`.
 
-### Come si passa da `caccia-1` a `caccia-2`
+#### Come si passa da `caccia-1` a `caccia-2`
 
 Solo su azione esplicita del master (bottone "Passa al formato con
 collegamenti" nella sezione "Collega gli elementi"), mai automaticamente:
@@ -147,42 +232,26 @@ Una volta in `caccia-2`, lo stesso modulo rapido continua a funzionare
 identico nell'interfaccia, ma produce la sua catena di tre nodi dentro
 `nodi` invece che una voce in `oggetti`/`missioni`.
 
-## `bozze.json` (pubblicato dal master, mai letto dai giocatori)
+## `bozze.json`: eliminato con `caccia-3`
 
-Salva un indizio con titolo, testo e un'eventuale foto, **senza pubblicarlo
-nella caccia**: resta a parte finché il master non lo importa dalla sezione
-"Collega gli elementi" (diventa lì un nodo `indizio`, con un nuovo id) e
-pubblica. L'importazione toglie la bozza da questo file solo al momento
-della pubblicazione riuscita, non prima, per non perdere lavoro se la
-pagina si ricarica senza pubblicare.
-
-```jsonc
-[
-  {
-    "id": "bmtw1a2b3c",           // generato con newId("b")
-    "creato": "2026-09-13T…",
-    "tipo": "indizio",            // oggi sempre "indizio": è l'unico tipo di bozza che esiste
-    "titolo": "Indizio per l'orologio",
-    "testo": "Cerca qualcosa che segna il tempo",
-    "immagine": "data:image/jpeg;base64,…"   // null se non allegata
-  }
-]
-```
-
-`immagine`, se presente, è già ridimensionata (lato massimo 800px) e
-compressa in JPEG **nel browser prima del salvataggio**, per non
-appesantire il file.
+Esisteva nelle versioni precedenti come modo per salvare un indizio
+scritto a mano (titolo, testo, foto opzionale) senza pubblicarlo subito.
+Con `caccia-3` ogni nodo nasce dalla cattura sul campo (vedi sopra):
+questa doppia via per crearne uno — a mano da computer, oppure sul posto
+con la fotocamera — è stata eliminata a favore della sola seconda,
+unificando il flusso. Il file e la sezione "Indizi (bozze)" del pannello
+master non esistono più.
 
 ## Contenuto multimediale: solo testo e immagine per ora
 
-Un `indizio` (in bozza o già nodo) porta testo e/o un'immagine inline in
-base64. Non c'è ancora l'audio, né la distinzione fra "immagine inline
-piccola" e "file media separato" discussa in una fase di progettazione
-precedente: con testo e immagini di piccole dimensioni, tenerle inline in
-`caccia.json`/`bozze.json` si è rivelato semplice a sufficienza per ora.
-Se in futuro le immagini o l'audio dovessero appesantire troppo i file,
-riprendere l'idea di file media separati pubblicati a parte (vedi la
-cronologia di questo documento nei commit precedenti), con due vincoli
+Ogni nodo porta testo (`testo`/`messaggio`) e un'immagine inline in
+base64 (`immagine`). Non c'è ancora l'audio, né la distinzione fra
+"immagine inline piccola" e "file media separato" discussa in una fase di
+progettazione precedente: con testo e immagini di piccole dimensioni,
+tenerle inline in `caccia.json` si è rivelato semplice a sufficienza per
+ora. Se in futuro le immagini o l'audio dovessero appesantire troppo il
+file, riprendere l'idea di file media separati pubblicati a parte (vedi
+la cronologia di questo documento nei commit precedenti), con due vincoli
 reali da tenere in conto quando ci si arriva: l'**autoplay audio non
 funziona sui telefoni** (serve sempre un tocco esplicito), e per restare
 **offline** un file caricato con `src` esterno avrebbe bisogno di un
@@ -210,20 +279,25 @@ esiste un campo "destinatario": sono **tutti broadcast**, per scelta (vedi
 
 | Chiave | Contenuto |
 |---|---|
-| `gioco` | l'ultimo `caccia.json` scaricato (formato originale, `caccia-1` o `caccia-2`) |
+| `gioco` | l'ultimo `caccia.json` scaricato (`caccia-3`) |
 | `stato` | `{ trovati, bottino, visti, scelta }` — vedi sotto |
 | `msg-letti` | array di `id` di messaggi già letti |
 | `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master |
 
-`stato.trovati` è un array di id di nodi **`oggetto`** validati fisicamente
-dal giocatore (foto + eventuale GPS) — è l'unico stato che serve salvare:
-tutto il resto (quali indizio sono visibili, quali ricompense sono state
-sbloccate) si ricalcola ad ogni apertura con una chiusura a punto fisso sul
-grafo `richiede` (`calcolaRaggiungibili()`), a partire da `trovati`.
-`stato.bottino` resta un array di ricompense ottenute (copie dei campi
-`nome`/`simbolo`/`messaggio` del nodo, con l'id del nodo e `quando`
-aggiunti) — un solo scatto può aggiungerne più di una in un colpo solo, se
-sblocca più ricompense contemporaneamente.
+`stato.trovati` è un array di id di nodi **posseduti**: sia quelli
+validati fisicamente dal giocatore (`daValidare: true`, foto + eventuale
+GPS), sia quelli diventati posseduti da soli a cascata (`daValidare:
+false`, appena i loro `richiede` erano soddisfatti) — a ogni scatto
+riuscito, `trovati` viene ricalcolato per intero con una chiusura a punto
+fisso sul grafo `richiede` (`chiudi()`) e salvato così com'è, invece di
+ricalcolarlo ogni volta da un insieme più piccolo di soli oggetti
+validati. Il conteggio "Trovati X di Y" mostrato al giocatore filtra
+comunque solo i nodi con `daValidare: true` fra quelli in `trovati`,
+altrimenti conterebbe anche gli sblocchi automatici.
+`stato.bottino` è un array con **ogni** nodo diventato posseduto, non solo
+quelli validati (copie dei campi `nome`/`messaggio`/`conThumb`/`immagine`
+del nodo, con l'id del nodo e `quando` aggiunti) — un solo scatto può
+aggiungerne più di uno in un colpo solo, se sblocca più nodi a cascata.
 
 ## `localStorage` del master (mai condiviso, chiavi principali)
 
@@ -261,10 +335,11 @@ annidati dentro missioni dentro ricompense.
   dichiarativa, senza bisogno di funzioni ricorsive — "`richiede` è
   interamente contenuto nell'insieme dei nodi già in `eventi` per questo
   giocatore" è un confronto di containment fra array, esprimibile in una
-  singola policy. Serve però un piccolo trigger che, per i nodi di tipo
-  `indizio`/`ricompensa`, scriva da solo il loro evento "posseduto" appena
-  diventano raggiungibili — a differenza di `oggetto`, il cui evento lo
-  scrive il giocatore solo dopo la validazione reale.
+  singola policy. Serve però un piccolo trigger che, per i nodi con
+  `daValidare: false`, scriva da solo il loro evento "posseduto" appena
+  diventano raggiungibili — a differenza di un nodo con `daValidare:
+  true`, il cui evento lo scrive il giocatore solo dopo la validazione
+  reale.
 - `messaggi.json` → se un giorno servirà la conferma di lettura visibile al
   master, diventa una tabella `messaggi` (scritta dal master) più una
   tabella `letture` (scritta dai giocatori). Finché resta solo broadcast

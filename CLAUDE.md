@@ -1,3 +1,8 @@
+# Regola generale
+
+No commit e No push se non scritto esplicitamente nel prompt.
+
+
 # Caccia al tesoro — istruzioni per Claude Code
 
 Leggi questo file per primo. Per i dettagli, guarda `memory.md` (decisioni prese
