@@ -1,4 +1,4 @@
-# Stato attuale (versione 16)
+# Stato attuale (versione 18)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -36,8 +36,11 @@ master lo vede segnalato come incompatibile e riparte da zero.
   scatto o diventato posseduto da solo (`daValidare: false`) perché tutto
   ciò che richiedeva era già posseduto. Un solo scatto può sbloccarne più
   di uno in cascata: si mostrano **tutti insieme nella stessa schermata**
-  (non più in coda uno alla volta), ognuno con la propria foto (se
-  `conThumb`) o un colore calcolato dal nome, nome e messaggio.
+  (non più in coda uno alla volta), ognuno con la propria foto vera se ce
+  l'ha (altrimenti un colore calcolato dal nome), nome e messaggio —
+  `conThumb` qui non conta: una volta posseduto un nodo, la foto si vede
+  sempre. `conThumb` decide solo se la foto fa da indizio *mentre* il
+  nodo è ancora da trovare (vedi il punto sulla targa, più sopra).
 - **Aggiornamenti incrementali**: se il master pubblica un `caccia.json`
   con lo stesso `formato` di quello già scaricato, i progressi e il bottino
   del giocatore restano intatti e i nuovi nodi si aggiungono alla lista.
@@ -97,29 +100,59 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   `wide` su `<body>`) e le schede si affiancano in una griglia; sul
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
-  (editabile), subito seguiti dalle tre flag — **Con thumb** (mostra la
-  foto al giocatore, altrimenti solo testo/colore), **Da validare**
-  (richiede foto+match del giocatore per essere posseduto, altrimenti lo
-  diventa da solo appena "richiede" è soddisfatto), **Richiede posizione**
-  (in più al match fotografico, il giocatore deve essere entro 100 m dal
-  punto registrato — spuntarla spunta anche "Da validare" in automatico, e
-  non si può togliere l'una senza l'altra) — poi il **testo dell'indizio**
-  (mostrato a chi deve ancora raggiungere questo nodo) e il **messaggio
-  della propria schermata di sblocco** — campi indipendenti, un nodo può
-  avere entrambi — e un elenco di checkbox "Richiede" verso tutti gli
-  altri nodi. Un pulsante "Rimuovi" per scheda, bloccato se un altro nodo
-  lo richiede ancora. In fondo: il campo "Formato", e **da qui si pubblica
-  la caccia** — pulsante "Pubblica la caccia" (verso GitHub), la sua
-  configurazione (proprietaria/repository/ramo/token, `<details>`, stessa
-  di quella nel pannello master: stesso `gh-config` in `localStorage`) e
-  "Prova su questo telefono" (modalità di prova locale). Prima di
-  pubblicare controlla che i collegamenti non formino un ciclo (bloccando
-  con un messaggio se lo trova).
-- **Pubblicazione diretta su GitHub**: la configurazione (aperto/chiuso
-  con `<details>`, duplicata sia nel pannello master sia in "Collega gli
-  elementi" perché sono due pagine separate ma condividono lo stesso
-  `gh-config`) salva su questo telefono soltanto proprietario, repository,
-  ramo e un token con permesso di scrittura limitato al repository. La
+  (editabile), subito seguiti dalle tre flag — **Con thumb** (la foto fa
+  da indizio, insieme al testo, mentre il nodo è ancora *da trovare*; non
+  c'entra con la foto nel bottino/sblocco, che si vede sempre una volta
+  posseduto), **Da validare** (richiede foto+match del giocatore per
+  essere posseduto, altrimenti lo diventa da solo appena "richiede" è
+  soddisfatto), **Richiede posizione** (in più al match fotografico, il
+  giocatore deve essere entro 100 m dal punto registrato — spuntarla
+  spunta anche "Da validare" in automatico, e non si può togliere l'una
+  senza l'altra) — poi il **testo dell'indizio** (attenzione: è l'indizio
+  per trovare **i nodi che richiedono questo**, non per trovare questo
+  nodo — un nodo con `richiede: []` non mostra mai il proprio `testo` a
+  nessuno; per dargli un indizio serve un nodo a monte, con
+  `daValidare: false`, che lo preceda) e il **messaggio della propria
+  schermata di sblocco** — campi indipendenti, un nodo può avere entrambi
+  — e un elenco di checkbox "Richiede" verso tutti gli altri nodi. Un
+  pulsante "Rimuovi" per scheda, bloccato se un altro nodo lo richiede
+  ancora. In fondo: il campo "Formato", e **da qui si pubblica la
+  caccia** — pulsante "Pubblica la caccia" (verso GitHub) e "Prova su
+  questo telefono" (modalità di prova locale). Prima di pubblicare
+  controlla che i collegamenti non formino un ciclo (bloccando con un
+  messaggio se lo trova).
+- **Pagina "Grafo" (`#master-grafo`, raggiungibile da un link in "Collega gli
+  elementi")**: stessi collegamenti "richiede" visti come disegno invece che
+  come elenco di checkbox, per non ripetere per distrazione l'errore delle
+  due flag scambiate (`daValidare` su "evidenziatore giallo" e "gomma",
+  vedi `memory.md`) — con un colpo d'occhio si vede la forma del flusso, non
+  solo la lista di chi richiede cosa. Anche questa pagina è pensata per un
+  computer, non per il telefono. Layout automatico per "livello" di
+  dipendenza (nessuna coordinata salvata): un nodo senza "richiede" sta
+  nella prima colonna, ogni altro nodo una colonna dopo il più profondo dei
+  suoi prerequisiti. Ogni scheda-nodo mostra foto, nome e un'icona per capire
+  a colpo d'occhio se è "da validare" (📷, più 📍 se richiede anche la
+  posizione) o un regalo automatico (🎁) — di nuovo, per rendere visibile
+  subito lo squilibrio che ha causato il bug delle flag scambiate. Si
+  collega cliccando il pallino di un elemento e poi quello di un altro: il
+  primo è il prerequisito, il secondo è quello che lo richiede (stessa
+  regola di "Richiede" in "Collega gli elementi", solo disegnata). Si
+  scollega cliccando una freccia (con conferma). Cliccare il corpo di una
+  scheda apre un riquadro laterale con gli stessi campi di "Collega gli
+  elementi" (nome, le tre flag, testo, messaggio, "Richiede") — stesso
+  codice, non una copia: modificare da un posto si vede subito anche
+  nell'altro. Se i collegamenti formano un ciclo, il grafo non si disegna:
+  compare invece un messaggio che nomina i nodi coinvolti (stesso controllo
+  usato prima di pubblicare), per non mostrare un disegno fuorviante. Le
+  checkbox di "Collega gli elementi" restano comunque al loro posto: il
+  grafo è un modo alternativo di vedere e modificare gli stessi dati, non
+  la loro sostituzione.
+- **Pubblicazione diretta su GitHub**: un solo pannello di configurazione
+  (`<details>`, nel pannello master, sotto "Messaggi") salva su questo
+  telefono soltanto proprietario, repository, ramo e un token con
+  permesso di scrittura limitato al repository. Se manca e si prova a
+  pubblicare da "Collega gli elementi", l'accordion si apre automaticamente
+  sul pannello master con un messaggio che indica dove si trova. La
   scrittura vera e propria (`ghPutFile`, `GET` per lo sha corrente, `PUT`
   per scrivere, con un tentativo di ritentare una volta su conflitto 409)
   è condivisa fra la pubblicazione della caccia e quella dei messaggi.
@@ -142,8 +175,9 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   implementato).
 - Non ha ancora contenuto audio, né scarsità delle istanze.
 - Non ha nessun meccanismo di narrazione o integrazione social.
-- L'editor dei collegamenti ("Collega gli elementi") non è pensato per il
-  telefono: richiede un computer per essere usato comodamente.
+- L'editor dei collegamenti ("Collega gli elementi") e la pagina "Grafo" non
+  sono pensati per il telefono: richiedono un computer per essere usati
+  comodamente.
 - Non c'è modo di creare un nodo senza passare dalla fotocamera (per
   scelta, vedi `memory.md`) né di sostituire in un secondo momento solo la
   foto o solo pos/neg/soglia di un nodo già esistente: per quello serve

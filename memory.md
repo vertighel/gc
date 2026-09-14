@@ -153,6 +153,45 @@ dedotte da sole):
   false`. Non esiste (e non è stato aggiunto) un modo di creare un nodo
   senza passare dalla fotocamera, nemmeno per questo caso.
 
+## Perché "Collega gli elementi" ha anche una vista a grafo
+
+Dopo aver corretto due bug reali nella caccia pubblicata dal committente
+(un `testo` orfano perché nessun nodo lo richiedeva, e due flag
+`daValidare` scambiate fra "evidenziatore giallo" e "gomma" — vedi le
+sessioni precedenti), il committente ha chiesto un modo di vedere i
+collegamenti "richiede" come disegno oltre che come checkbox ("che ne dici
+di pensare ad un editor svg per collegare questi oggetti? pensalo per la
+versione pc"), esplicitamente **in aggiunta** alle checkbox esistenti, non
+al loro posto ("lascia anche le checkbox").
+
+Due decisioni di interazione, chieste con `AskUserQuestion` e scelte
+entrambe nell'opzione raccomandata:
+- **Direzione**: cliccare il pallino del nodo A e poi quello del nodo B
+  crea "B richiede A" — il primo clic è il prerequisito, il secondo è chi
+  lo richiede. Stessa regola concettuale delle checkbox "Richiede" in
+  "Collega gli elementi", solo disegnata.
+- **Clic sul corpo di un nodo**: apre un riquadro laterale con i dettagli
+  editabili, invece di portare via dalla pagina verso "Collega gli
+  elementi".
+
+Due vincoli tecnici aggiunti in fase di implementazione (non richiesti
+esplicitamente, ma coerenti con lo scopo dichiarato della pagina — vedere a
+colpo d'occhio errori di collegamento, non nasconderli):
+- **Un ciclo blocca il disegno**, non lo disegna storto: prima di calcolare
+  i livelli (`livelliNodi()`) si richiama lo stesso `trovaCiclo()` già
+  usato prima di pubblicare, e se trova un ciclo mostra un messaggio con i
+  nomi coinvolti invece del grafo. Un grafo che "prova comunque a
+  disegnarsi" in presenza di un ciclo avrebbe vanificato lo scopo stesso
+  della pagina (proprio le checkbox avevano già lasciato passare inosservato
+  l'errore delle due flag scambiate).
+- **Il riquadro laterale riusa lo stesso codice di `schedaNodo()`**
+  (fattorizzato in `costruisciTestata()` e `corpoNodoCampi()`), non una
+  copia parallela: stessa lezione del bug `m-cfg2` di una sessione
+  precedente, dove due copie della stessa configurazione si erano
+  disallineate. Nome, le tre flag (con la stessa implicazione "richiede
+  posizione" ⇒ "da validare"), testo, messaggio e "Richiede" sono un solo
+  posto di codice, condiviso fra "Collega gli elementi" e il grafo.
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare

@@ -44,7 +44,9 @@ espliciti, non più in base a un `tipo` fisso.
                                          // (posizione del master al momento dello scatto)
       "daValidare": true,   // true = serve foto+match per essere posseduto;
                              // false = posseduto in automatico appena "richiede" è soddisfatto
-      "conThumb": true,     // true = al giocatore si mostra `immagine`; false = solo testo/colore
+      "conThumb": true,     // true = la foto fa da indizio *mentre* questo nodo è
+                             // ancora da trovare (letta dai nodi che lo richiedono);
+                             // non c'entra col possesso — vedi sotto
       "richiedePosizione": false,  // true = in aggiunta al match fotografico, il giocatore deve
                                     // essere entro `luogo.raggio` — IMPLICA daValidare: true
       "richiede": []        // AND verso altri id di nodi, come nei formati precedenti
@@ -80,17 +82,24 @@ Regole:
   cascata, per effetto di un solo scatto), il giocatore vede una
   schermata di sblocco cumulativa con **tutti** i nodi appena ottenuti
   insieme in quel momento (non più uno alla volta in coda) e ognuno entra
-  nel bottino. Se `conThumb` è vero e c'è `immagine`, si mostra la foto
-  vera; altrimenti un colore calcolato in automatico dal `nome`
-  (`coloreNodo()`, hash del nome → tinta HSL → RGB — nessun campo
-  "Simbolo" da scegliere a mano, eliminato con `caccia-2`).
-- **`testo` e `messaggio` sono campi indipendenti, non alternativi**: un
-  nodo può avere entrambi. `testo` è ciò che si mostra come indizio a chi
-  sta ancora cercando di raggiungere *lui* (letto da qualunque nodo lo
-  richieda, tramite il proprio `richiede`); `messaggio` è ciò che si
-  mostra sulla schermata di sblocco quando è *lui stesso* a diventare
-  posseduto. Sono momenti diversi: niente impedisce a un nodo di fare da
-  indizio per il successivo *e* avere un proprio messaggio di sblocco.
+  nel bottino. **Una volta posseduto, un nodo mostra sempre la sua foto
+  vera** se ce l'ha (altrimenti un colore calcolato in automatico dal
+  `nome`, funzione `coloreNodo()`, hash del nome → tinta HSL → RGB —
+  nessun campo "Simbolo" da scegliere a mano, eliminato con `caccia-2`):
+  `conThumb` qui non conta, vedi il punto seguente.
+- **`testo` e `conThumb`/`immagine` sono l'indizio "prima" del possesso;
+  `messaggio` è cosa succede "dopo"** — momenti diversi dello stesso nodo,
+  non alternative. Mentre un nodo è ancora *da trovare*, il giocatore vede
+  come indizio il `testo` (e, se `conThumb` è vero, anche la foto) **dei
+  nodi che esso stesso richiede** — non i propri: un nodo con
+  `richiede: []` non ha alcun indizio proprio da mostrare a chi lo cerca,
+  serve un nodo a monte apposta (`daValidare: false`, per non far
+  scattare una foto in più) che lo preceda con `richiede: []` e lui
+  stesso nel suo `richiede`. Appena il nodo diventa posseduto, invece,
+  conta solo `messaggio` (mostrato nella sua schermata di sblocco) e la
+  foto torna sempre visibile indipendentemente da `conThumb`. Niente
+  impedisce a un nodo di fare da indizio per chi lo richiede *e* avere un
+  proprio messaggio di sblocco.
 - **Aciclicità non garantita per costruzione**, stessa cosa delle versioni
   precedenti: `trovaCiclo()` controlla prima di ogni pubblicazione.
 - **Nessuna migrazione da `caccia-1`/`caccia-2`**: se la caccia pubblicata
