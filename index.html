@@ -77,10 +77,11 @@
   @keyframes flash { from { opacity: .75; } to { opacity: 0; } }
 
   .btn {
-    appearance: none; display: block; width: 100%; min-height: 54px;
+    appearance: none; display: block; width: 100%; min-height: 54px; box-sizing: border-box;
     border: 2px solid var(--smalto); border-radius: 10px;
     background: transparent; color: var(--smalto);
     font: 600 20px/1 var(--display); padding: 15px 18px; cursor: pointer; text-align: center;
+    text-decoration: none;
   }
   .btn.primary { background: var(--smalto); color: var(--bianco); }
   .btn:disabled { opacity: .4; cursor: default; }
@@ -135,8 +136,11 @@
   input[type=file] { display: block; width: 100%; margin-top: 4px; font: inherit; }
   .draft-preview { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
-  .linknode .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 600; }
-  .linknode .head .link { color: var(--rosso); }
+  .linknode .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .linknode .head .titlewrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+  .linknode .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
+  .linknode .head .link { color: var(--rosso); flex: none; }
+  .linknode label { margin-top: 10px; }
   .linkreq { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
   .linkreq label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 15px; }
   .linkreq label input { width: 18px; height: 18px; accent-color: var(--smalto); margin: 0; }
@@ -200,7 +204,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 11)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 12)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -323,39 +327,8 @@
 
     <div class="current">
       <h2>Collega gli elementi</h2>
-      <p class="hint">Qui puoi collegare indizi, oggetti e ricompense fra loro per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più ricompense che ne sbloccano un'altra). Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
-
-      <div id="m-link-migra" hidden>
-        <p class="hint">La caccia pubblicata usa ancora il formato semplice (un oggetto = una missione a sé). Per collegare liberamente gli elementi serve passare al nuovo formato: i quattro oggetti esistenti restano tutti, ma <strong>i progressi dei giocatori verranno azzerati</strong> alla prossima pubblicazione.</p>
-        <button id="m-link-migra-btn" class="btn primary">Passa al formato con collegamenti</button>
-      </div>
-
-      <div id="m-link-work" hidden>
-        <p id="m-link-stale" class="hint" hidden><strong>Attenzione:</strong> la caccia pubblicata è cambiata da quando hai iniziato a collegare gli elementi (probabilmente hai usato il modulo rapido "Registra un nuovo oggetto" qui sotto nel frattempo). Pubblicando da qui rischi di perdere quella modifica: ricarica la pagina per ripartire dai collegamenti aggiornati.</p>
-        <div id="m-link-list"></div>
-
-        <details class="linknew">
-          <summary>Aggiungi una nuova ricompensa</summary>
-          <label>Nome
-            <input type="text" id="m-link-rname" placeholder="Es. Chiave del tempo">
-          </label>
-          <label>Simbolo
-            <input type="text" id="m-link-remoji" value="★">
-          </label>
-          <label>Messaggio
-            <textarea id="m-link-rmsg"></textarea>
-          </label>
-          <button id="m-link-radd" class="btn">Aggiungi ricompensa</button>
-        </details>
-
-        <details class="linknew" id="m-link-bozze-wrap">
-          <summary>Importa una bozza salvata</summary>
-          <ul id="m-link-bozze-list" class="baselist"></ul>
-        </details>
-
-        <button id="m-link-publish" class="btn primary">Pubblica i collegamenti</button>
-        <p id="m-link-status" class="status" role="status"></p>
-      </div>
+      <p class="hint">Collegare, rimuovere e modificare i testi di indizi, oggetti e ricompense si fa in una pagina dedicata, pensata per un computer.</p>
+      <a class="btn" href="#master-collega">Apri "Collega gli elementi"</a>
     </div>
 
     <ol class="steps">
@@ -427,6 +400,52 @@
         <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
       </li>
     </ol>
+  </section>
+
+  <!-- ================= COLLEGA GLI ELEMENTI ================= -->
+  <section id="view-collega" hidden>
+    <header class="bar">
+      <span class="brand">Caccia</span>
+      <span class="tag">Collega</span>
+    </header>
+    <a class="link" href="#master">← Torna al pannello master</a>
+
+    <div class="current">
+      <h2>Collega gli elementi</h2>
+      <p class="hint">Collega indizi, oggetti e ricompense fra loro per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più ricompense che ne sbloccano un'altra), e modifica i loro testi. Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
+
+      <div id="m-link-migra" hidden>
+        <p class="hint">La caccia pubblicata usa ancora il formato semplice (un oggetto = una missione a sé). Per collegare liberamente gli elementi serve passare al nuovo formato: i quattro oggetti esistenti restano tutti, ma <strong>i progressi dei giocatori verranno azzerati</strong> alla prossima pubblicazione.</p>
+        <button id="m-link-migra-btn" class="btn primary">Passa al formato con collegamenti</button>
+      </div>
+
+      <div id="m-link-work" hidden>
+        <p id="m-link-stale" class="hint" hidden><strong>Attenzione:</strong> la caccia pubblicata è cambiata da quando hai iniziato a collegare gli elementi (probabilmente hai usato il modulo rapido "Registra un nuovo oggetto" nel pannello master nel frattempo). Pubblicando da qui rischi di perdere quella modifica: ricarica la pagina per ripartire dai collegamenti aggiornati.</p>
+        <div id="m-link-list"></div>
+
+        <details class="linknew">
+          <summary>Aggiungi una nuova ricompensa</summary>
+          <label>Nome
+            <input type="text" id="m-link-rname" placeholder="Es. Chiave del tempo">
+          </label>
+          <label>Simbolo
+            <input type="text" id="m-link-remoji" value="★">
+          </label>
+          <label>Messaggio
+            <textarea id="m-link-rmsg"></textarea>
+          </label>
+          <button id="m-link-radd" class="btn">Aggiungi ricompensa</button>
+        </details>
+
+        <details class="linknew" id="m-link-bozze-wrap">
+          <summary>Importa una bozza salvata</summary>
+          <ul id="m-link-bozze-list" class="baselist"></ul>
+        </details>
+
+        <button id="m-link-publish" class="btn primary">Pubblica i collegamenti</button>
+        <p id="m-link-status" class="status" role="status"></p>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -526,18 +545,20 @@ function calibrate(pos, neg) {
   return { soglia: (pBassa + negMax) / 2, distinzione: pBassa - negMax };
 }
 
-// 5 fotogrammi in un secondo: l'oggetto è valido se almeno 3 lo riconoscono
+// 5 fotogrammi in un secondo: vince il migliore dei 5, ed è lui a decidere se l'oggetto
+// è valido. Prima si chiedeva che 3 scatti su 5 superassero la soglia: capitava che il
+// punteggio mostrato al giocatore (il migliore dei 5) fosse sopra soglia e la risposta
+// fosse comunque "non riconosciuto", perché gli altri scatti — mossi, storti — no.
 async function verify(video, obj) {
   const emb = await getEmbedder();
-  let ok = 0, best = -1;
+  let best = -1, bestSn = -1;
   for (let i = 0; i < 5; i++) {
     if (i) await sleep(180);
     const v = frameVector(emb, video);
     const sp = maxSim(v, obj.pos), sn = maxSim(v, obj.neg);
-    if (sp >= obj.soglia && sp > sn) ok++;
-    best = Math.max(best, sp);
+    if (sp > best) { best = sp; bestSn = sn; }
   }
-  return { valido: ok >= 3, somiglianza: best };
+  return { valido: best >= obj.soglia && best > bestSn, somiglianza: best };
 }
 
 /* ---------- posizione (non esce mai dal telefono) ---------- */
@@ -686,6 +707,9 @@ function baseSummary() {
 }
 
 const ICONA_NODO = { indizio: "📝", oggetto: "📷", ricompensa: "🏆" };
+// Il campo che fa da "titolo" cambia nome secondo il tipo di nodo.
+const CAMPO_TITOLO = { indizio: "titolo", oggetto: "nome", ricompensa: "nome" };
+const titoloDi = n => n[CAMPO_TITOLO[n.tipo]] || "";
 
 function renderBase() {
   const list = $("m-base-list");
@@ -695,12 +719,14 @@ function renderBase() {
     for (const n of Object.values(M.base.nodi)) {
       const li = document.createElement("li");
       const t = document.createElement("span");
-      t.textContent = `${ICONA_NODO[n.tipo] || ""} ${n.titolo || n.nome}`;
+      t.textContent = `${ICONA_NODO[n.tipo] || ""} ${titoloDi(n)}`;
       li.append(t);
       list.append(li);
     }
     const hint = document.createElement("li");
-    hint.textContent = "Per collegarli o rimuoverli, usa la sezione \"Collega gli elementi\" più sotto.";
+    const a = document.createElement("a"); a.className = "link"; a.href = "#master-collega";
+    a.textContent = "Collega gli elementi";
+    hint.append("Per collegarli, rimuoverli o modificarne i testi, apri ", a, ".");
     list.append(hint);
     return;
   }
@@ -1009,17 +1035,45 @@ function renderLinkList() {
     const card = document.createElement("div"); card.className = "linknode";
 
     const head = document.createElement("div"); head.className = "head";
-    const t = document.createElement("span"); t.textContent = `${ICONA_NODO[n.tipo] || ""} ${n.titolo || n.nome}`;
+    const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
+    const icon = document.createElement("span"); icon.textContent = ICONA_NODO[n.tipo] || "";
+    const campo = CAMPO_TITOLO[n.tipo];
+    const titolo = document.createElement("input"); titolo.type = "text"; titolo.value = n[campo] || "";
+    titolo.oninput = () => { n[campo] = titolo.value; };
+    titolo.onchange = () => { n[campo] = titolo.value.trim(); renderLinkList(); };
+    titlewrap.append(icon, titolo);
     const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
     del.onclick = () => {
       const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
-      if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.titolo || o.nome).join(", ")}.`); return; }
-      if (!confirm(`Rimuovere "${n.titolo || n.nome}"?`)) return;
+      if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => titoloDi(o)).join(", ")}.`); return; }
+      if (!confirm(`Rimuovere "${titoloDi(n)}"?`)) return;
       delete L.nodi[id];
       renderLinkList();
     };
-    head.append(t, del);
+    head.append(titlewrap, del);
     card.append(head);
+
+    if (n.tipo === "indizio") {
+      const label = document.createElement("label"); label.textContent = "Testo dell'indizio";
+      const testo = document.createElement("textarea"); testo.value = n.testo || "";
+      testo.oninput = () => { n.testo = testo.value; };
+      label.append(testo);
+      card.append(label);
+    } else if (n.tipo === "ricompensa") {
+      const labelSimbolo = document.createElement("label"); labelSimbolo.textContent = "Simbolo";
+      const simbolo = document.createElement("input"); simbolo.type = "text"; simbolo.value = n.simbolo || "";
+      simbolo.oninput = () => { n.simbolo = simbolo.value; };
+      labelSimbolo.append(simbolo);
+      card.append(labelSimbolo);
+
+      const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio al ritrovamento";
+      const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
+      messaggio.oninput = () => { n.messaggio = messaggio.value; };
+      labelMsg.append(messaggio);
+      card.append(labelMsg);
+    }
+    // Oggetto: soglia, foto di riferimento e posizione restano legate alla registrazione
+    // dal vivo ("Registra un nuovo oggetto" nel pannello master); qui si modifica solo il nome.
 
     const cap = document.createElement("p"); cap.className = "hint"; cap.style.margin = "8px 0 4px"; cap.textContent = "Richiede:";
     card.append(cap);
@@ -1040,7 +1094,7 @@ function renderLinkList() {
         if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
         else n.richiede = n.richiede.filter(x => x !== oid);
       };
-      const txt = document.createElement("span"); txt.textContent = `${ICONA_NODO[o.tipo] || ""} ${o.titolo || o.nome}`;
+      const txt = document.createElement("span"); txt.textContent = `${ICONA_NODO[o.tipo] || ""} ${titoloDi(o)}`;
       label.append(cb, txt);
       req.append(label);
     }
@@ -1454,7 +1508,7 @@ function renderPlayer() {
   const st = stato();
   const todo = daTrovare(st);
   const tot = Object.values(game.nodi).filter(n => n.tipo === "oggetto").length;
-  $("p-progress").textContent = `Trovati ${tot - todo.length} di ${tot}`;
+  $("p-progress").textContent = `Trovati ${st.trovati.length} di ${tot}`;
 
   const nuovi = todo.filter(m => !st.visti.includes(m.id));
   $("p-news").hidden = !nuovi.length;
@@ -1495,7 +1549,7 @@ function showReward(st) {
   $("p-rmsg").textContent = r.messaggio;
   const rimasti = daTrovare(st).length;
   const tot = Object.values(game.nodi).filter(n => n.tipo === "oggetto").length;
-  $("p-progress").textContent = `Trovati ${tot - rimasti} di ${tot}`;
+  $("p-progress").textContent = `Trovati ${st.trovati.length} di ${tot}`;
   $("p-continue").textContent = codaRicompense.length > 1 ? "Prossima ricompensa" : (rimasti ? "Continua la caccia" : "Fatto");
   renderInventory(st);
 }
@@ -1594,16 +1648,19 @@ function initPlayer() {
 
 // Quando il giocatore torna sull'app, controlla se ci sono novità
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && location.hash !== "#master") { syncGame(); syncMessages(); }
+  if (!document.hidden && !location.hash.startsWith("#master")) { syncGame(); syncMessages(); }
 });
 
-/* ---------- navigazione: #master apre il pannello del master ---------- */
+/* ---------- navigazione: #master apre il pannello del master,
+   #master-collega la pagina dedicata a collegare gli elementi ---------- */
 function route() {
   stopCamera();
   const master = location.hash === "#master";
+  const collega = location.hash === "#master-collega";
   $("view-master").hidden = !master;
-  $("view-player").hidden = master;
-  if (master) initMaster(); else initPlayer();
+  $("view-collega").hidden = !collega;
+  $("view-player").hidden = master || collega;
+  if (master || collega) initMaster(); else initPlayer();
 }
 window.addEventListener("hashchange", route);
 route();

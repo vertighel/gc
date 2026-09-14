@@ -1,4 +1,4 @@
-# Stato attuale (versione 11)
+# Stato attuale (versione 12)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -20,8 +20,12 @@ della pagina.
   compare in questa lista solo se tutti i suoi collegamenti "richiede"
   sono già soddisfatti — la targa mostra il testo (ed eventuale foto)
   dell'indizio collegato direttamente a quell'oggetto.
-- Scatto e verifica: 5 fotogrammi ravvicinati, l'oggetto è considerato
-  riconosciuto se almeno 3 su 5 superano la soglia calcolata dal master.
+- Scatto e verifica: 5 fotogrammi ravvicinati, vince il migliore dei 5.
+  L'oggetto è considerato riconosciuto se quel fotogramma supera la soglia
+  calcolata dal master ed è più simile all'oggetto che ai suoi dintorni.
+  (Prima serviva che 3 fotogrammi su 5 superassero la soglia: capitava che
+  il punteggio mostrato — il migliore dei 5 — fosse sopra soglia e la
+  risposta fosse comunque "non riconosciuto".)
   Se la tappa ha un vincolo di posizione, il GPS viene controllato *prima*
   di accendere il confronto immagine. Un solo scatto può sbloccare più
   ricompense in un colpo solo (es. una ricompensa che ne richiede altre
@@ -46,9 +50,9 @@ della pagina.
 
 - All'apertura, **scarica la caccia già pubblicata** e la mostra in un
   elenco. In `caccia-1` ogni riga ha un pulsante "Rimuovi"; in `caccia-2`
-  l'elenco è di sola lettura e rimanda alla sezione "Collega gli elementi"
-  per modificare o rimuovere un nodo (lì la rimozione è bloccata se un
-  altro nodo lo richiede ancora).
+  l'elenco è di sola lettura e rimanda alla pagina dedicata "Collega gli
+  elementi" per modificare, collegare o rimuovere un nodo (lì la rimozione
+  è bloccata se un altro nodo lo richiede ancora).
 - **Registrazione di un nuovo oggetto dal vivo**: 20 fotogrammi
   dell'oggetto (muovendosi per ~6 secondi), poi 10 fotogrammi dei dintorni
   come negativi. La soglia di riconoscimento si calcola da soli
@@ -77,20 +81,27 @@ della pagina.
   su un file a parte, `bozze.json` (stesso meccanismo `ghPutFile`), mai
   scaricato dai giocatori. Le bozze restano lì, elencate con un "Rimuovi"
   ciascuna, finché non vengono importate dalla sezione seguente.
-- **Sezione "Collega gli elementi"**: pensata per un computer, non per il
-  telefono. Se la caccia pubblicata è ancora nel vecchio formato
-  (`caccia-1`), mostra solo un avviso e un pulsante esplicito "Passa al
-  formato con collegamenti" (azzera i progressi dei giocatori alla
-  prossima pubblicazione, per questo richiede una conferma a parte — non
-  scatta mai dal normale "Registra un nuovo oggetto"/"Pubblica su
-  GitHub", che restano utilizzabili in `caccia-1` finché questa scelta non
-  viene fatta). Una volta nel nuovo formato (`caccia-2`), mostra ogni
-  indizio/oggetto/ricompensa esistente con un elenco di checkbox "Richiede"
-  verso gli altri elementi, permette di aggiungere una nuova ricompensa
-  scollegata e di importare le bozze salvate come nuovi nodi indizio.
-  Prima di pubblicare controlla che i collegamenti non formino un ciclo
-  (bloccando con un messaggio se lo trova) e scrive sia `caccia.json` sia
-  `bozze.json` (tolte le bozze appena incorporate).
+- **Pagina "Collega gli elementi"** (`#master-collega`, raggiungibile con un
+  pulsante dal pannello master, con un link "← Torna al pannello master"
+  per uscirne): pensata per un computer, non per il telefono. Se la caccia
+  pubblicata è ancora nel vecchio formato (`caccia-1`), mostra solo un
+  avviso e un pulsante esplicito "Passa al formato con collegamenti"
+  (azzera i progressi dei giocatori alla prossima pubblicazione, per questo
+  richiede una conferma a parte — non scatta mai dal normale "Registra un
+  nuovo oggetto"/"Pubblica su GitHub", che restano utilizzabili in
+  `caccia-1` finché questa scelta non viene fatta). Una volta nel nuovo
+  formato (`caccia-2`), mostra ogni indizio/oggetto/ricompensa esistente in
+  una scheda con: il titolo (nome dell'oggetto/ricompensa o titolo
+  dell'indizio) modificabile direttamente, il testo proprio del tipo
+  (testo dell'indizio; simbolo e messaggio della ricompensa — il nome
+  dell'oggetto è l'unico campo modificabile per un oggetto: soglia, foto
+  di riferimento e posizione restano legate alla registrazione dal vivo),
+  e un elenco di checkbox "Richiede" verso gli altri elementi. Permette
+  anche di aggiungere una nuova ricompensa scollegata e di importare le
+  bozze salvate come nuovi nodi indizio. Prima di pubblicare controlla che
+  i collegamenti non formino un ciclo (bloccando con un messaggio se lo
+  trova) e scrive sia `caccia.json` sia `bozze.json` (tolte le bozze appena
+  incorporate).
 
 ## Cosa esplicitamente NON fa, ad oggi
 
@@ -104,6 +115,10 @@ della pagina.
 - Non ha nessun meccanismo di narrazione o integrazione social.
 - L'editor dei collegamenti ("Collega gli elementi") non è pensato per il
   telefono: richiede un computer per essere usato comodamente.
+- Nella pagina "Collega gli elementi" non si può ancora aggiungere o
+  sostituire la foto di un indizio, né ri-registrare pos/neg/soglia di un
+  oggetto: per quello serve ancora il modulo "Registra un nuovo oggetto"
+  nel pannello master (o una nuova bozza).
 
 ## Formato dei file pubblicati
 
