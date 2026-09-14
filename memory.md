@@ -200,6 +200,37 @@ colpo d'occhio errori di collegamento, non nasconderli):
   posizione" ⇒ "da validare"), testo, messaggio e "Richiede" sono un solo
   posto di codice, condiviso fra "Collega gli elementi" e il grafo.
 
+## Perché "Con thumb" mostra anche la foto propria, non solo quella del prerequisito
+
+Il modello originale di `caccia-3` (vedi sopra) faceva di `testo`/`conThumb` di
+un nodo l'indizio per chi cerca **ciò che lo richiede**, mai per se stesso —
+scelta deliberata, coerente con "trovi il cacciavite, il suo testo ti dice
+come procedere". Con dati reali, questo ha causato tre incidenti simili in
+sessione, sempre sullo stesso fraintendimento (il committente si aspettava
+che accendere "Con thumb" su un nodo mostrasse la sua foto a chi lo sta
+cercando): un `testo` orfano su un nodo senza prerequisiti, due indizi "evi1"/
+"evi2" scritti sul nodo sbagliato, e infine due nodi **fratelli** (stesso
+prerequisito, "evidenziatore arancione" ed "evidenziatore giallo") con "Con
+thumb" acceso su ciascuno ma senza alcun effetto visibile, perché nessun
+terzo nodo li richiedeva singolarmente.
+
+Il terzo caso ha reso evidente un limite strutturale, non solo un errore di
+etichette: per due nodi fratelli non esiste **nessun** prerequisito capace di
+distinguerli, dato che condividono lo stesso indizio testuale. Serviva un modo
+di mostrare la foto di un nodo per aiutare a riconoscere **lui stesso**, non
+solo il suo prerequisito.
+
+Soluzione adottata: `immaginiIndizio(nodo)` ora restituisce **sia** la foto
+propria del nodo (se il suo `conThumb` e la sua `immagine` ci sono) **sia**
+quella di ogni prerequisito con `conThumb` acceso — le due liste si
+sommano, non si sostituiscono. La targa in alto (ex `#p-clue-img`, ora
+`#p-clue-imgs`, un contenitore invece di un singolo `<img>`) e ogni riga di
+"Da trovare" mostrano tutte le foto che si applicano. Compromesso accettato
+consapevolmente: mostrare la foto vera dell'oggetto da trovare lo rende più
+facile da riconoscere (meno "indovinello", più "eccolo") — ma è il master a
+scegliere di accenderlo per un nodo specifico, non un comportamento imposto
+di default.
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare

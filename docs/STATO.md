@@ -1,4 +1,4 @@
-# Stato attuale (versione 20)
+# Stato attuale (versione 21)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -26,10 +26,15 @@ master lo vede segnalato come incompatibile e riparte da zero.
   `daValidare: true` ancora mancanti *e già raggiungibili* (cioè con tutti
   i propri "richiede" già posseduti), selezionabili in qualunque ordine. I
   nodi non ancora "visti" da questo giocatore sono etichettati "Nuovo". Ogni
-  riga mostra anche la thumb (se il nodo richiesto ha `conThumb` acceso e una
-  foto) accanto al testo dell'indizio, non solo l'oggetto correntemente
-  selezionato in alto — utile per distinguere a colpo d'occhio due oggetti
-  simili fra loro prima ancora di sceglierne uno da cercare.
+  riga mostra anche le foto-indizio (funzione `immaginiIndizio()`): quella
+  **propria**, se il nodo stesso ha `conThumb` acceso e una foto, **più**
+  quella di ogni prerequisito che ce l'ha — non solo l'oggetto correntemente
+  selezionato in alto. Le due cose sono complementari: la foto di un
+  prerequisito già posseduto è "ecco cosa ti aiuta a trovare il prossimo",
+  la foto propria è "ecco cosa stai cercando" — utile soprattutto per
+  distinguere due oggetti "fratelli" con lo stesso prerequisito (stesso
+  indizio testuale, ma foto diverse), come due varianti dello stesso
+  oggetto che richiedono la stessa cosa.
 - Scatto e verifica: 5 fotogrammi ravvicinati, vince il migliore dei 5.
   Il nodo è considerato validato se quel fotogramma supera la soglia
   calcolata dal master ed è più simile all'oggetto che ai suoi dintorni.
@@ -105,9 +110,10 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
   (editabile), subito seguiti dalle tre flag — **Con thumb** (la foto fa
-  da indizio, insieme al testo, mentre il nodo è ancora *da trovare*; non
-  c'entra con la foto nel bottino/sblocco, che si vede sempre una volta
-  posseduto), **Da validare** (richiede foto+match del giocatore per
+  da indizio mentre il nodo è ancora *da trovare* — sia per lui stesso, sia
+  per ogni nodo che lo richiede, vedi `immaginiIndizio()`; non c'entra con
+  la foto nel bottino/sblocco, che si vede sempre una volta posseduto),
+  **Da validare** (richiede foto+match del giocatore per
   essere posseduto, altrimenti lo diventa da solo appena "richiede" è
   soddisfatto), **Richiede posizione** (in più al match fotografico, il
   giocatore deve essere entro 100 m dal punto registrato — spuntarla

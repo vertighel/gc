@@ -141,6 +141,8 @@
   label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
   .imgprev { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
+  .clue-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .clue-imgs .imgprev { flex: 1 1 140px; max-width: calc(50% - 5px); }
 
   /* Due pulsanti sulla stessa riga (Oggetto/Dintorni, Prova/Aggiungi) */
   .btnrow { display: flex; gap: 10px; }
@@ -255,7 +257,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 20)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 21)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -290,7 +292,7 @@
       <div class="plate">
         <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
         <p id="p-clue"></p>
-        <img id="p-clue-img" class="imgprev" hidden>
+        <div id="p-clue-imgs" class="clue-imgs"></div>
       </div>
       <p id="p-step" class="score" hidden></p>
       <div class="viewfinder" id="p-vf">
@@ -1388,6 +1390,17 @@ function etichettaOggetto(id) {
   return testi.length ? testi.join(" — ") : "Trova questo oggetto";
 }
 
+// Foto-indizio di un nodo "da trovare": la propria (se "Con thumb" è acceso su di
+// lui) più quella di ogni prerequisito che ce l'ha. Serve sia a riconoscere
+// l'oggetto quando lo vedi, sia a distinguere fra loro due "fratelli" con lo
+// stesso prerequisito (stesso indizio testuale, foto diverse) — es. due varianti
+// dello stesso oggetto che richiedono la stessa cosa per essere raggiungibili.
+function immaginiIndizio(nodo) {
+  const propria = nodo.conThumb && nodo.immagine ? [nodo.immagine] : [];
+  const daPrereq = indiziPer(nodo.id).filter(i => i.conThumb && i.immagine).map(i => i.immagine);
+  return [...new Set([...propria, ...daPrereq])];
+}
+
 // Stato del giocatore: quali nodi sono posseduti (validati o automatici), bottino, visti, scelta
 function stato() {
   const s = store.get(stateKey()) || {};
@@ -1492,7 +1505,7 @@ async function syncMessages() {
 // Un cerchietto per ogni nodo, una volta posseduto (schermata di sblocco, bottino):
 // la foto vera se c'è, altrimenti il colore calcolato dal nome. "conThumb" qui non
 // conta più: decide solo se la foto fa da indizio *mentre* il nodo è ancora da
-// trovare (vedi renderPlayer/p-clue-img) — una volta trovato, la foto si vede sempre.
+// trovare (vedi immaginiIndizio()) — una volta trovato, la foto si vede sempre.
 function medaglia(el, n) {
   if (n.immagine) { const img = document.createElement("img"); img.src = n.immagine; el.append(img); }
   else el.style.background = coloreNodo(n.nome);
@@ -1518,11 +1531,10 @@ function renderTodo(st, todo, cur) {
   for (const m of todo) {
     const li = document.createElement("li");
     const b = document.createElement("button");
-    // Stesso "Con thumb" della targa in alto (vedi renderPlayer): la foto del nodo
-    // richiesto, se ce l'ha e il flag è acceso — aiuta a distinguere a colpo
-    // d'occhio due oggetti "da trovare" simili fra loro prima ancora di sceglierli.
-    const conImmagine = indiziPer(m.id).find(i => i.conThumb && i.immagine);
-    if (conImmagine) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = conImmagine.immagine; b.append(img); }
+    // Stesso "Con thumb" della targa in alto (vedi renderPlayer/immaginiIndizio):
+    // aiuta a distinguere a colpo d'occhio due oggetti "da trovare" simili fra
+    // loro prima ancora di sceglierli.
+    for (const src of immaginiIndizio(m)) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; b.append(img); }
     const t = document.createElement("span"); t.className = "txt"; t.textContent = etichettaOggetto(m.id);
     b.append(t);
     if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
@@ -1574,11 +1586,10 @@ function renderPlayer() {
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
   $("p-game").hidden = false;
-  const indizi = indiziPer(cur.id);
   $("p-clue").textContent = etichettaOggetto(cur.id);
-  const conImmagine = indizi.find(i => i.conThumb && i.immagine);
-  $("p-clue-img").hidden = !conImmagine;
-  $("p-clue-img").src = conImmagine ? conImmagine.immagine : "";
+  const imgs = $("p-clue-imgs");
+  imgs.innerHTML = "";
+  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
   $("p-step").hidden = true; // nessun equivalente pulito di "tappa X di Y" in un grafo libero
   $("p-shoot").disabled = !stream;
   $("p-cam").hidden = !!stream;
