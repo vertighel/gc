@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-14T12:56:24.749Z",
+  "creato": "2026-09-14T12:58:46.411Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -140,7 +140,9 @@
       "daValidare": true,
       "conThumb": false,
       "richiedePosizione": false,
-      "richiede": []
+      "richiede": [
+        "nmu18w8pv96g"
+      ]
     },
     "nmu16m6zhncv": {
       "nome": "evidenziatore arancione",
