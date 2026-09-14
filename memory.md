@@ -174,6 +174,14 @@ entrambe nell'opzione raccomandata:
   editabili, invece di portare via dalla pagina verso "Collega gli
   elementi".
 
+Il primo disegno era orizzontale (livelli in colonne, da sinistra a destra);
+il committente lo ha corretto subito dopo averlo visto: **verticale**, perché
+lo sviluppo della "trama" della caccia sarà lungo, e una lista lunga che
+cresce verso il basso si scorre normalmente, mentre una che cresce verso
+destra finirebbe fuori schermo. Layout attuale: livello di dipendenza = riga
+(asse Y, dall'alto in basso), nodi dello stesso livello affiancati sulla
+stessa riga (asse X).
+
 Due vincoli tecnici aggiunti in fase di implementazione (non richiesti
 esplicitamente, ma coerenti con lo scopo dichiarato della pagina — vedere a
 colpo d'occhio errori di collegamento, non nasconderli):

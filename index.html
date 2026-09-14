@@ -201,10 +201,12 @@
   .section h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
   .todo { list-style: none; margin: 0; padding: 0; }
   .todo button {
-    display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px;
+    display: flex; width: 100%; align-items: center; gap: 10px;
     text-align: left; font: inherit; color: var(--grafite); background: #fff; cursor: pointer;
     border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
   }
+  .todo button .txt { flex: 1; min-width: 0; }
+  .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
   .todo button[aria-current="true"] { border-color: var(--smalto); box-shadow: inset 5px 0 0 var(--smalto); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
   .reward .btn { margin-top: 18px; }
@@ -253,7 +255,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 19)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 20)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -1516,7 +1518,12 @@ function renderTodo(st, todo, cur) {
   for (const m of todo) {
     const li = document.createElement("li");
     const b = document.createElement("button");
-    const t = document.createElement("span"); t.textContent = etichettaOggetto(m.id);
+    // Stesso "Con thumb" della targa in alto (vedi renderPlayer): la foto del nodo
+    // richiesto, se ce l'ha e il flag è acceso — aiuta a distinguere a colpo
+    // d'occhio due oggetti "da trovare" simili fra loro prima ancora di sceglierli.
+    const conImmagine = indiziPer(m.id).find(i => i.conThumb && i.immagine);
+    if (conImmagine) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = conImmagine.immagine; b.append(img); }
+    const t = document.createElement("span"); t.className = "txt"; t.textContent = etichettaOggetto(m.id);
     b.append(t);
     if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
     if (cur && m.id === cur.id) b.setAttribute("aria-current", "true");

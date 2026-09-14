@@ -1,4 +1,4 @@
-# Stato attuale (versione 18)
+# Stato attuale (versione 20)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -25,7 +25,11 @@ master lo vede segnalato come incompatibile e riparte da zero.
 - **Lista "Da trovare" sempre visibile**, con tutti i nodi con
   `daValidare: true` ancora mancanti *e già raggiungibili* (cioè con tutti
   i propri "richiede" già posseduti), selezionabili in qualunque ordine. I
-  nodi non ancora "visti" da questo giocatore sono etichettati "Nuovo".
+  nodi non ancora "visti" da questo giocatore sono etichettati "Nuovo". Ogni
+  riga mostra anche la thumb (se il nodo richiesto ha `conThumb` acceso e una
+  foto) accanto al testo dell'indizio, non solo l'oggetto correntemente
+  selezionato in alto — utile per distinguere a colpo d'occhio due oggetti
+  simili fra loro prima ancora di sceglierne uno da cercare.
 - Scatto e verifica: 5 fotogrammi ravvicinati, vince il migliore dei 5.
   Il nodo è considerato validato se quel fotogramma supera la soglia
   calcolata dal master ed è più simile all'oggetto che ai suoi dintorni.
@@ -127,10 +131,13 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   due flag scambiate (`daValidare` su "evidenziatore giallo" e "gomma",
   vedi `memory.md`) — con un colpo d'occhio si vede la forma del flusso, non
   solo la lista di chi richiede cosa. Anche questa pagina è pensata per un
-  computer, non per il telefono. Layout automatico per "livello" di
-  dipendenza (nessuna coordinata salvata): un nodo senza "richiede" sta
-  nella prima colonna, ogni altro nodo una colonna dopo il più profondo dei
-  suoi prerequisiti. Ogni scheda-nodo mostra foto, nome e un'icona per capire
+  computer, non per il telefono. Layout automatico **verticale** per
+  "livello" di dipendenza (nessuna coordinata salvata, si scorre verso il
+  basso invece che verso destra — pensato per una trama lunga, che altrimenti
+  crescerebbe fuori schermo in larghezza): un nodo senza "richiede" sta
+  nella prima riga in alto, ogni altro nodo una riga più in basso del più
+  profondo dei suoi prerequisiti; i nodi dello stesso livello si affiancano
+  sulla stessa riga. Ogni scheda-nodo mostra foto, nome e un'icona per capire
   a colpo d'occhio se è "da validare" (📷, più 📍 se richiede anche la
   posizione) o un regalo automatico (🎁) — di nuovo, per rendere visibile
   subito lo squilibrio che ha causato il bug delle flag scambiate. Si
