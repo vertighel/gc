@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 22)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 23)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -753,8 +753,7 @@ function apriAnteprima(src) {
 
 // Rivede il "messaggio" di un oggetto già in bottino: stessa scheda della
 // schermata di sblocco, solo richiamabile in qualunque momento toccando
-// l'oggetto — è anche l'indizio per il passo successivo (vedi indiziPer()),
-// quindi ispezionare il bottino serve anche a ritrovare la strada.
+// l'oggetto — utile per rileggere cosa diceva, con calma.
 function apriRicordo(n) {
   const overlay = document.createElement("div"); overlay.className = "lightbox";
   const card = document.createElement("div"); card.className = "current";
@@ -968,11 +967,18 @@ function corpoNodoCampi(n, id, ids, notify) {
   };
   frag.append(flags);
 
-  // Un solo campo per "cosa succede quando lo trovi": si vede nella schermata di
-  // sblocco (una volta), resta rivedibile toccando l'oggetto nel bottino (sempre),
-  // e — se questo nodo è un "richiede" di qualcun altro — è anche l'indizio che
-  // quell'altro nodo mostra mentre è ancora da trovare (vedi indiziPer()).
-  const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio (si vede quando lo trovi, resta nel bottino, ed è l'indizio per chi richiede questo elemento)";
+  // Due campi, due momenti dello stesso nodo, entrambi auto-riferiti (mai su
+  // un prerequisito né su un dipendente): "testo" è l'indizio PRIMA del
+  // possesso (mostrato in "Da trovare" mentre lo si cerca, vedi
+  // etichettaOggetto()); "messaggio" è cosa succede DOPO (schermata di
+  // sblocco una volta, poi sempre rivedibile toccando l'oggetto nel bottino).
+  const labelTesto = document.createElement("label"); labelTesto.textContent = "Indizio (aiuta a trovare e riconoscere questo elemento, prima di possederlo)";
+  const testo = document.createElement("textarea"); testo.value = n.testo || "";
+  testo.oninput = () => { n.testo = testo.value; };
+  labelTesto.append(testo);
+  frag.append(labelTesto);
+
+  const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio (si vede quando lo trovi, e resta nel bottino)";
   const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
   messaggio.oninput = () => { n.messaggio = messaggio.value; };
   labelMsg.append(messaggio);
@@ -1293,7 +1299,7 @@ function initMaster() {
     const id = newId("n");
     const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
     L.nodi[id] = {
-      nome, messaggio: "",
+      nome, testo: "", messaggio: "",
       immagine: M.immagine,
       pos: M.pos, neg: M.neg, soglia: +M.cal.soglia.toFixed(4),
       luogo: M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null,
@@ -1401,27 +1407,20 @@ function chiudi(nodi, posseduti) {
   return ok;
 }
 
-// I nodi collegati direttamente a un oggetto che portano un indizio: il loro
-// stesso "messaggio" (lo stesso che vedono anche loro nella propria schermata
-// di sblocco e nel proprio bottino — un solo campo, due usi).
-function indiziPer(oggettoId) {
-  const n = game.nodi[oggettoId];
-  return (n.richiede || []).map(id => game.nodi[id]).filter(x => x && x.messaggio);
-}
+// L'indizio di un nodo "da trovare" riguarda SEMPRE lui stesso, mai un suo
+// prerequisito: "richiede" decide solo QUANDO un nodo compare in "Da
+// trovare" (raggiungibilità), non COSA dire per riconoscerlo — quello lo
+// scrive il master direttamente sul nodo (`testo`), altrimenti nessun
+// indizio scritto (fallback generico).
 function etichettaOggetto(id) {
-  const testi = indiziPer(id).map(i => i.messaggio).filter(Boolean);
-  return testi.length ? testi.join(" — ") : "Trova questo oggetto";
+  const n = game.nodi[id];
+  return (n.testo || "").trim() ? n.testo : "Trova questo oggetto";
 }
 
-// Foto-indizio di un nodo "da trovare": la propria (se "Con thumb" è acceso su di
-// lui) più quella di ogni prerequisito che ce l'ha. Serve sia a riconoscere
-// l'oggetto quando lo vedi, sia a distinguere fra loro due "fratelli" con lo
-// stesso prerequisito (stesso indizio testuale, foto diverse) — es. due varianti
-// dello stesso oggetto che richiedono la stessa cosa per essere raggiungibili.
+// Foto-indizio di un nodo "da trovare": la propria, se "Con thumb" è acceso e
+// c'è una foto — stessa logica del testo, sempre auto-riferita.
 function immaginiIndizio(nodo) {
-  const propria = nodo.conThumb && nodo.immagine ? [nodo.immagine] : [];
-  const daPrereq = indiziPer(nodo.id).filter(i => i.conThumb && i.immagine).map(i => i.immagine);
-  return [...new Set([...propria, ...daPrereq])];
+  return nodo.conThumb && nodo.immagine ? [nodo.immagine] : [];
 }
 
 // Stato del giocatore: quali nodi sono posseduti (validati o automatici), bottino, visti, scelta

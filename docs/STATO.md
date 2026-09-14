@@ -1,4 +1,4 @@
-# Stato attuale (versione 22)
+# Stato attuale (versione 23)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -19,25 +19,19 @@ master lo vede segnalato come incompatibile e riparte da zero.
   file: quello è stato tolto apposta su richiesta del committente.
 - Mostra l'indizio del nodo scelto dentro una "targa" smaltata (stile
   grafico volutamente diverso dal solito chat-bot: vedi in fondo a questo
-  file la sezione sullo stile). Il testo viene dal campo `messaggio` di
-  qualunque nodo il nodo corrente richieda tramite "richiede" — lo stesso
-  `messaggio` che quel nodo ha già mostrato nella propria schermata di
-  sblocco: un solo campo, non più un campo "testo" separato (eliminato,
-  vedi `memory.md`). Se quel nodo ha `conThumb` e una foto, la foto
-  compare accanto al testo.
+  file la sezione sullo stile). Il testo viene dal campo `testo` **dello
+  stesso nodo che si sta cercando** — mai da un prerequisito o da un
+  dipendente, vedi `docs/MODELLO-DATI.md`. Se quel nodo ha `conThumb` e una
+  foto, la foto compare accanto al testo.
 - **Lista "Da trovare" sempre visibile**, con tutti i nodi con
   `daValidare: true` ancora mancanti *e già raggiungibili* (cioè con tutti
   i propri "richiede" già posseduti), selezionabili in qualunque ordine. I
   nodi non ancora "visti" da questo giocatore sono etichettati "Nuovo". Ogni
-  riga mostra anche le foto-indizio (funzione `immaginiIndizio()`): quella
-  **propria**, se il nodo stesso ha `conThumb` acceso e una foto, **più**
-  quella di ogni prerequisito che ce l'ha — non solo l'oggetto correntemente
-  selezionato in alto. Le due cose sono complementari: la foto di un
-  prerequisito già posseduto è "ecco cosa ti aiuta a trovare il prossimo",
-  la foto propria è "ecco cosa stai cercando" — utile soprattutto per
-  distinguere due oggetti "fratelli" con lo stesso prerequisito (stesso
-  indizio testuale, ma foto diverse), come due varianti dello stesso
-  oggetto che richiedono la stessa cosa.
+  riga mostra anche il proprio `testo` e la propria foto-indizio (funzione
+  `immaginiIndizio()`, se `conThumb` è acceso) — utile soprattutto per
+  distinguere due oggetti "fratelli" con lo stesso prerequisito: essendo
+  entrambi auto-riferiti, ciascuno può avere un indizio (testo e foto)
+  diverso dall'altro, anche se diventano raggiungibili nello stesso momento.
 - Scatto e verifica: 5 fotogrammi ravvicinati, vince il migliore dei 5.
   Il nodo è considerato validato se quel fotogramma supera la soglia
   calcolata dal master ed è più simile all'oggetto che ai suoi dintorni.
@@ -61,9 +55,8 @@ master lo vede segnalato come incompatibile e riparte da zero.
   sempre visibile in fondo alla pagina, con lo stesso criterio foto/colore
   della schermata di sblocco — ed **è cliccabile**: toccare un oggetto
   riapre il suo `messaggio` (funzione `apriRicordo()`), la stessa scheda
-  vista alla schermata di sblocco. Non è solo un ricordo: siccome quel
-  `messaggio` è anche l'indizio per il passo successivo, il bottino
-  funziona da promemoria se ci si dimentica cosa si stava cercando.
+  vista alla schermata di sblocco — utile per rileggerlo con calma, non
+  più un contenuto usa-e-getta.
 - **Casella messaggi**: icona a busta in alto a destra con badge del numero
   di non letti, scarica `messaggi.json` con lo stesso meccanismo di
   `caccia.json`. Lo stato "letto" è **locale al telefono**, non tracciato
@@ -117,21 +110,19 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
   (editabile), subito seguiti dalle tre flag — **Con thumb** (la foto fa
-  da indizio mentre il nodo è ancora *da trovare* — sia per lui stesso, sia
-  per ogni nodo che lo richiede, vedi `immaginiIndizio()`; non c'entra con
-  la foto nel bottino/sblocco, che si vede sempre una volta posseduto),
-  **Da validare** (richiede foto+match del giocatore per
-  essere posseduto, altrimenti lo diventa da solo appena "richiede" è
-  soddisfatto), **Richiede posizione** (in più al match fotografico, il
-  giocatore deve essere entro 100 m dal punto registrato — spuntarla
-  spunta anche "Da validare" in automatico, e non si può togliere l'una
-  senza l'altra) — poi il **messaggio** (un solo campo, non più due: si
-  vede nella propria schermata di sblocco, resta rivedibile nel bottino, ed
-  è anche l'indizio per **i nodi che richiedono questo** mentre lo cercano
-  — attenzione: non per trovare questo nodo stesso; un nodo con
-  `richiede: []` non mostra mai il proprio `messaggio` a chi lo cerca,
-  serve un nodo a monte, con `daValidare: false`, che lo preceda) — e un
-  elenco di checkbox "Richiede" verso tutti gli altri nodi. Un
+  da indizio mentre il nodo è ancora *da trovare*, per lui stesso — vedi
+  `immaginiIndizio()`; non c'entra con la foto nel bottino/sblocco, che si
+  vede sempre una volta posseduto), **Da validare** (richiede foto+match
+  del giocatore per essere posseduto, altrimenti lo diventa da solo appena
+  "richiede" è soddisfatto), **Richiede posizione** (in più al match
+  fotografico, il giocatore deve essere entro 100 m dal punto registrato —
+  spuntarla spunta anche "Da validare" in automatico, e non si può togliere
+  l'una senza l'altra) — poi due campi separati, entrambi auto-riferiti a
+  questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
+  (`testo`, mostrato in "Da trovare" mentre lo si cerca) e il **messaggio**
+  (si vede nella propria schermata di sblocco, poi resta rivedibile
+  toccando l'oggetto nel bottino) — e un elenco di checkbox "Richiede"
+  verso tutti gli altri nodi. Un
   pulsante "Rimuovi" per scheda, bloccato se un altro nodo lo richiede
   ancora. In fondo: il campo "Formato", e **da qui si pubblica la
   caccia** — pulsante "Pubblica la caccia" (verso GitHub) e "Prova su
@@ -159,7 +150,7 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   regola di "Richiede" in "Collega gli elementi", solo disegnata). Si
   scollega cliccando una freccia (con conferma). Cliccare il corpo di una
   scheda apre un riquadro laterale con gli stessi campi di "Collega gli
-  elementi" (nome, le tre flag, messaggio, "Richiede") — stesso
+  elementi" (nome, le tre flag, indizio, messaggio, "Richiede") — stesso
   codice, non una copia: modificare da un posto si vede subito anche
   nell'altro. Se i collegamenti formano un ciclo, il grafo non si disegna:
   compare invece un messaggio che nomina i nodi coinvolti (stesso controllo

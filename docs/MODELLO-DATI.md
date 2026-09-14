@@ -31,12 +31,13 @@ espliciti, non più in base a un `tipo` fisso.
   "nodi": {
     "n1": {
       "nome": "Oggetto-1",              // editabile dal master, default "Oggetto-N" alla cattura
+      "testo": "Cerca qualcosa che segna il tempo",  // indizio mostrato mentre QUESTO
+                                         // nodo è ancora da trovare — sempre auto-riferito,
+                                         // mai su un prerequisito o un dipendente — facoltativo
       "messaggio": "Hai fermato le lancette. Ora cerca qualcosa che chiuda un cerchio.",
-                                         // UN campo, tre usi (vedi sotto): si vede nella
-                                         // PROPRIA schermata di sblocco, resta rivedibile
-                                         // toccando l'oggetto nel bottino, ed è l'indizio
-                                         // mostrato a chi deve ancora raggiungere un nodo
-                                         // che richiede questo — facoltativo
+                                         // testo mostrato alla PROPRIA schermata di sblocco
+                                         // (una volta) e poi sempre rivedibile toccando
+                                         // l'oggetto nel bottino — facoltativo
       "immagine": "data:image/jpeg;base64,…",  // sempre presente: scattata in automatico
                                          // durante la registrazione, non è un embedding
       "pos": [ /* ~20 embedding, formato invariato dalle versioni precedenti */ ],
@@ -47,9 +48,8 @@ espliciti, non più in base a un `tipo` fisso.
       "daValidare": true,   // true = serve foto+match per essere posseduto;
                              // false = posseduto in automatico appena "richiede" è soddisfatto
       "conThumb": true,     // true = la foto fa da indizio *mentre* questo nodo è
-                             // ancora da trovare — sia per lui stesso, sia (se ha un
-                             // "messaggio") per i nodi che lo richiedono; non c'entra
-                             // col possesso — vedi sotto
+                             // ancora da trovare — auto-riferita come "testo"; non
+                             // c'entra col possesso — vedi sotto
       "richiedePosizione": false,  // true = in aggiunta al match fotografico, il giocatore deve
                                     // essere entro `luogo.raggio` — IMPLICA daValidare: true
       "richiede": []        // AND verso altri id di nodi, come nei formati precedenti
@@ -90,26 +90,29 @@ Regole:
   `nome`, funzione `coloreNodo()`, hash del nome → tinta HSL → RGB —
   nessun campo "Simbolo" da scegliere a mano, eliminato con `caccia-2`):
   `conThumb` qui non conta, vedi il punto seguente.
-- **Un solo campo, `messaggio`, per "cosa succede quando lo trovi"** — non
-  più due campi separati (`testo`+`messaggio`, come nelle prime versioni di
-  `caccia-3`: eliminato perché il master scriveva quasi la stessa cosa in
-  entrambi, vedi `memory.md`). Si vede in tre momenti diversi dello stesso
-  nodo, mai in conflitto fra loro: **(1)** una volta, nella schermata di
-  sblocco cumulativa, appena il nodo diventa posseduto; **(2)** sempre,
-  toccando l'oggetto nel bottino in qualunque momento successivo — il
-  bottino funziona quindi anche da "promemoria degli indizi già ricevuti";
-  **(3)** come indizio mostrato a chi sta ancora cercando **un nodo che
-  richiede questo** (non se stesso: un nodo con `richiede: []` non mostra
-  mai il proprio `messaggio` a chi lo cerca, serve un nodo a monte apposta —
-  `daValidare: false`, per non far scattare una foto in più — che lo
-  preceda con `richiede: []` e lui stesso nel suo `richiede`). La foto
-  segue la stessa logica ma **si somma**, non sostituisce: se `conThumb` è
-  acceso su un nodo, la sua foto compare sia mentre lo si cerca lui stesso
-  sia (se ha un `messaggio`) come indizio per chi richiede lui — utile per
-  distinguere due nodi "fratelli" con lo stesso prerequisito, quindi lo
-  stesso indizio testuale (funzione `immaginiIndizio()`). Una volta
-  posseduto, invece, la foto torna sempre visibile indipendentemente da
-  `conThumb` (vedi punto precedente).
+- **`testo`/`conThumb`+`immagine` e `messaggio` sono due campi separati,
+  entrambi sempre auto-riferiti — mai su un prerequisito, mai su un
+  dipendente.** `testo` (e la foto, se `conThumb`) è l'indizio di **prima**:
+  si vede in "Da trovare" e nella targa in alto mentre questo nodo, e solo
+  questo nodo, è ancora da cercare (`etichettaOggetto()`/`immaginiIndizio()`
+  leggono il nodo stesso, non chi richiede o chi è richiesto). `messaggio` è
+  cosa succede **dopo**: una volta nella schermata di sblocco cumulativa
+  appena il nodo diventa posseduto, e da lì in poi sempre rivedibile
+  toccando l'oggetto nel bottino (`apriRicordo()`) — il bottino funziona
+  quindi anche da promemoria di cosa si stava cercando. `richiede` decide
+  **solo quando** un nodo compare in "Da trovare" (raggiungibilità): non
+  trasporta più alcun contenuto da un nodo all'altro. Conseguenza pratica:
+  per dare un indizio distinto a due nodi "fratelli" con lo stesso
+  prerequisito (stesso `richiede`, quindi raggiungibili nello stesso
+  momento) basta scrivere un `testo`/foto diverso su ciascuno — non serve
+  più un nodo-indizio a monte dedicato. Una volta posseduto, la foto torna
+  comunque sempre visibile indipendentemente da `conThumb` (vedi punto
+  precedente) — quello non è cambiato.
+  Questo modello ha sostituito, in due passaggi nella stessa serata, un
+  disegno precedente in cui `testo`/`messaggio` erano l'uno il riferimento
+  incrociato dell'altro (l'indizio di un nodo veniva letto dal nodo che lo
+  richiedeva): vedi `memory.md` per il percorso completo e perché è stato
+  abbandonato due volte.
 - **Aciclicità non garantita per costruzione**, stessa cosa delle versioni
   precedenti: `trovaCiclo()` controlla prima di ogni pubblicazione.
 - **Nessuna migrazione da `caccia-1`/`caccia-2`**: se la caccia pubblicata

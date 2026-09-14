@@ -272,6 +272,51 @@ master — coerente con quanto già previsto in `CLAUDE.md` ("sono comunque
 file veri nel repository: se li modifichi a mano e fai push, funziona lo
 stesso").
 
+## Perché `testo` è tornato, ma con significato opposto a com'era in origine
+
+Il "limite noto" appena sopra (nessun modo di dare un indizio distinto a due
+nodi fratelli) non è rimasto teorico per molto: la sera stessa, il
+committente ha guardato di nuovo i suoi due evidenziatori e ha chiesto di
+reintrodurre `testo`, ma **auto-riferito**, non più come indizio "per chi mi
+richiede": `testo` di "evidenziatore arancione" = "sono arancione, usami",
+`testo` di "evidenziatore giallo" = "sono giallo, usami" — un indizio su se
+stesso, per aiutare a riconoscerlo mentre lo si cerca, non un messaggio per
+il passo successivo.
+
+Questa non è una semplice reintroduzione: è un capovolgimento del significato
+originale di `testo` (che nella primissima versione di `caccia-3` era letto
+dal nodo che lo richiedeva, mai dal nodo stesso — vedi la voce più sopra
+"Perché `caccia-3` unifica..."). Il modello attuale, dopo due correzioni
+nella stessa serata:
+- **`testo`+`conThumb`/`immagine`**: indizio PRIMA del possesso, sempre e
+  solo auto-riferito (mostrato mentre SI CERCA quel nodo, letto da
+  `etichettaOggetto()`/`immaginiIndizio()` senza più alcun attraversamento di
+  `richiede`).
+- **`messaggio`**: cosa succede DOPO, sempre e solo auto-riferito (schermata
+  di sblocco una volta, poi rivedibile nel bottino — invariato dalla voce
+  precedente).
+- **`richiede`**: decide SOLO quando un nodo compare in "Da trovare"
+  (raggiungibilità). Non trasporta più alcun contenuto da un nodo all'altro
+  — la funzione `indiziPer()` (il cuore del vecchio meccanismo a
+  attraversamento) è stata rimossa, non solo ridefinita.
+
+Perché ha funzionato meglio di entrambi i miei tentativi precedenti (il
+campo `indizioProprio` in aggiunta, poi l'unificazione in un solo
+`messaggio` cross-referenziato): rende ogni nodo un'unità autosufficiente,
+prima e dopo il possesso, eliminando alla radice la distinzione fra "questo
+nodo" e "chi lo richiede/chi richiede lui" che aveva causato tre bug diversi
+nella stessa sessione (`testo` orfano, indizio scritto sul nodo sbagliato,
+fratelli indistinguibili). Il prezzo è che ogni nodo "da trovare" ora ha
+bisogno del proprio `testo` per avere un indizio: nodi come "cacciavite" o
+"Scotch", che prima ricevevano il loro indizio per attraversamento da un
+prerequisito (es. "Inizio" → "Svita cose" per cacciavite), oggi non hanno
+più nulla scritto nel proprio `testo` e mostrano il fallback generico "Trova
+questo oggetto" finché il master non gliene scrive uno — **non risolto
+automaticamente**: spostare "Svita cose" da "Inizio" a `cacciavite.testo`
+avrebbe richiesto una scelta editoriale (è un indizio per riconoscere il
+cacciavite, o un'istruzione per il passo dopo?) che non mi competeva
+prendere da solo sui dati già pubblicati del committente.
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare
