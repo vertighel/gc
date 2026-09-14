@@ -1,4 +1,4 @@
-# Stato attuale (versione 13)
+# Stato attuale (versione 14)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -50,9 +50,11 @@ della pagina.
 
 - All'apertura, **scarica la caccia già pubblicata** e la mostra in un
   elenco. In `caccia-1` ogni riga ha un pulsante "Rimuovi"; in `caccia-2`
-  l'elenco è di sola lettura e rimanda alla pagina dedicata "Collega gli
-  elementi" per modificare, collegare o rimuovere un nodo (lì la rimozione
-  è bloccata se un altro nodo lo richiede ancora).
+  l'elenco è di sola lettura, **ordinato per tipo** (prima tutti gli
+  indizi, poi tutti gli oggetti, poi tutte le ricompense) e rimanda alla
+  pagina dedicata "Collega gli elementi" per modificare, collegare o
+  rimuovere un nodo (lì la rimozione è bloccata se un altro nodo lo
+  richiede ancora).
 - **Registrazione di un nuovo oggetto dal vivo**: 20 fotogrammi
   dell'oggetto (muovendosi per ~6 secondi), poi 10 fotogrammi dei dintorni
   come negativi. La soglia di riconoscimento si calcola da soli
@@ -103,8 +105,9 @@ della pagina.
   — che si aggiorna mentre si scrive il nome; il nome dell'oggetto è
   l'unico campo modificabile per un oggetto: soglia, foto di riferimento e
   posizione restano legate alla registrazione dal vivo), e un elenco di
-  checkbox "Richiede" verso gli altri elementi. Permette anche di
-  aggiungere una nuova ricompensa scollegata e di importare le bozze
+  checkbox "Richiede" verso gli altri elementi, **anch'esso ordinato per
+  tipo** (stesso ordine indizio/oggetto/ricompensa delle colonne). Permette
+  anche di aggiungere una nuova ricompensa scollegata e di importare le bozze
   salvate come nuovi nodi indizio. Prima di pubblicare controlla che i
   collegamenti non formino un ciclo (bloccando con un messaggio se lo
   trova) e scrive sia `caccia.json` sia `bozze.json` (tolte le bozze

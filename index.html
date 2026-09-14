@@ -218,7 +218,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 13)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 14)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -718,6 +718,10 @@ const ICONA_NODO = { indizio: "📝", oggetto: "📷", ricompensa: "🏆" };
 // Il campo che fa da "titolo" cambia nome secondo il tipo di nodo.
 const CAMPO_TITOLO = { indizio: "titolo", oggetto: "nome", ricompensa: "nome" };
 const titoloDi = n => n[CAMPO_TITOLO[n.tipo]] || "";
+// Ordine con cui i tipi si susseguono ovunque si elencano nodi misti: "Caccia
+// pubblicata", ed elenco "Richiede" di ogni scheda in "Collega gli elementi".
+const ORDINE_TIPO = ["indizio", "oggetto", "ricompensa"];
+const ordineTipo = tipo => ORDINE_TIPO.indexOf(tipo);
 
 // Colore della ricompensa: non più scelto a mano (niente più "Simbolo"), ma derivato
 // in modo deterministico dal nome, così lo stesso nome dà sempre lo stesso colore
@@ -741,7 +745,8 @@ function renderBase() {
   list.innerHTML = "";
   if (!M.base) return;
   if (inCaccia2(M.base)) {
-    for (const n of Object.values(M.base.nodi)) {
+    const nodiOrdinati = Object.values(M.base.nodi).sort((a, b) => ordineTipo(a.tipo) - ordineTipo(b.tipo));
+    for (const n of nodiOrdinati) {
       const li = document.createElement("li");
       const t = document.createElement("span");
       t.textContent = `${ICONA_NODO[n.tipo] || ""} ${titoloDi(n)}`;
@@ -1128,7 +1133,7 @@ function schedaNodo(id, ids) {
   card.append(cap);
 
   const req = document.createElement("div"); req.className = "linkreq";
-  const altri = ids.filter(x => x !== id);
+  const altri = ids.filter(x => x !== id).sort((a, b) => ordineTipo(L.nodi[a].tipo) - ordineTipo(L.nodi[b].tipo));
   if (!altri.length) {
     const none = document.createElement("span"); none.className = "none"; none.textContent = "Nessun altro elemento.";
     req.append(none);
