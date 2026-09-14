@@ -231,6 +231,47 @@ facile da riconoscere (meno "indovinello", più "eccolo") — ma è il master a
 scegliere di accenderlo per un nodo specifico, non un comportamento imposto
 di default.
 
+## Perché `testo` è sparito: un solo campo `messaggio`, rivedibile dal bottino
+
+Terzo giro sullo stesso nodo del problema (vedi sopra "Con thumb"): il
+committente ha notato che `messaggio` si vedeva una volta sola, alla
+schermata di sblocco, e mai più — e che nei suoi dati reali stava già
+scrivendo quasi la stessa cosa sia in `testo` sia in `messaggio` (cacciavite:
+`messaggio` "hai svitato. ora evidenzialo con due colori diversi", `testo`
+"evidenziami con due evidenziatori diversi" — due modi di dire la stessa
+cosa, nello stesso momento: "l'hai appena preso, ecco cosa fare ora"). Sua
+proposta, adottata: eliminare `testo`, rendere `messaggio` rivedibile in
+qualunque momento toccando l'oggetto nel bottino (`apriRicordo()`), e
+lasciare che sia lui stesso — non un campo separato — a fare da indizio per
+chi richiede quel nodo (`indiziPer()`/`etichettaOggetto()` ora leggono
+`messaggio` invece di `testo`).
+
+Perché non ho proposto io questa soluzione prima (avevo suggerito un nuovo
+campo `indizioProprio`): il committente ha notato una ridondanza che io non
+avevo visto, osservando i propri dati reali — la mia proposta avrebbe
+aggiunto un terzo campo, la sua ne toglie uno. Non è la prima volta in questa
+sessione che l'uso reale del pannello master smaschera un difetto del
+modello dati più in fretta di quanto l'avessi progettato a tavolino: vedi
+anche il flag `daValidare` scambiato e il `testo` orfano, sempre più sopra.
+
+**Limite noto, esplicitamente accettato**: due nodi "fratelli" con lo stesso
+prerequisito (stesso `richiede`) mostrano comunque lo stesso `messaggio` come
+indizio testuale, perché quell'indizio arriva dal prerequisito condiviso, non
+da loro stessi — non risolto da questo cambiamento. A distinguerli oggi è
+solo la foto propria (vedi sopra), che già si somma correttamente. Se in
+futuro servirà un indizio testuale diverso per ciascuno, sarà un'aggiunta a
+parte, non ancora richiesta.
+
+**Dati esistenti**: i 6 nodi già pubblicati avevano sia `testo` sia
+`messaggio` scritti. Il campo `testo` è stato assorbito in `messaggio` con
+una regola meccanica (se `messaggio` era vuoto, diventa `testo`; se
+`testo` era pieno e diverso da `messaggio`, viene accodato su un paragrafo
+nuovo; altrimenti `messaggio` resta invariato) e il file `caccia.json` è
+stato aggiornato e pubblicato direttamente via commit, non dal pannello
+master — coerente con quanto già previsto in `CLAUDE.md` ("sono comunque
+file veri nel repository: se li modifichi a mano e fai push, funziona lo
+stesso").
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare

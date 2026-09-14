@@ -129,6 +129,8 @@
   .inventory h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
   .inventory ul { list-style: none; margin: 0; padding: 0; }
   .inventory li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+  .inventory li.clickable { cursor: pointer; }
+  .inventory li.clickable:hover, .inventory li.clickable:focus-visible { color: var(--smalto); }
   .inventory .mini { width: 40px; height: 40px; border-radius: 50%; flex: none; overflow: hidden; box-shadow: inset 0 0 0 3px rgba(255,255,255,.4), inset 0 0 0 4px var(--smalto); }
   .foot { text-align: center; margin-top: 18px; }
 
@@ -158,6 +160,7 @@
      vede solo un dettaglio ritagliato. */
   .lightbox { position: fixed; inset: 0; background: rgba(14,36,64,.88); display: grid; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
   .lightbox img { max-width: min(92vw, 480px); max-height: 80vh; border-radius: 12px; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  .lightbox .current { margin: 0; max-width: min(92vw, 420px); cursor: auto; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   .linknode .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
   .linknode .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
@@ -257,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 21)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 22)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -748,6 +751,27 @@ function apriAnteprima(src) {
   document.body.append(overlay);
 }
 
+// Rivede il "messaggio" di un oggetto già in bottino: stessa scheda della
+// schermata di sblocco, solo richiamabile in qualunque momento toccando
+// l'oggetto — è anche l'indizio per il passo successivo (vedi indiziPer()),
+// quindi ispezionare il bottino serve anche a ritrovare la strada.
+function apriRicordo(n) {
+  const overlay = document.createElement("div"); overlay.className = "lightbox";
+  const card = document.createElement("div"); card.className = "current";
+  const item = document.createElement("div"); item.className = "unlocked-item";
+  const medal = document.createElement("div"); medal.className = "medal";
+  medaglia(medal, n);
+  const testo = document.createElement("div");
+  const h3 = document.createElement("h3"); h3.textContent = n.nome;
+  const p = document.createElement("p"); p.textContent = n.messaggio || "";
+  testo.append(h3, p);
+  item.append(medal, testo);
+  card.append(item);
+  overlay.append(card);
+  overlay.onclick = () => overlay.remove();
+  document.body.append(overlay);
+}
+
 function thumbEl(immagine) {
   const wrap = document.createElement("span"); wrap.className = "thumb";
   const img = document.createElement("img"); img.src = immagine || ""; wrap.append(img);
@@ -944,13 +968,11 @@ function corpoNodoCampi(n, id, ids, notify) {
   };
   frag.append(flags);
 
-  const labelTesto = document.createElement("label"); labelTesto.textContent = "Indizio (aiuta a trovare ciò che richiede questo elemento — non questo elemento stesso)";
-  const testo = document.createElement("textarea"); testo.value = n.testo || "";
-  testo.oninput = () => { n.testo = testo.value; };
-  labelTesto.append(testo);
-  frag.append(labelTesto);
-
-  const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio alla propria schermata di sblocco";
+  // Un solo campo per "cosa succede quando lo trovi": si vede nella schermata di
+  // sblocco (una volta), resta rivedibile toccando l'oggetto nel bottino (sempre),
+  // e — se questo nodo è un "richiede" di qualcun altro — è anche l'indizio che
+  // quell'altro nodo mostra mentre è ancora da trovare (vedi indiziPer()).
+  const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio (si vede quando lo trovi, resta nel bottino, ed è l'indizio per chi richiede questo elemento)";
   const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
   messaggio.oninput = () => { n.messaggio = messaggio.value; };
   labelMsg.append(messaggio);
@@ -1271,7 +1293,7 @@ function initMaster() {
     const id = newId("n");
     const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
     L.nodi[id] = {
-      nome, testo: "", messaggio: "",
+      nome, messaggio: "",
       immagine: M.immagine,
       pos: M.pos, neg: M.neg, soglia: +M.cal.soglia.toFixed(4),
       luogo: M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null,
@@ -1379,14 +1401,15 @@ function chiudi(nodi, posseduti) {
   return ok;
 }
 
-// I nodi collegati direttamente a un oggetto che portano un indizio: è il "testo"
-// mostrato al giocatore mentre lo cerca.
+// I nodi collegati direttamente a un oggetto che portano un indizio: il loro
+// stesso "messaggio" (lo stesso che vedono anche loro nella propria schermata
+// di sblocco e nel proprio bottino — un solo campo, due usi).
 function indiziPer(oggettoId) {
   const n = game.nodi[oggettoId];
-  return (n.richiede || []).map(id => game.nodi[id]).filter(x => x && x.testo);
+  return (n.richiede || []).map(id => game.nodi[id]).filter(x => x && x.messaggio);
 }
 function etichettaOggetto(id) {
-  const testi = indiziPer(id).map(i => i.testo).filter(Boolean);
+  const testi = indiziPer(id).map(i => i.messaggio).filter(Boolean);
   return testi.length ? testi.join(" — ") : "Trova questo oggetto";
 }
 
@@ -1516,10 +1539,13 @@ function renderInventory(st) {
   $("p-inv-list").innerHTML = "";
   for (const r of st.bottino) {
     const li = document.createElement("li");
+    li.tabIndex = 0; li.className = "clickable";
     const mini = document.createElement("span"); mini.className = "mini";
     medaglia(mini, r);
     const name = document.createElement("span"); name.textContent = r.nome;
     li.append(mini, name);
+    li.onclick = () => apriRicordo(r);
+    li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); apriRicordo(r); } };
     $("p-inv-list").append(li);
   }
 }
