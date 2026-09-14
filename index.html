@@ -33,6 +33,14 @@
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
   [hidden] { display: none !important; }
 
+  /* Su schermo largo (computer) la colonna si allarga: di poco ovunque, molto di più
+     nella pagina "Collega gli elementi" (classe "wide" su body), per fare stare le
+     tre colonne indizi/oggetti/ricompense affiancate. */
+  @media (min-width: 700px) {
+    main { max-width: 640px; }
+    body.wide main { max-width: 1180px; }
+  }
+
   .bar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 18px; }
   .bar-right { display: flex; align-items: center; gap: 10px; }
   .inbox-btn { position: relative; border: 0; background: none; font-size: 22px; line-height: 1; padding: 6px; cursor: pointer; }
@@ -101,8 +109,7 @@
   .reward { text-align: center; padding: 8px 0 20px; }
   .medal {
     width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%;
-    background: var(--giallo); display: grid; place-items: center; font-size: 62px;
-    box-shadow: inset 0 0 0 7px var(--giallo), inset 0 0 0 9px var(--smalto), 0 4px 0 #BE9118;
+    box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
     animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
   }
   @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -112,7 +119,7 @@
   .inventory h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
   .inventory ul { list-style: none; margin: 0; padding: 0; }
   .inventory li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
-  .inventory .mini { width: 40px; height: 40px; border-radius: 50%; background: var(--giallo); display: grid; place-items: center; font-size: 20px; box-shadow: inset 0 0 0 3px var(--giallo), inset 0 0 0 4px var(--smalto); }
+  .inventory .mini { width: 40px; height: 40px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 3px rgba(255,255,255,.4), inset 0 0 0 4px var(--smalto); }
   .foot { text-align: center; margin-top: 18px; }
 
   /* Master: i passi sono davvero una sequenza, quindi una linea li collega */
@@ -145,6 +152,13 @@
   .linkreq label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 15px; }
   .linkreq label input { width: 18px; height: 18px; accent-color: var(--smalto); margin: 0; }
   .linkreq .none { color: var(--grigio); font-size: 15px; }
+  .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), 0 0 0 1.5px var(--smalto); }
+
+  /* Colonne allineate per tipo, nella pagina "Collega gli elementi": una sotto l'altra
+     sul telefono, affiancate quando c'è spazio (vedi anche body.wide più sotto). */
+  #m-link-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 4px 24px; align-items: start; }
+  .linkcol h3 { font: 700 19px/1 var(--display); color: var(--smalto); margin: 22px 0 4px; }
+  .linkcol:first-child h3 { margin-top: 0; }
   details.linknew { margin-top: 18px; border-top: 2px solid #C9D0D7; padding-top: 12px; }
   details.linknew summary { cursor: pointer; font-weight: 600; color: var(--smalto); }
 
@@ -204,7 +218,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 12)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 13)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -359,9 +373,6 @@
         <label>Nome della ricompensa
           <input type="text" id="m-rname" value="Chiave del tempo">
         </label>
-        <label>Simbolo della ricompensa
-          <input type="text" id="m-remoji" value="🗝️">
-        </label>
         <label>Messaggio al ritrovamento
           <textarea id="m-rmsg">Hai fermato le lancette. Tieni questa chiave: servirà.</textarea>
         </label>
@@ -427,9 +438,6 @@
           <summary>Aggiungi una nuova ricompensa</summary>
           <label>Nome
             <input type="text" id="m-link-rname" placeholder="Es. Chiave del tempo">
-          </label>
-          <label>Simbolo
-            <input type="text" id="m-link-remoji" value="★">
           </label>
           <label>Messaggio
             <textarea id="m-link-rmsg"></textarea>
@@ -711,6 +719,23 @@ const ICONA_NODO = { indizio: "📝", oggetto: "📷", ricompensa: "🏆" };
 const CAMPO_TITOLO = { indizio: "titolo", oggetto: "nome", ricompensa: "nome" };
 const titoloDi = n => n[CAMPO_TITOLO[n.tipo]] || "";
 
+// Colore della ricompensa: non più scelto a mano (niente più "Simbolo"), ma derivato
+// in modo deterministico dal nome, così lo stesso nome dà sempre lo stesso colore
+// senza dover salvare nulla in più nella caccia pubblicata.
+function coloreRicompensa(nome) {
+  let h = 0;
+  for (let i = 0; i < (nome || "").length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return hslToRgb(hue, 65, 55);
+}
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return `rgb(${Math.round(f(0) * 255)}, ${Math.round(f(8) * 255)}, ${Math.round(f(4) * 255)})`;
+}
+
 function renderBase() {
   const list = $("m-base-list");
   list.innerHTML = "";
@@ -820,7 +845,6 @@ function buildGame() {
       g.nodi[rid] = {
         tipo: "ricompensa",
         nome: $("m-rname").value.trim() || "Ricompensa",
-        simbolo: $("m-remoji").value.trim() || "★",
         messaggio: $("m-rmsg").value.trim(),
         richiede: [oid]
       };
@@ -850,7 +874,6 @@ function buildGame() {
       tappe: [{ indizio: $("m-clue").value.trim() || "Trova l'oggetto", oggetto: oid }],
       ricompensa: {
         nome: $("m-rname").value.trim() || "Ricompensa",
-        simbolo: $("m-remoji").value.trim() || "★",
         messaggio: $("m-rmsg").value.trim()
       }
     });
@@ -892,7 +915,7 @@ function migraANodi(g) {
     nodi[iid] = { tipo: "indizio", titolo: m.titolo, testo: m.tappe[0].indizio, immagine: null, richiede: [] };
     nodi[oid] = { tipo: "oggetto", nome: o.nome, soglia: o.soglia, pos: o.pos, neg: o.neg, luogo: o.luogo, richiede: [iid] };
     const rid = newId("n");
-    nodi[rid] = { tipo: "ricompensa", nome: m.ricompensa.nome, simbolo: m.ricompensa.simbolo, messaggio: m.ricompensa.messaggio, richiede: [oid] };
+    nodi[rid] = { tipo: "ricompensa", nome: m.ricompensa.nome, messaggio: m.ricompensa.messaggio, richiede: [oid] };
   }
   return { formato: "caccia-2", creato: new Date().toISOString(), nodi };
 }
@@ -1022,6 +1045,14 @@ function linkRefresh() {
   renderLinkBozze();
 }
 
+// Tre colonne allineate, una per tipo: più facile confrontare indizi, oggetti e
+// ricompense fra loro invece di scorrere un unico elenco misto.
+const COLONNE_LINK = [
+  { tipo: "indizio", titolo: "Indizi" },
+  { tipo: "oggetto", titolo: "Oggetti" },
+  { tipo: "ricompensa", titolo: "Ricompense" }
+];
+
 function renderLinkList() {
   const wrap = $("m-link-list");
   wrap.innerHTML = "";
@@ -1030,77 +1061,94 @@ function renderLinkList() {
     const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessun elemento ancora.";
     wrap.append(p); return;
   }
-  for (const id of ids) {
-    const n = L.nodi[id];
-    const card = document.createElement("div"); card.className = "linknode";
-
-    const head = document.createElement("div"); head.className = "head";
-    const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
-    const icon = document.createElement("span"); icon.textContent = ICONA_NODO[n.tipo] || "";
-    const campo = CAMPO_TITOLO[n.tipo];
-    const titolo = document.createElement("input"); titolo.type = "text"; titolo.value = n[campo] || "";
-    titolo.oninput = () => { n[campo] = titolo.value; };
-    titolo.onchange = () => { n[campo] = titolo.value.trim(); renderLinkList(); };
-    titlewrap.append(icon, titolo);
-    const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
-    del.onclick = () => {
-      const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
-      if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => titoloDi(o)).join(", ")}.`); return; }
-      if (!confirm(`Rimuovere "${titoloDi(n)}"?`)) return;
-      delete L.nodi[id];
-      renderLinkList();
-    };
-    head.append(titlewrap, del);
-    card.append(head);
-
-    if (n.tipo === "indizio") {
-      const label = document.createElement("label"); label.textContent = "Testo dell'indizio";
-      const testo = document.createElement("textarea"); testo.value = n.testo || "";
-      testo.oninput = () => { n.testo = testo.value; };
-      label.append(testo);
-      card.append(label);
-    } else if (n.tipo === "ricompensa") {
-      const labelSimbolo = document.createElement("label"); labelSimbolo.textContent = "Simbolo";
-      const simbolo = document.createElement("input"); simbolo.type = "text"; simbolo.value = n.simbolo || "";
-      simbolo.oninput = () => { n.simbolo = simbolo.value; };
-      labelSimbolo.append(simbolo);
-      card.append(labelSimbolo);
-
-      const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio al ritrovamento";
-      const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
-      messaggio.oninput = () => { n.messaggio = messaggio.value; };
-      labelMsg.append(messaggio);
-      card.append(labelMsg);
+  for (const { tipo, titolo } of COLONNE_LINK) {
+    const col = document.createElement("div"); col.className = "linkcol";
+    const h3 = document.createElement("h3"); h3.textContent = `${ICONA_NODO[tipo]} ${titolo}`;
+    col.append(h3);
+    const diQuestoTipo = ids.filter(id => L.nodi[id].tipo === tipo);
+    if (!diQuestoTipo.length) {
+      const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessuno ancora.";
+      col.append(p);
     }
-    // Oggetto: soglia, foto di riferimento e posizione restano legate alla registrazione
-    // dal vivo ("Registra un nuovo oggetto" nel pannello master); qui si modifica solo il nome.
-
-    const cap = document.createElement("p"); cap.className = "hint"; cap.style.margin = "8px 0 4px"; cap.textContent = "Richiede:";
-    card.append(cap);
-
-    const req = document.createElement("div"); req.className = "linkreq";
-    const altri = ids.filter(x => x !== id);
-    if (!altri.length) {
-      const none = document.createElement("span"); none.className = "none"; none.textContent = "Nessun altro elemento.";
-      req.append(none);
-    }
-    for (const oid of altri) {
-      const o = L.nodi[oid];
-      const label = document.createElement("label");
-      const cb = document.createElement("input"); cb.type = "checkbox";
-      cb.checked = (n.richiede || []).includes(oid);
-      cb.onchange = () => {
-        n.richiede = n.richiede || [];
-        if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
-        else n.richiede = n.richiede.filter(x => x !== oid);
-      };
-      const txt = document.createElement("span"); txt.textContent = `${ICONA_NODO[o.tipo] || ""} ${titoloDi(o)}`;
-      label.append(cb, txt);
-      req.append(label);
-    }
-    card.append(req);
-    wrap.append(card);
+    for (const id of diQuestoTipo) col.append(schedaNodo(id, ids));
+    wrap.append(col);
   }
+}
+
+function schedaNodo(id, ids) {
+  const n = L.nodi[id];
+  const card = document.createElement("div"); card.className = "linknode";
+
+  const head = document.createElement("div"); head.className = "head";
+  const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
+  const icon = document.createElement("span"); icon.textContent = ICONA_NODO[n.tipo] || "";
+  const campo = CAMPO_TITOLO[n.tipo];
+  const titolo = document.createElement("input"); titolo.type = "text"; titolo.value = n[campo] || "";
+  let swatch = null;
+  if (n.tipo === "ricompensa") {
+    swatch = document.createElement("span"); swatch.className = "swatch";
+    swatch.style.background = coloreRicompensa(n.nome);
+    swatch.title = "Colore della ricompensa: calcolato dal nome, non si sceglie a mano.";
+  }
+  titolo.oninput = () => {
+    n[campo] = titolo.value;
+    if (swatch) swatch.style.background = coloreRicompensa(n.nome);
+  };
+  titolo.onchange = () => { n[campo] = titolo.value.trim(); renderLinkList(); };
+  titlewrap.append(icon, titolo);
+  if (swatch) titlewrap.append(swatch);
+  const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
+  del.onclick = () => {
+    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => titoloDi(o)).join(", ")}.`); return; }
+    if (!confirm(`Rimuovere "${titoloDi(n)}"?`)) return;
+    delete L.nodi[id];
+    renderLinkList();
+  };
+  head.append(titlewrap, del);
+  card.append(head);
+
+  if (n.tipo === "indizio") {
+    const label = document.createElement("label"); label.textContent = "Testo dell'indizio";
+    const testo = document.createElement("textarea"); testo.value = n.testo || "";
+    testo.oninput = () => { n.testo = testo.value; };
+    label.append(testo);
+    card.append(label);
+  } else if (n.tipo === "ricompensa") {
+    const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio al ritrovamento";
+    const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
+    messaggio.oninput = () => { n.messaggio = messaggio.value; };
+    labelMsg.append(messaggio);
+    card.append(labelMsg);
+  }
+  // Oggetto: soglia, foto di riferimento e posizione restano legate alla registrazione
+  // dal vivo ("Registra un nuovo oggetto" nel pannello master); qui si modifica solo il nome.
+
+  const cap = document.createElement("p"); cap.className = "hint"; cap.style.margin = "8px 0 4px"; cap.textContent = "Richiede:";
+  card.append(cap);
+
+  const req = document.createElement("div"); req.className = "linkreq";
+  const altri = ids.filter(x => x !== id);
+  if (!altri.length) {
+    const none = document.createElement("span"); none.className = "none"; none.textContent = "Nessun altro elemento.";
+    req.append(none);
+  }
+  for (const oid of altri) {
+    const o = L.nodi[oid];
+    const label = document.createElement("label");
+    const cb = document.createElement("input"); cb.type = "checkbox";
+    cb.checked = (n.richiede || []).includes(oid);
+    cb.onchange = () => {
+      n.richiede = n.richiede || [];
+      if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
+      else n.richiede = n.richiede.filter(x => x !== oid);
+    };
+    const txt = document.createElement("span"); txt.textContent = `${ICONA_NODO[o.tipo] || ""} ${titoloDi(o)}`;
+    label.append(cb, txt);
+    req.append(label);
+  }
+  card.append(req);
+  return card;
 }
 
 function renderLinkBozze() {
@@ -1276,8 +1324,8 @@ function initMaster() {
     const nome = $("m-link-rname").value.trim();
     if (!nome) { setStatus($("m-link-status"), "Dai un nome alla ricompensa.", "ko"); return; }
     const id = newId("n");
-    L.nodi[id] = { tipo: "ricompensa", nome, simbolo: $("m-link-remoji").value.trim() || "★", messaggio: $("m-link-rmsg").value.trim(), richiede: [] };
-    $("m-link-rname").value = ""; $("m-link-remoji").value = "★"; $("m-link-rmsg").value = "";
+    L.nodi[id] = { tipo: "ricompensa", nome, messaggio: $("m-link-rmsg").value.trim(), richiede: [] };
+    $("m-link-rname").value = ""; $("m-link-rmsg").value = "";
     renderLinkList();
     setStatus($("m-link-status"), "Ricompensa aggiunta: collegala qui sopra prima di pubblicare.", "ok");
   };
@@ -1462,7 +1510,7 @@ function renderInventory(st) {
   $("p-inv-list").innerHTML = "";
   for (const r of st.bottino) {
     const li = document.createElement("li");
-    const mini = document.createElement("span"); mini.className = "mini"; mini.textContent = r.simbolo;
+    const mini = document.createElement("span"); mini.className = "mini"; mini.style.background = coloreRicompensa(r.nome);
     const name = document.createElement("span"); name.textContent = r.nome;
     li.append(mini, name);
     $("p-inv-list").append(li);
@@ -1543,7 +1591,7 @@ function showReward(st) {
   const r = codaRicompense[0];
   for (const id of ["p-game", "p-todo", "p-news", "p-alldone"]) $(id).hidden = true;
   $("p-reward").hidden = false;
-  $("p-emoji").textContent = r.simbolo;
+  $("p-emoji").style.background = coloreRicompensa(r.nome);
   $("p-done").textContent = "Ricompensa sbloccata!";
   $("p-rname").textContent = r.nome;
   $("p-rmsg").textContent = r.messaggio;
@@ -1591,7 +1639,7 @@ async function shoot() {
       .filter(([id, n]) => n.tipo === "ricompensa" && dopoOk.has(id) && !primaOk.has(id))
       .map(([id, n]) => ({ id, ...n }));
     for (const rc of nuoveRicompense) {
-      st.bottino.push({ nome: rc.nome, simbolo: rc.simbolo, messaggio: rc.messaggio, ricompensa: rc.id, quando: new Date().toISOString() });
+      st.bottino.push({ nome: rc.nome, messaggio: rc.messaggio, ricompensa: rc.id, quando: new Date().toISOString() });
     }
     st.scelta = null;
     saveState(st);
@@ -1660,6 +1708,7 @@ function route() {
   $("view-master").hidden = !master;
   $("view-collega").hidden = !collega;
   $("view-player").hidden = master || collega;
+  document.body.classList.toggle("wide", collega);
   if (master || collega) initMaster(); else initPlayer();
 }
 window.addEventListener("hashchange", route);

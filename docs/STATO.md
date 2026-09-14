@@ -1,4 +1,4 @@
-# Stato attuale (versione 12)
+# Stato attuale (versione 13)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -61,9 +61,11 @@ della pagina.
   distintivo.
 - Pulsante "Prova il riconoscimento" per un test immediato con la
   fotocamera, mostrando il punteggio di somiglianza numerico.
-- Form per indizio, nome/simbolo/messaggio della ricompensa, e spunta per
+- Form per indizio, nome/messaggio della ricompensa, e spunta per
   richiedere la posizione (raggio fisso 100 m + margine sull'accuratezza
-  GPS riportata dal telefono, fino a 150 m).
+  GPS riportata dal telefono, fino a 150 m). Niente più campo "Simbolo":
+  il colore mostrato al giocatore (medaglia e bottino) si calcola da solo
+  dal nome della ricompensa, vedi più sotto.
 - **Pubblicazione diretta su GitHub**: un pannello di configurazione
   (aperto/chiuso con `<details>`) salva su questo telefono soltanto
   proprietario, repository, ramo e un token con permesso di scrittura
@@ -83,25 +85,38 @@ della pagina.
   ciascuna, finché non vengono importate dalla sezione seguente.
 - **Pagina "Collega gli elementi"** (`#master-collega`, raggiungibile con un
   pulsante dal pannello master, con un link "← Torna al pannello master"
-  per uscirne): pensata per un computer, non per il telefono. Se la caccia
-  pubblicata è ancora nel vecchio formato (`caccia-1`), mostra solo un
-  avviso e un pulsante esplicito "Passa al formato con collegamenti"
-  (azzera i progressi dei giocatori alla prossima pubblicazione, per questo
-  richiede una conferma a parte — non scatta mai dal normale "Registra un
-  nuovo oggetto"/"Pubblica su GitHub", che restano utilizzabili in
-  `caccia-1` finché questa scelta non viene fatta). Una volta nel nuovo
-  formato (`caccia-2`), mostra ogni indizio/oggetto/ricompensa esistente in
-  una scheda con: il titolo (nome dell'oggetto/ricompensa o titolo
-  dell'indizio) modificabile direttamente, il testo proprio del tipo
-  (testo dell'indizio; simbolo e messaggio della ricompensa — il nome
-  dell'oggetto è l'unico campo modificabile per un oggetto: soglia, foto
-  di riferimento e posizione restano legate alla registrazione dal vivo),
-  e un elenco di checkbox "Richiede" verso gli altri elementi. Permette
-  anche di aggiungere una nuova ricompensa scollegata e di importare le
-  bozze salvate come nuovi nodi indizio. Prima di pubblicare controlla che
-  i collegamenti non formino un ciclo (bloccando con un messaggio se lo
-  trova) e scrive sia `caccia.json` sia `bozze.json` (tolte le bozze appena
-  incorporate).
+  per uscirne): pensata per un computer, non per il telefono — su schermi
+  larghi (≥700px) la pagina si allarga di più delle altre (classe `wide`
+  su `<body>`) per fare posto a tre colonne allineate una per tipo
+  (Indizi / Oggetti / Ricompense); sul telefono le stesse colonne si
+  impilano una sotto l'altra. Se la caccia pubblicata è ancora nel vecchio
+  formato (`caccia-1`), mostra solo un avviso e un pulsante esplicito
+  "Passa al formato con collegamenti" (azzera i progressi dei giocatori
+  alla prossima pubblicazione, per questo richiede una conferma a parte —
+  non scatta mai dal normale "Registra un nuovo oggetto"/"Pubblica su
+  GitHub", che restano utilizzabili in `caccia-1` finché questa scelta non
+  viene fatta). Una volta nel nuovo formato (`caccia-2`), mostra ogni
+  indizio/oggetto/ricompensa in una scheda nella colonna del suo tipo, con:
+  il titolo (nome dell'oggetto/ricompensa o titolo dell'indizio)
+  modificabile direttamente, il testo proprio del tipo (testo dell'indizio;
+  messaggio della ricompensa, con accanto un pallino colorato — vedi sotto
+  — che si aggiorna mentre si scrive il nome; il nome dell'oggetto è
+  l'unico campo modificabile per un oggetto: soglia, foto di riferimento e
+  posizione restano legate alla registrazione dal vivo), e un elenco di
+  checkbox "Richiede" verso gli altri elementi. Permette anche di
+  aggiungere una nuova ricompensa scollegata e di importare le bozze
+  salvate come nuovi nodi indizio. Prima di pubblicare controlla che i
+  collegamenti non formino un ciclo (bloccando con un messaggio se lo
+  trova) e scrive sia `caccia.json` sia `bozze.json` (tolte le bozze
+  appena incorporate).
+- **Colore della ricompensa**: non c'è più un campo "Simbolo" da scegliere
+  a mano. Il colore mostrato nella medaglia (schermata di sblocco) e nel
+  bottino si calcola da solo con un piccolo hash del nome della ricompensa
+  (funzione `coloreRicompensa()`, con conversione HSL → RGB per restare
+  sempre leggibile): stesso nome, sempre lo stesso colore, senza salvare
+  nulla in più in `caccia.json`. Le ricompense pubblicate prima di questo
+  cambiamento hanno ancora un campo `simbolo` nel JSON: resta lì inerte,
+  ignorato dal codice.
 
 ## Cosa esplicitamente NON fa, ad oggi
 
