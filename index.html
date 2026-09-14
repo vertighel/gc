@@ -311,23 +311,57 @@
     </header>
 
     <div class="current">
-      <h2>Caccia pubblicata</h2>
+      <h2>Registra un nuovo elemento</h2>
+      <div class="viewfinder" id="m-vf">
+        <video id="m-video" playsinline muted autoplay></video>
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+        <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
+      </div>
+      <p class="hint">Inquadra e muoviti piano per 6 secondi: da vicino, da lontano, di lato. Attiva il GPS.</p>
+      <div class="btnrow">
+        <button id="m-rec-pos" class="btn primary" disabled>Oggetto</button>
+        <button id="m-rec-neg" class="btn" disabled>Dintorni</button>
+      </div>
+
+      <p id="m-train-status" class="status" role="status"></p>
+      <div class="btnrow">
+        <button id="m-test" class="btn" disabled>Prova</button>
+        <button id="m-add" class="btn primary" disabled>Aggiungi</button>
+      </div>
+      <p id="m-test-status" class="status" role="status"></p>
+      <p id="m-add-status" class="status" role="status"></p>
+    </div>
+    
+    <div class="current">
+      <h2>Elementi</h2>
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
       <ul id="m-panel-list" class="baselist"></ul>
       <button id="m-base-retry" class="link" hidden>Riprova</button>
     </div>
 
     <div class="current">
+      <h2>Collega gli elementi</h2>
+      <p class="hint">Modifica Nome, foto, flag, testi e collegamenti di ogni elemento.</p>
+      <a class="btn" href="#master-collega">Apri "Collega gli elementi"</a>
+    </div>
+
+    <div class="current">
       <h2>Messaggi</h2>
-      <p class="hint">Un messaggio pubblico visto da tutti i giocatori, a parte dagli oggetti della caccia.</p>
+      <p class="hint">Invia un messaggio pubblico visto da tutti i giocatori.</p>
       <ul id="m-msg-list" class="baselist"></ul>
       <textarea id="m-msg-text" placeholder="Scrivi un annuncio per tutti…"></textarea>
       <button id="m-msg-send" class="btn primary" disabled>Pubblica messaggio</button>
       <p id="m-msg-status" class="status" role="status"></p>
+    </div>
 
       <details id="m-cfg">
         <summary id="m-cfg-summary">Configura la pubblicazione su GitHub</summary>
-        <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono. Vale sia per i messaggi qui sopra sia per pubblicare la caccia da "Collega gli elementi".</p>
+        <p class="hint">Serve una sola volta per telefono. Crea su
+        GitHub, in Settings → Developer settings → Fine-grained
+        tokens, un token limitato a questo repository con permesso
+        Contents: Read and write. Resta salvato solo su questo
+        telefono. Vale sia per i messaggi qui sopra sia per pubblicare
+        la caccia da "Collega gli elementi".</p>
         <label>Utente o organizzazione GitHub
           <input type="text" id="cfg-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
         </label>
@@ -344,35 +378,7 @@
         <button id="cfg-clear" class="link">Dimentica il token da questo telefono</button>
         <p id="cfg-status" class="status" role="status"></p>
       </details>
-    </div>
-
-    <div class="current">
-      <h2>Collega gli elementi</h2>
-      <p class="hint">Nome, foto, flag, testi e collegamenti di ogni oggetto si modificano lì, ed è anche da lì che si pubblica la caccia.</p>
-      <a class="btn" href="#master-collega">Apri "Collega gli elementi"</a>
-    </div>
-
-    <div class="current">
-      <h2>Registra un nuovo oggetto</h2>
-      <div class="viewfinder" id="m-vf">
-        <video id="m-video" playsinline muted autoplay></video>
-        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-        <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
-      </div>
-      <p class="hint">Inquadra l'oggetto e muoviti piano per 6 secondi: da vicino, da lontano, un po' di lato. Serve sempre anche la posizione: attiva il GPS.</p>
-      <div class="btnrow">
-        <button id="m-rec-pos" class="btn primary" disabled>Oggetto</button>
-        <button id="m-rec-neg" class="btn" disabled>Dintorni</button>
-      </div>
-      <p class="hint">"Oggetto" registra 20 fotogrammi dell'oggetto e uno scatto per la miniatura; "Dintorni" registra 10 fotogrammi di ciò che c'è intorno, per non confonderli.</p>
-      <p id="m-train-status" class="status" role="status"></p>
-      <div class="btnrow">
-        <button id="m-test" class="btn" disabled>Prova</button>
-        <button id="m-add" class="btn primary" disabled>Aggiungi</button>
-      </div>
-      <p id="m-test-status" class="status" role="status"></p>
-      <p id="m-add-status" class="status" role="status"></p>
-    </div>
+    
   </section>
 
   <!-- ================= COLLEGA GLI ELEMENTI ================= -->
@@ -396,26 +402,6 @@
 
       <button id="m-link-publish" class="btn primary" disabled>Pubblica la caccia</button>
       <p id="m-link-status" class="status" role="status"></p>
-
-      <details id="m-cfg2">
-        <summary id="m-cfg2-summary">Configura la pubblicazione su GitHub</summary>
-        <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono. Stessa configurazione usata dal pannello master per i messaggi.</p>
-        <label>Utente o organizzazione GitHub
-          <input type="text" id="cfg2-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
-        </label>
-        <label>Nome del repository
-          <input type="text" id="cfg2-repo" placeholder="gc" autocapitalize="off" autocorrect="off">
-        </label>
-        <label>Ramo
-          <input type="text" id="cfg2-branch" placeholder="main" autocapitalize="off" autocorrect="off">
-        </label>
-        <label>Token
-          <input type="password" id="cfg2-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
-        </label>
-        <button id="cfg2-save" class="btn">Salva configurazione</button>
-        <button id="cfg2-clear" class="link">Dimentica il token da questo telefono</button>
-        <p id="cfg2-status" class="status" role="status"></p>
-      </details>
 
       <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
     </div>
@@ -641,14 +627,14 @@ function ghConfigStatus() {
 
 // Scrive un file nel repository tramite l'API di GitHub (crea o aggiorna).
 // path: percorso del file nel repository. content: stringa da scrivere. commitMsg: messaggio del commit.
-// statusEl: elemento dove mostrare l'esito. cfgId: quale pannello di configurazione
-// aprire se manca (ce n'è una copia sia nel pannello master sia in "Collega gli
-// elementi", stesso `gh-config` in localStorage). Ritorna true/false.
+// statusEl: elemento dove mostrare l'esito. cfgId: id del pannello di configurazione
+// da aprire se manca (un solo pannello, nel pannello master — vedi wireGhConfigPanel()).
+// Ritorna true/false.
 async function ghPutFile(path, content, commitMsg, statusEl, cfgId = "m-cfg") {
   const c = ghConfig();
   if (!c || !c.owner || !c.repo || !c.token) {
-    $(cfgId).open = true;
-    setStatus(statusEl, "Configura prima la pubblicazione qui sotto.", "ko");
+    if ($(cfgId)) $(cfgId).open = true;
+    setStatus(statusEl, "Configura prima la pubblicazione su GitHub dal pannello master.", "ko");
     return false;
   }
   const branch = c.branch || "main";
@@ -826,7 +812,7 @@ async function publishGame(statusEl) {
   const ciclo = trovaCiclo(L.nodi);
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
   const g = currentGame();
-  const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl, "m-cfg2");
+  const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) { M.base = g; $("m-formato").value = g.formato; renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh(); }
   return ok;
 }
@@ -934,10 +920,10 @@ function schedaNodo(id, ids) {
 }
 
 // La configurazione della pubblicazione su GitHub è un concetto a parte dal
-// "pubblicare la caccia": stesso gh-config in localStorage, ma un pannello
-// duplicato (id diversi) sia nel pannello master (serve ai messaggi) sia in
-// "Collega gli elementi" (serve a pubblicare la caccia), così ognuna delle due
-// pagine è autosufficiente senza dover saltare all'altra per configurarla.
+// "pubblicare la caccia": stesso gh-config in localStorage, un solo pannello
+// nel pannello master (serve sia ai messaggi sia, da "Collega gli elementi",
+// a pubblicare la caccia — vedi ghPutFile()). Presa come oggetto di id
+// invece che pensata solo per questo, nel caso serva ancora una copia altrove.
 function wireGhConfigPanel(p) {
   const cfg = ghConfig();
   if (cfg) { $(p.owner).value = cfg.owner || ""; $(p.repo).value = cfg.repo || ""; $(p.branch).value = cfg.branch || ""; }
@@ -965,7 +951,6 @@ function initMaster() {
   $("m-base-retry").onclick = loadBase;
 
   wireGhConfigPanel({ owner: "cfg-owner", repo: "cfg-repo", branch: "cfg-branch", token: "cfg-token", save: "cfg-save", clear: "cfg-clear", status: "cfg-status" });
-  wireGhConfigPanel({ owner: "cfg2-owner", repo: "cfg2-repo", branch: "cfg2-branch", token: "cfg2-token", save: "cfg2-save", clear: "cfg2-clear", status: "cfg2-status" });
   ghConfigStatus();
 
   $("m-rec-pos").onclick = async () => {
