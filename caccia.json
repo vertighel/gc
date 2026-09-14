@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-14T13:35:06.454Z",
+  "creato": "2026-09-14T13:44:30.903Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -421,7 +421,7 @@
         "lon": 11.8687877,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
@@ -565,7 +565,7 @@
         "lon": 11.8687283,
         "raggio": 100
       },
-      "daValidare": false,
+      "daValidare": true,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
