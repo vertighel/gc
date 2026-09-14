@@ -112,7 +112,7 @@
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
     animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
   }
-  .medal img, .mini img, .thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .medal img, .mini img, .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
   .done { font: 600 20px/1 var(--display); color: var(--verde); margin: 0 0 14px; }
 
@@ -132,16 +132,6 @@
   .inventory .mini { width: 40px; height: 40px; border-radius: 50%; flex: none; overflow: hidden; box-shadow: inset 0 0 0 3px rgba(255,255,255,.4), inset 0 0 0 4px var(--smalto); }
   .foot { text-align: center; margin-top: 18px; }
 
-  /* Master: i passi sono davvero una sequenza, quindi una linea li collega */
-  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
-  .step { position: relative; padding: 0 0 30px 34px; border-left: 3px solid var(--smalto); margin-left: 14px; }
-  .step:last-child { border-left-color: transparent; }
-  .step h2 { font: 700 26px/1 var(--display); color: var(--smalto); margin: 0 0 12px; }
-  .step h2::before {
-    counter-increment: s; content: counter(s);
-    position: absolute; left: -17px; top: -4px; width: 31px; height: 31px; border-radius: 50%;
-    background: var(--smalto); color: var(--bianco); display: grid; place-items: center; font-size: 18px;
-  }
   label { display: block; font-weight: 500; margin: 12px 0 0; }
   input[type=text], textarea {
     display: block; width: 100%; margin-top: 4px; font: inherit; padding: 10px 12px;
@@ -152,12 +142,24 @@
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
   .imgprev { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
 
-  .thumb { width: 44px; height: 44px; border-radius: 50%; flex: none; background: #ccd2d8; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), 0 0 0 1.5px var(--smalto); overflow: hidden; }
+  /* Due pulsanti sulla stessa riga (Oggetto/Dintorni, Prova/Aggiungi) */
+  .btnrow { display: flex; gap: 10px; }
+  .btnrow .btn { flex: 1; }
+  .btnrow .btn + .btn { margin-top: 0; }
+
+  .thumb {
+    width: 64px; height: 64px; border-radius: 50%; flex: none; cursor: zoom-in;
+    background: #ccd2d8; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), 0 0 0 1.5px var(--smalto); overflow: hidden;
+  }
+  .thumb:empty, .thumb:has(img[src=""]) { cursor: default; }
+  /* Ingrandisce una thumb al tocco/clic: leggibile anche quando nel pallino si
+     vede solo un dettaglio ritagliato. */
+  .lightbox { position: fixed; inset: 0; background: rgba(14,36,64,.88); display: grid; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
+  .lightbox img { max-width: min(92vw, 480px); max-height: 80vh; border-radius: 12px; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   .linknode .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
   .linknode .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
   .linknode .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
-  .linknode .head .linkname { font: 600 17px/1.3 var(--testo); }
   .linknode .head .link { color: var(--rosso); flex: none; }
   .linknode label { margin-top: 10px; }
   .flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
@@ -191,6 +193,7 @@
   .baselist { list-style: none; margin: 6px 0 0; padding: 0; }
   .baselist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid #DDE2E7; }
   .baselist .link { color: var(--rosso); flex: none; padding: 0; }
+  #m-panel-list li { justify-content: flex-start; align-items: center; }
   .testbar { background: var(--giallo); color: var(--smalto-scuro); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
   .testbar .link { color: var(--smalto-scuro); padding: 0; }
   .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
@@ -226,7 +229,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 15)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 16)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -310,12 +313,8 @@
     <div class="current">
       <h2>Caccia pubblicata</h2>
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
-      <div id="m-panel-list"></div>
+      <ul id="m-panel-list" class="baselist"></ul>
       <button id="m-base-retry" class="link" hidden>Riprova</button>
-      <label>Formato
-        <input type="text" id="m-formato">
-      </label>
-      <p class="hint">Cambialo solo per far ripartire tutti i giocatori da zero: progressi e bottino verranno azzerati.</p>
     </div>
 
     <div class="current">
@@ -325,65 +324,55 @@
       <textarea id="m-msg-text" placeholder="Scrivi un annuncio per tutti…"></textarea>
       <button id="m-msg-send" class="btn primary" disabled>Pubblica messaggio</button>
       <p id="m-msg-status" class="status" role="status"></p>
+
+      <details id="m-cfg">
+        <summary id="m-cfg-summary">Configura la pubblicazione su GitHub</summary>
+        <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono. Vale sia per i messaggi qui sopra sia per pubblicare la caccia da "Collega gli elementi".</p>
+        <label>Utente o organizzazione GitHub
+          <input type="text" id="cfg-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Nome del repository
+          <input type="text" id="cfg-repo" placeholder="gc" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Ramo
+          <input type="text" id="cfg-branch" placeholder="main" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Token
+          <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
+        </label>
+        <button id="cfg-save" class="btn">Salva configurazione</button>
+        <button id="cfg-clear" class="link">Dimentica il token da questo telefono</button>
+        <p id="cfg-status" class="status" role="status"></p>
+      </details>
     </div>
 
     <div class="current">
       <h2>Collega gli elementi</h2>
-      <p class="hint">Collegare con "Richiede" e modificare il testo di ogni oggetto si fa in una pagina dedicata, pensata per un computer.</p>
+      <p class="hint">Nome, foto, flag, testi e collegamenti di ogni oggetto si modificano lì, ed è anche da lì che si pubblica la caccia.</p>
       <a class="btn" href="#master-collega">Apri "Collega gli elementi"</a>
     </div>
 
-    <ol class="steps">
-      <li class="step">
-        <h2>Registra un nuovo oggetto</h2>
-        <div class="viewfinder" id="m-vf">
-          <video id="m-video" playsinline muted autoplay></video>
-          <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-          <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
-        </div>
-        <p class="hint">Inquadra l'oggetto e muoviti piano per 6 secondi: da vicino, da lontano, un po' di lato. Serve sempre anche la posizione: attiva il GPS.</p>
-        <button id="m-rec-pos" class="btn primary" disabled>Registra l'oggetto</button>
-        <p class="hint">Poi inquadra ciò che c'è intorno: la parete, i mobili, oggetti simili. Serve a non confonderli.</p>
-        <button id="m-rec-neg" class="btn" disabled>Registra i dintorni</button>
-        <p id="m-train-status" class="status" role="status"></p>
-        <button id="m-test" class="btn" disabled>Prova il riconoscimento</button>
-        <p id="m-test-status" class="status" role="status"></p>
-        <button id="m-add" class="btn primary" disabled>Aggiungi alla caccia</button>
-        <p id="m-add-status" class="status" role="status"></p>
-      </li>
-
-      <li class="step">
-        <h2>Pubblica</h2>
-        <p class="hint">Il file contiene tutti gli oggetti del pannello "Caccia pubblicata" qui sopra, comprese le modifiche non ancora pubblicate. Pubblicandolo, i giocatori lo ricevono in automatico entro circa un minuto.</p>
-
-        <button id="m-publish" class="btn primary" disabled>Pubblica su GitHub</button>
-        <p id="m-pub-status" class="status" role="status"></p>
-
-        <details id="m-cfg">
-          <summary id="m-cfg-summary">Configura la pubblicazione automatica</summary>
-          <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono.</p>
-          <label>Utente o organizzazione GitHub
-            <input type="text" id="cfg-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
-          </label>
-          <label>Nome del repository
-            <input type="text" id="cfg-repo" placeholder="gc" autocapitalize="off" autocorrect="off">
-          </label>
-          <label>Ramo
-            <input type="text" id="cfg-branch" placeholder="main" autocapitalize="off" autocorrect="off">
-          </label>
-          <label>Token
-            <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
-          </label>
-          <button id="cfg-save" class="btn">Salva configurazione</button>
-          <button id="cfg-clear" class="link">Dimentica il token da questo telefono</button>
-          <p id="cfg-status" class="status" role="status"></p>
-        </details>
-
-        <p class="hint">Se preferisci pubblicare a mano:</p>
-        <button id="m-share" class="btn" disabled>Scarica caccia.json</button>
-        <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
-      </li>
-    </ol>
+    <div class="current">
+      <h2>Registra un nuovo oggetto</h2>
+      <div class="viewfinder" id="m-vf">
+        <video id="m-video" playsinline muted autoplay></video>
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+        <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
+      </div>
+      <p class="hint">Inquadra l'oggetto e muoviti piano per 6 secondi: da vicino, da lontano, un po' di lato. Serve sempre anche la posizione: attiva il GPS.</p>
+      <div class="btnrow">
+        <button id="m-rec-pos" class="btn primary" disabled>Oggetto</button>
+        <button id="m-rec-neg" class="btn" disabled>Dintorni</button>
+      </div>
+      <p class="hint">"Oggetto" registra 20 fotogrammi dell'oggetto e uno scatto per la miniatura; "Dintorni" registra 10 fotogrammi di ciò che c'è intorno, per non confonderli.</p>
+      <p id="m-train-status" class="status" role="status"></p>
+      <div class="btnrow">
+        <button id="m-test" class="btn" disabled>Prova</button>
+        <button id="m-add" class="btn primary" disabled>Aggiungi</button>
+      </div>
+      <p id="m-test-status" class="status" role="status"></p>
+      <p id="m-add-status" class="status" role="status"></p>
+    </div>
   </section>
 
   <!-- ================= COLLEGA GLI ELEMENTI ================= -->
@@ -396,12 +385,39 @@
 
     <div class="current">
       <h2>Collega gli elementi</h2>
-      <p class="hint">Collega gli oggetti fra loro con "Richiede" per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più oggetti che ne sbloccano un altro), e modifica il testo dell'indizio e il messaggio di sblocco di ciascuno. Nome, foto e flag si modificano invece nel pannello "Caccia pubblicata" del master. Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
+      <p class="hint">Collega gli oggetti fra loro con "Richiede" per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più oggetti che ne sbloccano un altro), modifica nome, flag e testi di ciascuno, e da qui pubblica la caccia. Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
 
       <div id="m-link-list"></div>
 
-      <button id="m-link-publish" class="btn primary">Pubblica i collegamenti</button>
+      <label>Formato
+        <input type="text" id="m-formato">
+      </label>
+      <p class="hint">Cambialo solo per far ripartire tutti i giocatori da zero: progressi e bottino verranno azzerati.</p>
+
+      <button id="m-link-publish" class="btn primary" disabled>Pubblica la caccia</button>
       <p id="m-link-status" class="status" role="status"></p>
+
+      <details id="m-cfg2">
+        <summary id="m-cfg2-summary">Configura la pubblicazione su GitHub</summary>
+        <p class="hint">Serve una sola volta per telefono. Crea su GitHub, in Settings → Developer settings → Fine-grained tokens, un token limitato a questo repository con permesso Contents: Read and write. Resta salvato solo su questo telefono. Stessa configurazione usata dal pannello master per i messaggi.</p>
+        <label>Utente o organizzazione GitHub
+          <input type="text" id="cfg2-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Nome del repository
+          <input type="text" id="cfg2-repo" placeholder="gc" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Ramo
+          <input type="text" id="cfg2-branch" placeholder="main" autocapitalize="off" autocorrect="off">
+        </label>
+        <label>Token
+          <input type="password" id="cfg2-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
+        </label>
+        <button id="cfg2-save" class="btn">Salva configurazione</button>
+        <button id="cfg2-clear" class="link">Dimentica il token da questo telefono</button>
+        <p id="cfg2-status" class="status" role="status"></p>
+      </details>
+
+      <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
     </div>
   </section>
 </main>
@@ -607,28 +623,31 @@ function masterRefresh() {
   const esportabile = M.baseLoaded && !M.busy;
   $("m-test").disabled = !M.cal || M.busy;
   $("m-add").disabled = !M.cal || M.busy;
-  $("m-publish").disabled = !esportabile;
-  $("m-share").disabled = !esportabile;
+  $("m-link-publish").disabled = !esportabile;
   $("m-local").disabled = !esportabile;
   $("m-rec-pos").disabled = !stream || M.busy;
   $("m-rec-neg").disabled = !stream || M.busy || !M.pos.length;
 }
 
-/* ---------- pubblicazione diretta su GitHub ---------- */
+/* ---------- pubblicazione diretta su GitHub: concetto separato dal "pubblicare
+   la caccia" (che vive in "Collega gli elementi") — questa è solo la configurazione
+   e il meccanismo di scrittura, condivisi anche dai messaggi. ---------- */
 function ghConfig() { return store.get("gh-config") || null; }
 
 function ghConfigStatus() {
   const c = ghConfig();
-  $("m-publish").textContent = c ? "Pubblica su GitHub" : "Pubblica su GitHub (configura prima)";
+  $("m-link-publish").textContent = c ? "Pubblica la caccia" : "Pubblica la caccia (configura prima)";
 }
 
 // Scrive un file nel repository tramite l'API di GitHub (crea o aggiorna).
 // path: percorso del file nel repository. content: stringa da scrivere. commitMsg: messaggio del commit.
-// statusEl: elemento dove mostrare l'esito. Ritorna true/false.
-async function ghPutFile(path, content, commitMsg, statusEl) {
+// statusEl: elemento dove mostrare l'esito. cfgId: quale pannello di configurazione
+// aprire se manca (ce n'è una copia sia nel pannello master sia in "Collega gli
+// elementi", stesso `gh-config` in localStorage). Ritorna true/false.
+async function ghPutFile(path, content, commitMsg, statusEl, cfgId = "m-cfg") {
   const c = ghConfig();
   if (!c || !c.owner || !c.repo || !c.token) {
-    $("m-cfg").open = true;
+    $(cfgId).open = true;
     setStatus(statusEl, "Configura prima la pubblicazione qui sotto.", "ko");
     return false;
   }
@@ -681,64 +700,45 @@ function erroreGitHub(e, prefisso) {
   return `${prefisso} (${s || (e && e.message) || "errore sconosciuto"}).`;
 }
 
-/* ---------- pannello "Caccia pubblicata": identità e flag di ogni nodo ---------- */
-function renderPanelList() {
-  const wrap = $("m-panel-list");
-  wrap.innerHTML = "";
-  const ids = Object.keys(L.nodi || {});
-  if (!ids.length) {
-    const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessun oggetto ancora.";
-    wrap.append(p);
-    return;
-  }
-  for (const id of ids) wrap.append(panelRow(id));
+// Ingrandisce una foto al tocco/clic: nel pallino piccolo si vede solo un ritaglio,
+// spesso non abbastanza per distinguere un oggetto dall'altro.
+function apriAnteprima(src) {
+  if (!src) return;
+  const overlay = document.createElement("div"); overlay.className = "lightbox";
+  const img = document.createElement("img"); img.src = src;
+  overlay.append(img);
+  overlay.onclick = () => overlay.remove();
+  document.body.append(overlay);
 }
 
-function panelRow(id) {
-  const n = L.nodi[id];
-  const card = document.createElement("div"); card.className = "linknode panelrow";
+function thumbEl(immagine) {
+  const wrap = document.createElement("span"); wrap.className = "thumb";
+  const img = document.createElement("img"); img.src = immagine || ""; wrap.append(img);
+  wrap.onclick = () => apriAnteprima(immagine);
+  return wrap;
+}
 
-  const head = document.createElement("div"); head.className = "head";
-  const thumbWrap = document.createElement("span"); thumbWrap.className = "thumb";
-  const thumb = document.createElement("img"); thumb.src = n.immagine || ""; thumbWrap.append(thumb);
-  const nome = document.createElement("input"); nome.type = "text"; nome.value = n.nome || "";
-  nome.oninput = () => { n.nome = nome.value; };
-  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; renderPanelList(); linkRefresh(); };
-  const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
-  del.onclick = () => {
-    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
-    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
-    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
-    delete L.nodi[id];
-    renderPanelList(); linkRefresh();
-  };
-  head.append(thumbWrap, nome, del);
-  card.append(head);
+const testoConteggio = n => n === 0 ? "Nessun oggetto ancora." : n === 1 ? "1 oggetto nella caccia." : `${n} oggetti nella caccia.`;
 
-  const flags = document.createElement("div"); flags.className = "flags";
-  const mkFlag = (campo, testo) => {
-    const lab = document.createElement("label"); lab.className = "check";
-    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!n[campo];
-    lab.append(cb, document.createTextNode(" " + testo));
-    flags.append(lab);
-    return cb;
-  };
-  const cbThumb = mkFlag("conThumb", "Con thumb");
-  const cbValida = mkFlag("daValidare", "Da validare");
-  const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
-  cbThumb.onchange = () => { n.conThumb = cbThumb.checked; };
-  // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
-  // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
-  cbValida.onchange = () => {
-    if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
-    n.daValidare = cbValida.checked;
-  };
-  cbPos.onchange = () => {
-    n.richiedePosizione = cbPos.checked;
-    if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
-  };
-  card.append(flags);
-  return card;
+/* ---------- pannello "Caccia pubblicata": solo un elenco di sola lettura.
+   Nome, foto, flag e testi si modificano in "Collega gli elementi". ---------- */
+function renderPanelList() {
+  const list = $("m-panel-list");
+  list.innerHTML = "";
+  const ids = Object.keys(L.nodi || {});
+  for (const id of ids) {
+    const n = L.nodi[id];
+    const li = document.createElement("li");
+    const nome = document.createElement("span"); nome.textContent = n.nome;
+    li.append(thumbEl(n.immagine), nome);
+    list.append(li);
+  }
+}
+
+// Da richiamare dopo add/rinomina/rimozione: il messaggio di errore/incompatibilità
+// impostato da loadBase() non va invece toccato qui, per questo è una funzione a parte.
+function aggiornaContatorePanel() {
+  setStatus($("m-base-status"), testoConteggio(Object.keys(L.nodi || {}).length));
 }
 
 async function loadBase() {
@@ -755,7 +755,7 @@ async function loadBase() {
       const g = await r.json();
       if (inCaccia3(g)) {
         M.base = g;
-        setStatus($("m-base-status"), "");
+        setStatus($("m-base-status"), testoConteggio(Object.keys(g.nodi).length));
       } else {
         M.base = null;
         setStatus($("m-base-status"), "La caccia pubblicata è in un formato precedente, non compatibile: pubblicando da qui la sostituirai (i progressi dei giocatori ripartiranno da zero).", "ko");
@@ -826,8 +826,8 @@ async function publishGame(statusEl) {
   const ciclo = trovaCiclo(L.nodi);
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
   const g = currentGame();
-  const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
-  if (ok) { M.base = g; $("m-formato").value = g.formato; renderPanelList(); linkRefresh(); masterRefresh(); }
+  const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl, "m-cfg2");
+  if (ok) { M.base = g; $("m-formato").value = g.formato; renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh(); }
   return ok;
 }
 
@@ -854,11 +854,45 @@ function schedaNodo(id, ids) {
   const card = document.createElement("div"); card.className = "linknode";
 
   const head = document.createElement("div"); head.className = "head";
-  const thumbWrap = document.createElement("span"); thumbWrap.className = "thumb";
-  const thumb = document.createElement("img"); thumb.src = n.immagine || ""; thumbWrap.append(thumb);
-  const nome = document.createElement("span"); nome.className = "linkname"; nome.textContent = n.nome;
-  head.append(thumbWrap, nome);
+  const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
+  const nome = document.createElement("input"); nome.type = "text"; nome.value = n.nome || "";
+  nome.oninput = () => { n.nome = nome.value; };
+  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; renderPanelList(); renderLinkList(); };
+  titlewrap.append(thumbEl(n.immagine), nome);
+  const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
+  del.onclick = () => {
+    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
+    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
+    delete L.nodi[id];
+    renderPanelList(); aggiornaContatorePanel(); renderLinkList();
+  };
+  head.append(titlewrap, del);
   card.append(head);
+
+  const flags = document.createElement("div"); flags.className = "flags";
+  const mkFlag = (campo, testo) => {
+    const lab = document.createElement("label"); lab.className = "check";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!n[campo];
+    lab.append(cb, document.createTextNode(" " + testo));
+    flags.append(lab);
+    return cb;
+  };
+  const cbThumb = mkFlag("conThumb", "Con thumb");
+  const cbValida = mkFlag("daValidare", "Da validare");
+  const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
+  cbThumb.onchange = () => { n.conThumb = cbThumb.checked; };
+  // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
+  // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
+  cbValida.onchange = () => {
+    if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
+    n.daValidare = cbValida.checked;
+  };
+  cbPos.onchange = () => {
+    n.richiedePosizione = cbPos.checked;
+    if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
+  };
+  card.append(flags);
 
   const labelTesto = document.createElement("label"); labelTesto.textContent = "Indizio (mostrato a chi deve ancora raggiungerlo)";
   const testo = document.createElement("textarea"); testo.value = n.testo || "";
@@ -899,31 +933,40 @@ function schedaNodo(id, ids) {
   return card;
 }
 
+// La configurazione della pubblicazione su GitHub è un concetto a parte dal
+// "pubblicare la caccia": stesso gh-config in localStorage, ma un pannello
+// duplicato (id diversi) sia nel pannello master (serve ai messaggi) sia in
+// "Collega gli elementi" (serve a pubblicare la caccia), così ognuna delle due
+// pagine è autosufficiente senza dover saltare all'altra per configurarla.
+function wireGhConfigPanel(p) {
+  const cfg = ghConfig();
+  if (cfg) { $(p.owner).value = cfg.owner || ""; $(p.repo).value = cfg.repo || ""; $(p.branch).value = cfg.branch || ""; }
+  $(p.save).onclick = () => {
+    const owner = $(p.owner).value.trim(), repo = $(p.repo).value.trim();
+    const branch = $(p.branch).value.trim() || "main";
+    const token = $(p.token).value.trim() || (ghConfig() || {}).token;
+    if (!owner || !repo || !token) { setStatus($(p.status), "Compila almeno utente, repository e token.", "ko"); return; }
+    store.set("gh-config", { owner, repo, branch, path: "caccia.json", token });
+    $(p.token).value = "";
+    setStatus($(p.status), "Configurazione salvata su questo telefono.", "ok");
+    ghConfigStatus();
+  };
+  $(p.clear).onclick = () => {
+    store.del("gh-config");
+    $(p.owner).value = ""; $(p.repo).value = ""; $(p.branch).value = ""; $(p.token).value = "";
+    setStatus($(p.status), "Token dimenticato.", "");
+    ghConfigStatus();
+  };
+}
+
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
   $("m-base-retry").onclick = loadBase;
 
-  const cfg = ghConfig();
-  if (cfg) { $("cfg-owner").value = cfg.owner || ""; $("cfg-repo").value = cfg.repo || ""; $("cfg-branch").value = cfg.branch || ""; }
+  wireGhConfigPanel({ owner: "cfg-owner", repo: "cfg-repo", branch: "cfg-branch", token: "cfg-token", save: "cfg-save", clear: "cfg-clear", status: "cfg-status" });
+  wireGhConfigPanel({ owner: "cfg2-owner", repo: "cfg2-repo", branch: "cfg2-branch", token: "cfg2-token", save: "cfg2-save", clear: "cfg2-clear", status: "cfg2-status" });
   ghConfigStatus();
-
-  $("cfg-save").onclick = () => {
-    const owner = $("cfg-owner").value.trim(), repo = $("cfg-repo").value.trim();
-    const branch = $("cfg-branch").value.trim() || "main";
-    const token = $("cfg-token").value.trim() || (ghConfig() || {}).token;
-    if (!owner || !repo || !token) { setStatus($("cfg-status"), "Compila almeno utente, repository e token.", "ko"); return; }
-    store.set("gh-config", { owner, repo, branch, path: "caccia.json", token });
-    $("cfg-token").value = "";
-    setStatus($("cfg-status"), "Configurazione salvata su questo telefono.", "ok");
-    ghConfigStatus();
-  };
-  $("cfg-clear").onclick = () => {
-    store.del("gh-config");
-    $("cfg-owner").value = ""; $("cfg-repo").value = ""; $("cfg-branch").value = ""; $("cfg-token").value = "";
-    setStatus($("cfg-status"), "Token dimenticato.", "");
-    ghConfigStatus();
-  };
 
   $("m-rec-pos").onclick = async () => {
     M.busy = true; masterRefresh();
@@ -971,34 +1014,8 @@ function initMaster() {
     M.pos = []; M.neg = []; M.cal = null; M.luogo = null; M.immagine = null;
     setStatus($("m-train-status"), "");
     setStatus($("m-test-status"), "");
-    setStatus($("m-add-status"), `"${nome}" aggiunto: modificalo qui sopra in "Caccia pubblicata" (nome/foto/flag) o in "Collega gli elementi" (indizio/messaggio/richiede).`, "ok");
-    renderPanelList(); linkRefresh(); masterRefresh();
-  };
-
-  $("m-publish").onclick = async () => {
-    M.busy = true; masterRefresh();
-    await publishGame($("m-pub-status"));
-    M.busy = false; masterRefresh();
-  };
-
-  $("m-share").onclick = async () => {
-    const ciclo = trovaCiclo(L.nodi);
-    if (ciclo) { setStatus($("m-pub-status"), `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di esportare.`, "ko"); return; }
-    const g = currentGame();
-    const file = new File([JSON.stringify(g)], "caccia.json", { type: "application/json" });
-    let msg = "File caccia.json scaricato: caricalo sul sito accanto a index.html.";
-    let condiviso = false;
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "Caccia al tesoro" }); condiviso = true; msg = "File inviato: caricalo sul sito accanto a index.html."; }
-      catch (e) { if (e.name === "AbortError") { setStatus($("m-pub-status"), ""); return; } }
-    }
-    if (!condiviso) {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(file); a.download = "caccia.json"; a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    }
-    M.base = g; renderPanelList(); linkRefresh(); masterRefresh();
-    setStatus($("m-pub-status"), msg, "ok");
+    setStatus($("m-add-status"), `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`, "ok");
+    renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   };
 
   $("m-local").onclick = async () => {
@@ -1006,7 +1023,7 @@ function initMaster() {
     const ok = store.set("gioco-prova", g) &&
       store.set("stato-prova", freshState(g)) &&
       store.set("prova", true);
-    if (!ok) { setStatus($("m-pub-status"), "Memoria del browser non disponibile.", "ko"); return; }
+    if (!ok) { setStatus($("m-link-status"), "Memoria del browser non disponibile.", "ko"); return; }
     stopCamera();
     location.hash = "";
   };

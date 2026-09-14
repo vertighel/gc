@@ -1,4 +1,4 @@
-# Stato attuale (versione 15)
+# Stato attuale (versione 16)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -58,68 +58,74 @@ master lo vede segnalato come incompatibile e riparte da zero.
 
 ## Modalità master (indirizzo con `#master` in fondo)
 
+Due concetti tenuti volutamente separati: **"pubblica su GitHub"** (la
+configurazione/meccanismo di scrittura, generico) e **"pubblica la
+caccia"** (l'atto di spedire il contenuto attuale come `caccia.json`, che
+vive solo nella pagina "Collega gli elementi" — vedi sotto).
+
 - All'apertura, **scarica la caccia già pubblicata**. Se non è già
-  `caccia-3`, la tratta come incompatibile (non ne legge i nodi: il
-  pannello "Caccia pubblicata" riparte vuoto, e pubblicare da lì sostituisce
+  `caccia-3`, la tratta come incompatibile (non ne legge i nodi: la copia
+  di lavoro riparte vuota, e pubblicare da "Collega gli elementi" sostituisce
   interamente il file).
-- **Pannello "Caccia pubblicata"**: la copia di lavoro condivisa (variabile
-  `L.nodi`) fra questo pannello e la pagina "Collega gli elementi" — le
-  modifiche fatte in uno si vedono subito nell'altro, e nessuna delle due
-  scrive davvero finché non si preme un pulsante "Pubblica". Ogni nodo è
-  una scheda con: la sua foto (sempre presente, catturata alla
-  registrazione), il nome (editabile), e tre checkbox — **Con thumb**
-  (mostra la foto al giocatore, altrimenti solo testo/colore), **Da
-  validare** (richiede foto+match del giocatore per essere posseduto,
-  altrimenti lo diventa da solo appena "richiede" è soddisfatto),
-  **Richiede posizione** (in più al match fotografico, il giocatore deve
-  essere entro 100 m dal punto registrato — spuntarla spunta anche "Da
-  validare" in automatico, e non si può togliere l'una senza l'altra). Un
-  pulsante "Rimuovi" per scheda, bloccato se un altro nodo lo richiede
-  ancora.
-- **Registrazione di un nuovo oggetto dal vivo**: 20 fotogrammi
-  dell'oggetto (muovendosi per ~6 secondi) più uno scatto vero (compresso,
-  per la thumb), poi 10 fotogrammi dei dintorni come negativi, più la
-  posizione GPS del master in quel momento — **sempre tutti e quattro**,
-  indipendentemente da come il nodo verrà poi usato: le flag si decidono
-  dopo, nel pannello qui sopra, senza dover tornare sul posto. La soglia
-  di riconoscimento si calcola da sola (`calibrate()`), con un messaggio
-  che avvisa se l'oggetto è troppo simile all'ambiente circostante e serve
-  ripetere la cattura su un dettaglio più distintivo. Pulsante "Prova il
-  riconoscimento" per un test immediato con la fotocamera. Il pulsante
-  "Aggiungi alla caccia" aggiunge il nodo (nome di default "Oggetto-N",
-  flag di default: con thumb e da validare, non richiede posizione) alla
-  copia di lavoro, senza pubblicare: si può registrarne un altro subito
-  dopo, la fotocamera resta accesa.
+- **"Caccia pubblicata"**: solo un elenco di sola lettura (foto + nome di
+  ogni nodo della copia di lavoro condivisa, variabile `L.nodi`) — nessun
+  editing qui. La foto è una miniatura cliccabile: al tocco si apre più
+  grande in una lightbox, perché nel pallino piccolo spesso si vede solo
+  un ritaglio, non abbastanza per distinguere un oggetto dall'altro.
+- **Registrazione di un nuovo oggetto dal vivo**: pulsanti "Oggetto" e
+  "Dintorni" sulla stessa riga, poi "Prova" e "Aggiungi" sulla stessa riga.
+  "Oggetto" registra 20 fotogrammi (muovendosi per ~6 secondi) più uno
+  scatto vero (compresso, per la miniatura); "Dintorni" registra 10
+  fotogrammi come negativi; entrambi insieme alla posizione GPS del
+  master in quel momento — **sempre tutti e quattro**, indipendentemente
+  da come il nodo verrà poi usato: le flag si decidono dopo, in "Collega
+  gli elementi", senza dover tornare sul posto. La soglia di
+  riconoscimento si calcola da sola (`calibrate()`), con un messaggio che
+  avvisa se l'oggetto è troppo simile all'ambiente circostante. "Prova"
+  è un test immediato con la fotocamera; "Aggiungi" aggiunge il nodo
+  (nome di default "Oggetto-N", flag di default: con thumb e da validare,
+  non richiede posizione) alla copia di lavoro, senza pubblicare — si può
+  registrarne un altro subito dopo, la fotocamera resta accesa.
 - **Ogni nodo nasce così, senza eccezioni**: non esiste (più) un modo di
   creare un nodo scrivendo solo testo da un computer. Anche un premio
   "sintetico" che richiede più nodi insieme nasce dalla stessa cattura,
-  marcato poi `daValidare: false` nel pannello.
+  marcato poi `daValidare: false` in "Collega gli elementi".
 - **Pagina "Collega gli elementi"** (`#master-collega`, raggiungibile con
   un pulsante dal pannello master, con un link "← Torna al pannello
   master" per uscirne): pensata per un computer, non per il telefono — su
   schermi larghi (≥700px) la pagina si allarga di più delle altre (classe
   `wide` su `<body>`) e le schede si affiancano in una griglia; sul
-  telefono restano impilate. Ogni scheda mostra la foto e il nome (di sola
-  lettura: si modificano nel pannello "Caccia pubblicata"), un campo per
-  il **testo dell'indizio** (mostrato a chi deve ancora raggiungere questo
-  nodo) e uno per il **messaggio della propria schermata di sblocco** —
-  campi indipendenti, un nodo può avere entrambi — più un elenco di
-  checkbox "Richiede" verso tutti gli altri nodi. Prima di pubblicare
-  controlla che i collegamenti non formino un ciclo (bloccando con un
-  messaggio se lo trova).
-- **Pubblicazione diretta su GitHub**: un pannello di configurazione
-  (aperto/chiuso con `<details>`) salva su questo telefono soltanto
-  proprietario, repository, ramo e un token con permesso di scrittura
-  limitato al repository. Il pulsante "Pubblica su GitHub" (presente sia
-  nel pannello master sia in "Collega gli elementi": scrivono entrambi la
-  stessa copia di lavoro) chiama direttamente l'API REST di GitHub (`GET`
-  per lo sha corrente, `PUT` per scrivere), gestendo anche un eventuale
-  conflitto 409 con un tentativo di ritentare una volta. In alternativa
-  restano "Scarica caccia.json" (pubblicazione manuale) e "Prova su questo
-  telefono" (modalità di prova locale, vedi sopra).
-- Sezione **Messaggi**: composizione libera, pubblicazione su
-  `messaggi.json` con lo stesso meccanismo di scrittura via API GitHub
-  (funzione `ghPutFile`, condivisa con la pubblicazione della caccia).
+  telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
+  di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
+  (editabile), subito seguiti dalle tre flag — **Con thumb** (mostra la
+  foto al giocatore, altrimenti solo testo/colore), **Da validare**
+  (richiede foto+match del giocatore per essere posseduto, altrimenti lo
+  diventa da solo appena "richiede" è soddisfatto), **Richiede posizione**
+  (in più al match fotografico, il giocatore deve essere entro 100 m dal
+  punto registrato — spuntarla spunta anche "Da validare" in automatico, e
+  non si può togliere l'una senza l'altra) — poi il **testo dell'indizio**
+  (mostrato a chi deve ancora raggiungere questo nodo) e il **messaggio
+  della propria schermata di sblocco** — campi indipendenti, un nodo può
+  avere entrambi — e un elenco di checkbox "Richiede" verso tutti gli
+  altri nodi. Un pulsante "Rimuovi" per scheda, bloccato se un altro nodo
+  lo richiede ancora. In fondo: il campo "Formato", e **da qui si pubblica
+  la caccia** — pulsante "Pubblica la caccia" (verso GitHub), la sua
+  configurazione (proprietaria/repository/ramo/token, `<details>`, stessa
+  di quella nel pannello master: stesso `gh-config` in `localStorage`) e
+  "Prova su questo telefono" (modalità di prova locale). Prima di
+  pubblicare controlla che i collegamenti non formino un ciclo (bloccando
+  con un messaggio se lo trova).
+- **Pubblicazione diretta su GitHub**: la configurazione (aperto/chiuso
+  con `<details>`, duplicata sia nel pannello master sia in "Collega gli
+  elementi" perché sono due pagine separate ma condividono lo stesso
+  `gh-config`) salva su questo telefono soltanto proprietario, repository,
+  ramo e un token con permesso di scrittura limitato al repository. La
+  scrittura vera e propria (`ghPutFile`, `GET` per lo sha corrente, `PUT`
+  per scrivere, con un tentativo di ritentare una volta su conflitto 409)
+  è condivisa fra la pubblicazione della caccia e quella dei messaggi.
+- Sezione **Messaggi**, nel pannello master: composizione libera,
+  pubblicazione su `messaggi.json` con lo stesso meccanismo di scrittura
+  via API GitHub.
 - **Colore di un nodo**: non c'è un campo "Simbolo" da scegliere a mano.
   Il colore mostrato quando manca la foto (o `conThumb` è spento) si
   calcola da solo con un piccolo hash del nome (funzione `coloreNodo()`,
