@@ -184,8 +184,14 @@
   label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
   .imgprev { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
-  .clue-imgs { display: flex; flex-wrap: wrap; gap: 10px; }
-  .clue-imgs .imgprev { flex: 1 1 140px; max-width: calc(50% - 5px); }
+  /* Nella targa, la/le foto-indizio galleggiano a sinistra e il testo ci scorre
+     intorno (serve nell'HTML prima del <p>, i float valgono solo in avanti).
+     Senza foto il contenitore è vuoto: non sposta né restringe nulla. */
+  .clue-imgs { float: left; display: flex; flex-direction: column; gap: 8px; margin: 0 14px 8px 0; }
+  .clue-imgs .imgprev { width: 84px; height: 84px; object-fit: cover; margin: 0; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+  /* Testo centrato e "bilanciato" solo quando non c'è foto: con una foto che
+     galleggia, centrare non avrebbe senso (il testo scorrerebbe storto intorno). */
+  .plate:has(.clue-imgs .imgprev) p { text-align: left; text-wrap: wrap; }
 
   /* Due pulsanti sulla stessa riga (Oggetto/Dintorni, Prova/Aggiungi) */
   .btnrow { display: flex; gap: 10px; }
@@ -304,7 +310,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 33)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 34)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -356,8 +362,8 @@
           <div id="p-clue-card" hidden>
             <div class="plate">
               <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
-              <p id="p-clue"></p>
               <div id="p-clue-imgs" class="clue-imgs"></div>
+              <p id="p-clue"></p>
             </div>
             <ul id="p-todo-list" class="todo"></ul>
           </div>
