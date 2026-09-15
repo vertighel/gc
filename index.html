@@ -74,6 +74,9 @@
   }
   .subtab[aria-current="true"] { background: var(--smalto); color: var(--bianco); }
   .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; border-color: #C9D0D7; color: var(--grafite); font-size: 18px; }
+  /* Più specifica di ".subtab.icon" (stessa specificità di ".subtab[aria-current]",
+     altrimenti quella sopra vince per ordine e l'icona attiva resterebbe grigia). */
+  .subtab.icon[aria-current="true"] { background: var(--smalto); color: var(--bianco); border-color: var(--smalto); }
   .subtab.icon .badge {
     position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 3px;
     border-radius: 8px; background: var(--rosso); color: #fff; font: 700 11px/16px var(--display);
@@ -298,7 +301,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 30)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 31)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -310,19 +313,6 @@
         <span id="p-progress" class="progress"></span>
       </span>
     </header>
-
-    <div id="p-inbox" class="inbox" hidden>
-      <h2>Messaggi</h2>
-      <ul id="p-inbox-list"></ul>
-      <button id="p-inbox-close" class="link">Chiudi</button>
-    </div>
-
-    <div id="p-settings" class="inbox" hidden>
-      <h2>Impostazioni</h2>
-      <button id="p-change-hunt" class="link">Cambia caccia</button>
-      <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
-      <button id="p-settings-close" class="link">Chiudi</button>
-    </div>
 
     <div id="p-content">
       <!-- ===== scheda "Cerca" ===== -->
@@ -358,6 +348,11 @@
           </div>
 
           <div id="sub-indizio">
+            <div class="plate">
+              <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+              <p id="p-clue"></p>
+              <div id="p-clue-imgs" class="clue-imgs"></div>
+            </div>
             <ul id="p-todo-list" class="todo"></ul>
           </div>
 
@@ -370,6 +365,19 @@
             <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
             <p id="p-status" class="status" role="status"></p>
             <p id="p-score" class="score"></p>
+          </div>
+
+          <div id="p-inbox" class="inbox" hidden>
+            <h2>Messaggi</h2>
+            <ul id="p-inbox-list"></ul>
+            <button id="p-inbox-close" class="link">Chiudi</button>
+          </div>
+
+          <div id="p-settings" class="inbox" hidden>
+            <h2>Impostazioni</h2>
+            <button id="p-change-hunt" class="link">Cambia caccia</button>
+            <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+            <button id="p-settings-close" class="link">Chiudi</button>
           </div>
         </div>
       </div>
@@ -1667,17 +1675,24 @@ function mostraTab(tab) {
   if (tab === "cerca") renderPlayer();
 }
 
-// Passa fra "Indizio" e "Foto" DENTRO "Cerca": ferma la fotocamera lasciando "Foto",
-// così tornandoci si riparte sempre da "Attiva la fotocamera", mai da un fotogramma
-// fermo di quando si era usciti.
+// Le quattro schede DENTRO "Cerca" sono mutuamente esclusive, come Indizio/Foto lo
+// erano già fra loro: sceglierne una nasconde sempre le altre tre. Ferma la fotocamera
+// lasciando "Foto" (così tornandoci si riparte sempre da "Attiva la fotocamera", mai da
+// un fotogramma fermo di quando si era usciti); entrando in "Messaggi" segna tutto come
+// letto, come faceva prima il pulsante che apriva il pannello.
 function mostraSubTab(sub) {
   subTabAttivo = sub;
   if (sub !== "foto") stopCamera();
   $("sub-indizio").hidden = sub !== "indizio";
   $("sub-foto").hidden = sub !== "foto";
+  $("p-inbox").hidden = sub !== "messaggi";
+  $("p-settings").hidden = sub !== "impostazioni";
   $("sub-indizio-btn").setAttribute("aria-current", String(sub === "indizio"));
   $("sub-foto-btn").setAttribute("aria-current", String(sub === "foto"));
+  $("sub-msg-btn").setAttribute("aria-current", String(sub === "messaggi"));
+  $("sub-settings-btn").setAttribute("aria-current", String(sub === "impostazioni"));
   if (sub === "foto") { $("p-cam").hidden = !!stream; $("p-shoot").disabled = !stream; }
+  if (sub === "messaggi") { markRead(inbox.map(m => m.id)); renderInbox(); }
 }
 // Aggancio per i test (vedi CLAUDE.md): stato altrimenti privato al modulo.
 Object.assign(window.__test, { tabAttivo: () => tabAttivo, subTabAttivo: () => subTabAttivo, hasStream: () => !!stream });
@@ -1924,6 +1939,10 @@ function renderPlayer() {
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
   $("p-hunt").hidden = false;
+  $("p-clue").textContent = etichettaOggetto(cur.id);
+  const imgs = $("p-clue-imgs");
+  imgs.innerHTML = "";
+  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
   $("p-cam").disabled = false;
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
@@ -2030,14 +2049,10 @@ function initPlayer() {
     store.del(CHOOSER_KEY);
     if (location.hash) location.hash = ""; else mostraSceltaCaccia();
   };
-  $("sub-msg-btn").onclick = () => {
-    $("p-inbox").hidden = false;
-    markRead(inbox.map(m => m.id));
-    renderInbox();
-  };
-  $("p-inbox-close").onclick = () => { $("p-inbox").hidden = true; };
-  $("sub-settings-btn").onclick = () => { $("p-settings").hidden = false; };
-  $("p-settings-close").onclick = () => { $("p-settings").hidden = true; };
+  $("sub-msg-btn").onclick = () => mostraSubTab("messaggi");
+  $("p-inbox-close").onclick = () => mostraSubTab("indizio");
+  $("sub-settings-btn").onclick = () => mostraSubTab("impostazioni");
+  $("p-settings-close").onclick = () => mostraSubTab("indizio");
 
   $("p-tab-cerca").onclick = () => mostraTab("cerca");
   $("p-tab-oggetti").onclick = () => mostraTab("oggetti");
