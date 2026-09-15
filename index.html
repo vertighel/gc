@@ -53,6 +53,16 @@
   #p-content { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
   .playertab { height: 100%; }
 
+  /* "Indizio" riempie tutto lo spazio disponibile sotto le barre fisse (avvisi +
+     le quattro schede), con la lista degli oggetti raggiungibili sempre attaccata
+     in fondo: la targa cresce per arrivarci, non è più la lista a spostarsi quando
+     la targa cambia altezza. */
+  #tab-cerca { display: flex; flex-direction: column; }
+  #sub-indizio { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #p-clue-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+  #p-clue-card .plate { flex: 1; overflow: hidden; }
+  #p-todo-list { flex: none; max-height: 45%; overflow-y: auto; }
+
   #p-tabbar {
     display: flex; flex: none; gap: 4px; margin: 0 -16px;
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
@@ -314,7 +324,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 35)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 36)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
