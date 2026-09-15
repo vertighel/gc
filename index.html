@@ -64,14 +64,20 @@
   }
   .ptab[aria-current="true"] { color: var(--bianco); background: var(--smalto); }
 
-  /* Le due schede DENTRO "Cerca": l'indizio (con l'elenco di cosa è raggiungibile
-     adesso) separato dalla fotocamera, sempre entrambe presenti. */
+  /* Quattro bottoni DENTRO "Cerca": Indizio/Foto (due viste, una attiva alla volta —
+     vedi mostraSubTab()) più Messaggi/Impostazioni (due azioni che aprono un pannello
+     sopra tutto, non due viste in più: non prendono mai lo stato "attivo"). */
   .subtabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .subtab {
     flex: 1; appearance: none; border: 1.5px solid var(--smalto); background: transparent; color: var(--smalto);
     border-radius: 8px; padding: 10px; font: 600 16px/1 var(--display); cursor: pointer;
   }
   .subtab[aria-current="true"] { background: var(--smalto); color: var(--bianco); }
+  .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; border-color: #C9D0D7; color: var(--grafite); font-size: 18px; }
+  .subtab.icon .badge {
+    position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 3px;
+    border-radius: 8px; background: var(--rosso); color: #fff; font: 700 11px/16px var(--display);
+  }
 
   .bar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 18px; }
   .bar-right { display: flex; align-items: center; gap: 10px; }
@@ -244,7 +250,7 @@
   }
   .todo button .txt { flex: 1; min-width: 0; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
-  .todo button[aria-current="true"] { border-color: var(--smalto); box-shadow: inset 5px 0 0 var(--smalto); }
+  .todo button[aria-current="true"] { background: var(--smalto); border-color: var(--smalto); color: var(--bianco); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
@@ -292,7 +298,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 29)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 30)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -302,9 +308,6 @@
       <span class="brand">Caccia</span>
       <span class="bar-right">
         <span id="p-progress" class="progress"></span>
-        <button id="p-inbox-btn" class="inbox-btn" aria-label="Messaggi" hidden>
-          ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
-        </button>
       </span>
     </header>
 
@@ -312,6 +315,13 @@
       <h2>Messaggi</h2>
       <ul id="p-inbox-list"></ul>
       <button id="p-inbox-close" class="link">Chiudi</button>
+    </div>
+
+    <div id="p-settings" class="inbox" hidden>
+      <h2>Impostazioni</h2>
+      <button id="p-change-hunt" class="link">Cambia caccia</button>
+      <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+      <button id="p-settings-close" class="link">Chiudi</button>
     </div>
 
     <div id="p-content">
@@ -341,15 +351,13 @@
           <div class="subtabs">
             <button id="sub-indizio-btn" class="subtab">Indizio</button>
             <button id="sub-foto-btn" class="subtab">Foto</button>
+            <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
+              ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
+            </button>
+            <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni">⚙️</button>
           </div>
 
           <div id="sub-indizio">
-            <div class="plate">
-              <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
-              <p id="p-clue"></p>
-              <div id="p-clue-imgs" class="clue-imgs"></div>
-            </div>
-            <p id="p-todo-heading" class="hint" hidden>Puoi cercare anche uno di questi:</p>
             <ul id="p-todo-list" class="todo"></ul>
           </div>
 
@@ -372,10 +380,6 @@
           <h2>Il tuo bottino</h2>
           <ul id="p-inv-list"></ul>
         </div>
-        <footer class="foot">
-          <button id="p-change-hunt" class="link">Cambia caccia</button>
-          <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
-        </footer>
       </div>
     </div>
 
@@ -1806,7 +1810,6 @@ const markRead = ids => { const s = readIds(); ids.forEach(i => s.add(i)); store
 function renderInbox() {
   const letti = readIds();
   const nonLetti = inbox.filter(m => !letti.has(m.id)).length;
-  $("p-inbox-btn").hidden = !inbox.length;
   $("p-inbox-badge").hidden = !nonLetti;
   $("p-inbox-badge").textContent = nonLetti > 9 ? "9+" : String(nonLetti);
 
@@ -1860,22 +1863,21 @@ function renderInventory(st) {
   }
 }
 
-// Scheda "Indizio": la targa mostra l'oggetto scelto adesso (impostata da chi chiama,
-// vedi renderPlayer), qui sotto l'elenco delle ALTRE alternative raggiungibili — non
-// serve ripetere anche l'attuale, la targa sopra basta. Sceglierne una la rende
-// "attuale" e passa subito alla scheda "Foto", pronta per scattare.
+// Scheda "Indizio": un elenco con TUTTI gli oggetti raggiungibili, ciascuno con il
+// proprio indizio (testo e foto) per intero — non solo quello scelto. Toccarne uno lo
+// rende "attuale" (si colora, aria-current) ma resta su questa scheda: passare a "Foto"
+// per scattare è una scelta separata del giocatore, non automatica.
 function renderTodo(st, todo, cur) {
   const list = $("p-todo-list");
   list.innerHTML = "";
-  const altre = todo.filter(m => !cur || m.id !== cur.id);
-  $("p-todo-heading").hidden = !altre.length;
-  for (const m of altre) {
+  for (const m of todo) {
     const li = document.createElement("li");
     const b = document.createElement("button");
     for (const src of immaginiIndizio(m)) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; b.append(img); }
     const t = document.createElement("span"); t.className = "txt"; t.textContent = etichettaOggetto(m.id);
     b.append(t);
     if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
+    if (cur && m.id === cur.id) b.setAttribute("aria-current", "true");
     b.onclick = () => {
       const s = stato();
       s.scelta = m.id;
@@ -1883,7 +1885,6 @@ function renderTodo(st, todo, cur) {
       saveState(s);
       setStatus($("p-status"), ""); $("p-score").textContent = "";
       renderPlayer();
-      mostraSubTab("foto");
     };
     li.append(b);
     list.append(li);
@@ -1923,10 +1924,6 @@ function renderPlayer() {
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
   $("p-hunt").hidden = false;
-  $("p-clue").textContent = etichettaOggetto(cur.id);
-  const imgs = $("p-clue-imgs");
-  imgs.innerHTML = "";
-  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
   $("p-cam").disabled = false;
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
@@ -2025,6 +2022,7 @@ function initPlayer() {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
     if (game) saveState(freshState(game)); else store.del(stateKey());
     stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
+    $("p-settings").hidden = true;
     renderPlayer();
   };
   $("p-change-hunt").onclick = () => {
@@ -2032,12 +2030,14 @@ function initPlayer() {
     store.del(CHOOSER_KEY);
     if (location.hash) location.hash = ""; else mostraSceltaCaccia();
   };
-  $("p-inbox-btn").onclick = () => {
+  $("sub-msg-btn").onclick = () => {
     $("p-inbox").hidden = false;
     markRead(inbox.map(m => m.id));
     renderInbox();
   };
   $("p-inbox-close").onclick = () => { $("p-inbox").hidden = true; };
+  $("sub-settings-btn").onclick = () => { $("p-settings").hidden = false; };
+  $("p-settings-close").onclick = () => { $("p-settings").hidden = true; };
 
   $("p-tab-cerca").onclick = () => mostraTab("cerca");
   $("p-tab-oggetti").onclick = () => mostraTab("oggetti");
@@ -2104,8 +2104,11 @@ async function avvioGiocatore() {
 
 /* ---------- navigazione: #master apre il pannello del master,
    #master-collega la pagina dedicata a collegare gli elementi. Un link diretto
-   "#c-<slug>" (una caccia con nome, vedi activeSlug()) va dritto al giocatore, senza
-   la schermata di scelta. Nessun hash: la schermata di scelta, a meno che il telefono
+   "#c-<slug>", CON uno slug vero dopo il trattino (vedi activeSlug()), va dritto al
+   giocatore, senza la schermata di scelta. "#c-" da solo (senza slug: un link rotto o
+   digitato a mano) NON deve caricare la caccia di sempre per sbaglio solo perché lo slug
+   vuoto punta a gameFile("") — va trattato come indirizzo senza caccia, schermata di
+   scelta sempre mostrata. Nessun hash: la schermata di scelta, a meno che il telefono
    non ricordi già una scelta precedente (vedi avvioGiocatore()) ---------- */
 function route() {
   stopCamera();
@@ -2120,8 +2123,10 @@ function route() {
     $("view-player").hidden = true; $("view-chooser").hidden = true;
     document.body.classList.remove("playing");
     initMaster();
-  } else if (location.hash.startsWith("#c-")) {
+  } else if (location.hash.startsWith("#c-") && activeSlug()) {
     mostraGiocatore();
+  } else if (location.hash.startsWith("#c-")) {
+    mostraSceltaCaccia();
   } else {
     avvioGiocatore();
   }
