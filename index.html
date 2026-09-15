@@ -69,17 +69,16 @@
   @media (min-width: 700px) { body.playing #view-player { max-width: 640px; } }
 
   #p-content { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
-  .playertab { height: 100%; }
-
-  /* "Indizio" riempie tutto lo spazio disponibile sotto le barre fisse (avvisi +
-     le quattro schede), con la lista degli oggetti raggiungibili sempre attaccata
-     in fondo: la targa cresce per arrivarci, non è più la lista a spostarsi quando
-     la targa cambia altezza. */
-  #tab-cerca { display: flex; flex-direction: column; }
-  #sub-indizio { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  #p-clue-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
-  #p-clue-card .plate { flex: 1; overflow: hidden; }
-  #p-todo-list { flex: none; max-height: 45%; overflow-y: auto; }
+  /* Entrambe le schede (Cerca/Traccia, Oggetti/Memoria) riempiono tutto lo spazio
+     disponibile: uno "schermo" (targa) che cresce fino a una lista sempre attaccata
+     in fondo, invece che essere la lista a spostarsi quando lo schermo cambia
+     altezza. Stessa struttura per "Traccia" (indizio + oggetti raggiungibili) e
+     "Memoria" (ricordo + oggetti trovati) — condivisa, non due copie. */
+  .playertab { height: 100%; display: flex; flex-direction: column; }
+  .schermo-scheda { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .schermo-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+  .schermo-card .plate { flex: 1; overflow: hidden; }
+  .schermo-lista { flex: none; max-height: 45%; overflow-y: auto; }
 
   #p-tabbar {
     display: flex; flex: none; gap: 4px; margin: 0 -16px;
@@ -138,9 +137,6 @@
     box-shadow: inset 0 0 0 6px var(--smalto), inset 0 0 0 8px var(--bianco), 0 3px 0 var(--smalto-scuro);
   }
   .plate p { margin: 0; font: 600 clamp(28px, 8.5vw, 40px)/1.08 var(--display); text-align: center; text-wrap: balance; }
-  .screw { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 30%, #aeb8c3 70%); }
-  .screw.tl { top: 15px; left: 15px; } .screw.tr { top: 15px; right: 15px; }
-  .screw.bl { bottom: 15px; left: 15px; } .screw.br { bottom: 15px; right: 15px; }
 
   .viewfinder { position: relative; aspect-ratio: 1; background: #1B2129; border-radius: 6px; overflow: hidden; margin: 16px 0; }
   .viewfinder video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -181,7 +177,7 @@
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
     animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
   }
-  .medal img, .mini img, .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .medal img, .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
   .done { font: 600 20px/1 var(--display); color: var(--verde); margin: 0 0 14px; }
 
@@ -194,14 +190,16 @@
   .unlocked-item h3 { font: 700 20px/1.15 var(--display); color: var(--smalto); margin: 0 0 4px; }
   .unlocked-item p { margin: 0; color: var(--grafite); }
 
-  .inventory { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
-  .inventory h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
-  .inventory ul { list-style: none; margin: 0; padding: 0; }
-  .inventory li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
-  .inventory li.clickable { cursor: pointer; }
-  .inventory li.clickable:hover, .inventory li.clickable:focus-visible { color: var(--smalto); }
-  .inventory .mini { width: 40px; height: 40px; border-radius: 50%; flex: none; overflow: hidden; box-shadow: inset 0 0 0 3px rgba(255,255,255,.4), inset 0 0 0 4px var(--smalto); }
   .foot { text-align: center; margin-top: 18px; }
+  /* Thumb quadrata (foto vera o colore calcolato da medaglia()) per le righe della
+     lista "Memoria": stessa forma di .todo-thumb (Traccia), ma è un contenitore —
+     medaglia() a volte mette solo un colore di sfondo, senza <img>. */
+  .todo-thumb-wrap { flex: none; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: #ccd2d8; }
+  .todo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Nella targa di "Memoria" ci sono due righe (nome, poi messaggio) invece di una:
+     il nome un po' più deciso, il messaggio un filo più leggero, stesso monospace. */
+  .plate .mem-nome { font-weight: 700; margin-bottom: 6px; }
+  .plate .mem-msg { opacity: .85; }
 
   label { display: block; font-weight: 500; margin: 12px 0 0; }
   input[type=text], textarea, select {
@@ -281,8 +279,6 @@
   #m-link-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
-  .section { margin-top: 26px; border-top: 2px solid #C9D0D7; padding-top: 14px; }
-  .section h2 { font: 600 20px/1 var(--display); color: var(--grigio); margin: 0 0 10px; }
   .todo { list-style: none; margin: 0; padding: 0; }
   .todo button {
     display: flex; width: 100%; align-items: center; gap: 10px;
@@ -319,14 +315,13 @@
      --cemento riusato tale e quale (era pensato per restare neutro, non per
      "illuminarsi"). */
   body.dark .brand, body.dark .current h2, body.dark .inbox h2,
-  body.dark .unlocked-item h3 { color: var(--testo-chiaro); }
+  body.dark .unlocked-item h3, body.dark .title { color: var(--testo-chiaro); }
   body.dark .progress, body.dark .link, body.dark .hint,
-  body.dark .inbox .when, body.dark .inventory h2, body.dark .section h2 { color: #93A9C2; }
+  body.dark .inbox .when { color: #93A9C2; }
   body.dark .unlocked-item p { color: var(--testo-chiaro); }
 
   body.dark .current, body.dark .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
   body.dark .inbox li { border-top-color: var(--bordo-superficie); }
-  body.dark .inventory, body.dark .section { border-top-color: var(--bordo-superficie); }
 
   body.dark .btn { border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
   body.dark .btn.primary { background: var(--acceso); color: var(--testo-su-acceso); }
@@ -392,14 +387,14 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 37)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 38)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
   <!-- ================= GIOCATORE ================= -->
   <section id="view-player" hidden>
     <header class="bar">
-      <span class="brand">Caccia</span>
+      <span class="brand" id="p-brand">Caccia</span>
       <span class="bar-right">
         <span id="p-progress" class="progress"></span>
       </span>
@@ -415,8 +410,8 @@
              corso o a caccia finita: altrimenti da "Hai trovato tutto" non si potrebbe
              più arrivare a "Impostazioni" per ricominciare. -->
         <div class="subtabs">
-          <button id="sub-indizio-btn" class="subtab">👣 Traccia</button>
-          <button id="sub-foto-btn" class="subtab">Foto</button>
+          <button id="sub-indizio-btn" class="subtab">👾 Traccia</button>
+          <button id="sub-foto-btn" class="subtab">📷 Foto</button>
           <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
             ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
           </button>
@@ -429,7 +424,7 @@
           <button id="p-continue" class="btn primary">Continua la caccia</button>
         </div>
 
-        <div id="sub-indizio">
+        <div id="sub-indizio" class="schermo-scheda">
           <div id="p-empty" class="empty">
             <h1 class="title">Nessuna caccia in corso</h1>
             <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
@@ -441,13 +436,12 @@
             <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
           </div>
 
-          <div id="p-clue-card" hidden>
+          <div id="p-clue-card" class="schermo-card" hidden>
             <div class="plate">
-              <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
               <div id="p-clue-imgs" class="clue-imgs"></div>
               <p id="p-clue"></p>
             </div>
-            <ul id="p-todo-list" class="todo"></ul>
+            <ul id="p-todo-list" class="todo schermo-lista"></ul>
           </div>
         </div>
 
@@ -478,16 +472,26 @@
 
       <!-- ===== scheda "Memoria" ===== -->
       <div id="tab-oggetti" class="playertab" hidden>
-        <div id="p-inventory" class="section inventory">
-          <h2>Il tuo impianto neurale</h2>
-          <ul id="p-inv-list"></ul>
+        <div class="schermo-scheda">
+          <div id="p-mem-empty" class="empty">
+            <h1 class="title">Nessun ricordo ancora</h1>
+            <p>Quello che trovi resta qui, rivedibile in qualunque momento.</p>
+          </div>
+
+          <div id="p-mem-card" class="schermo-card" hidden>
+            <div class="plate">
+              <p id="p-mem-nome" class="mem-nome" hidden></p>
+              <p id="p-mem-msg" class="mem-msg"></p>
+            </div>
+            <ul id="p-inv-list" class="todo schermo-lista"></ul>
+          </div>
         </div>
       </div>
     </div>
 
     <nav id="p-tabbar">
       <button id="p-tab-cerca" class="ptab">🔍 Cerca</button>
-      <button id="p-tab-oggetti" class="ptab">💾 Memoria</button>
+      <button id="p-tab-oggetti" class="ptab">💽 Memoria</button>
     </nav>
   </section>
 
@@ -974,26 +978,6 @@ function apriAnteprima(src) {
   const overlay = document.createElement("div"); overlay.className = "lightbox";
   const img = document.createElement("img"); img.src = src;
   overlay.append(img);
-  overlay.onclick = () => overlay.remove();
-  document.body.append(overlay);
-}
-
-// Rivede il "messaggio" di un oggetto già in bottino: stessa scheda della
-// schermata di sblocco, solo richiamabile in qualunque momento toccando
-// l'oggetto — utile per rileggere cosa diceva, con calma.
-function apriRicordo(n) {
-  const overlay = document.createElement("div"); overlay.className = "lightbox";
-  const card = document.createElement("div"); card.className = "current";
-  const item = document.createElement("div"); item.className = "unlocked-item";
-  const medal = document.createElement("div"); medal.className = "medal";
-  medaglia(medal, n);
-  const testo = document.createElement("div");
-  const h3 = document.createElement("h3"); h3.textContent = n.nome;
-  const p = document.createElement("p"); p.textContent = n.messaggio || "";
-  testo.append(h3, p);
-  item.append(medal, testo);
-  card.append(item);
-  overlay.append(card);
   overlay.onclick = () => overlay.remove();
   document.body.append(overlay);
 }
@@ -1761,6 +1745,11 @@ let game = null;
 // (nuova caccia, o riapertura): non ha senso ricordarle da una sessione all'altra.
 let tabAttivo = "cerca";
 let subTabAttivo = "indizio";
+// Quale oggetto trovato è "attuale" nello schermo di "Memoria" — id del nodo, o null
+// finché il giocatore non ne tocca uno (mostra un messaggio di default, vedi
+// renderMemoria()). Stessa idea di st.scelta per l'indizio, ma non salvata nello
+// stato del giocatore: non ha senso ricordarla da una sessione all'altra.
+let memoriaScelta = null;
 
 // Passa fra "Cerca" e "Oggetti": ferma sempre la fotocamera lasciando "Cerca" (come
 // già succede cambiando schermata altrove) — nessun motivo di tenerla accesa mentre
@@ -1975,23 +1964,51 @@ function medaglia(el, n) {
   else el.style.background = coloreNodo(n.nome);
 }
 
-function renderInventory(st) {
-  $("p-inventory").hidden = !st.bottino.length;
-  $("p-inv-list").innerHTML = "";
+// Scheda "Memoria": stessa struttura di "Traccia" — uno schermo in cima con
+// l'oggetto trovato "attuale" (nome e messaggio di sblocco), sotto la lista di
+// TUTTI gli oggetti trovati, ancorata in fondo. Toccarne uno lo rende "attuale" e
+// aggiorna lo schermo, senza aprire più un popup a parte (vedi memoriaScelta).
+function renderMemoria(st) {
+  const vuoto = !st.bottino.length;
+  $("p-mem-empty").hidden = !vuoto;
+  $("p-mem-card").hidden = vuoto;
+  if (vuoto) return;
+
+  const scelto = st.bottino.find(r => r.nodo === memoriaScelta) || null;
+  $("p-mem-nome").hidden = !scelto;
+  if (scelto) $("p-mem-nome").textContent = scelto.nome;
+  $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale…";
+
+  const list = $("p-inv-list");
+  list.innerHTML = "";
   for (const r of st.bottino) {
-    const li = document.createElement("li");
-    li.tabIndex = 0; li.className = "clickable";
-    const mini = document.createElement("span"); mini.className = "mini";
-    medaglia(mini, r);
-    const name = document.createElement("span"); name.textContent = r.nome;
-    li.append(mini, name);
-    li.onclick = () => apriRicordo(r);
-    li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); apriRicordo(r); } };
-    $("p-inv-list").append(li);
+    const thumb = document.createElement("span"); thumb.className = "todo-thumb-wrap"; medaglia(thumb, r);
+    rigaSelezionabile(list, {
+      prima: [thumb], testo: r.nome, dopo: null,
+      attiva: memoriaScelta === r.nodo,
+      onClick: () => { memoriaScelta = r.nodo; renderMemoria(stato()); },
+    });
   }
 }
 
-// Scheda "Indizio": un elenco con TUTTI gli oggetti raggiungibili, ciascuno con il
+// Una riga di lista "todo"-stile: bottone con decorazioni facoltative prima/dopo il
+// testo (troncato a una riga via CSS), evidenziata se "attiva". Condivisa fra la
+// lista di "Traccia" (oggetti raggiungibili) e quella di "Memoria" (oggetti trovati):
+// stessa forma e stesso meccanismo di selezione, contenuto diverso.
+function rigaSelezionabile(list, { prima, testo, dopo, attiva, onClick }) {
+  const li = document.createElement("li");
+  const b = document.createElement("button");
+  for (const el of prima || []) b.append(el);
+  const t = document.createElement("span"); t.className = "txt"; t.textContent = testo;
+  b.append(t);
+  if (dopo) b.append(dopo);
+  if (attiva) b.setAttribute("aria-current", "true");
+  b.onclick = onClick;
+  li.append(b);
+  list.append(li);
+}
+
+// Scheda "Traccia": un elenco con TUTTI gli oggetti raggiungibili, ciascuno con il
 // proprio indizio (testo e foto) per intero — non solo quello scelto. Toccarne uno lo
 // rende "attuale" (si colora, aria-current) ma resta su questa scheda: passare a "Foto"
 // per scattare è una scelta separata del giocatore, non automatica.
@@ -1999,23 +2016,21 @@ function renderTodo(st, todo, cur) {
   const list = $("p-todo-list");
   list.innerHTML = "";
   for (const m of todo) {
-    const li = document.createElement("li");
-    const b = document.createElement("button");
-    for (const src of immaginiIndizio(m)) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; b.append(img); }
-    const t = document.createElement("span"); t.className = "txt"; t.textContent = etichettaOggetto(m.id);
-    b.append(t);
-    if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
-    if (cur && m.id === cur.id) b.setAttribute("aria-current", "true");
-    b.onclick = () => {
-      const s = stato();
-      s.scelta = m.id;
-      if (!s.visti.includes(m.id)) s.visti.push(m.id);
-      saveState(s);
-      setStatus($("p-status"), ""); $("p-score").textContent = "";
-      renderPlayer();
-    };
-    li.append(b);
-    list.append(li);
+    const imgs = immaginiIndizio(m).map(src => { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; return img; });
+    let nuovo = null;
+    if (!st.visti.includes(m.id)) { nuovo = document.createElement("span"); nuovo.className = "new"; nuovo.textContent = "Nuovo"; }
+    rigaSelezionabile(list, {
+      prima: imgs, testo: etichettaOggetto(m.id), dopo: nuovo,
+      attiva: cur && m.id === cur.id,
+      onClick: () => {
+        const s = stato();
+        s.scelta = m.id;
+        if (!s.visti.includes(m.id)) s.visti.push(m.id);
+        saveState(s);
+        setStatus($("p-status"), ""); $("p-score").textContent = "";
+        renderPlayer();
+      },
+    });
   }
 }
 
@@ -2031,7 +2046,7 @@ function renderPlayer() {
   if (!game) {
     $("p-alldone").hidden = true; $("p-clue-card").hidden = true; $("p-news").hidden = true;
     $("p-progress").textContent = "";
-    renderInventory(stato());
+    renderMemoria(stato());
     mostraSubTab(subTabAttivo); // Messaggi/Impostazioni restano raggiungibili anche qui
     return;
   }
@@ -2043,7 +2058,7 @@ function renderPlayer() {
   const nuovi = todo.filter(m => !st.visti.includes(m.id));
   $("p-news").hidden = !nuovi.length;
   $("p-news").textContent = nuovi.length === 1 ? "C'è un nuovo oggetto da trovare." : `Ci sono ${nuovi.length} nuovi oggetti da trovare.`;
-  renderInventory(st);
+  renderMemoria(st);
 
   if (!todo.length) {
     stopCamera();
@@ -2085,7 +2100,7 @@ function showReward(nuovi, st) {
   }
   const tot = Object.values(game.nodi).filter(n => n.daValidare).length;
   $("p-progress").textContent = `Trovati ${contaTrovati(st)} di ${tot}`;
-  renderInventory(st);
+  renderMemoria(st);
 }
 
 async function shoot() {
@@ -2141,7 +2156,13 @@ function initPlayer() {
   // Ricorda l'ultima caccia vista, sia scelta dalla schermata di scelta sia raggiunta
   // con un link diretto "#c-<slug>": è quello che avvioGiocatore() rilegge la prossima
   // volta per entrare diretti, senza richiedere la scelta ogni apertura.
-  store.set(CHOOSER_KEY, activeSlug());
+  const slug = activeSlug();
+  store.set(CHOOSER_KEY, slug);
+  // Il titolo in alto è il nome di QUESTA caccia (il file), non più il testo fisso
+  // "Caccia": quello resta solo nella schermata di scelta, dove non se n'è ancora
+  // scelta una.
+  $("p-brand").textContent = slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "Caccia";
+  memoriaScelta = null;
 
   game = null;
   const saved = store.get(gameKey());
