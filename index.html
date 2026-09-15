@@ -301,7 +301,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 31)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 32)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -320,15 +320,16 @@
         <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
         <p id="p-news" class="newsbar" role="status" hidden></p>
 
-        <div id="p-empty" class="empty">
-          <h1 class="title">Nessuna caccia in corso</h1>
-          <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
-          <button id="p-retry" class="btn primary" hidden>Riprova</button>
-        </div>
-
-        <div id="p-alldone" class="empty" hidden>
-          <h1 class="title">Hai trovato tutto</h1>
-          <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+        <!-- Le quattro schede restano SEMPRE raggiungibili, anche senza una caccia in
+             corso o a caccia finita: altrimenti da "Hai trovato tutto" non si potrebbe
+             più arrivare a "Impostazioni" per ricominciare. -->
+        <div class="subtabs">
+          <button id="sub-indizio-btn" class="subtab">Indizio</button>
+          <button id="sub-foto-btn" class="subtab">Foto</button>
+          <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
+            ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
+          </button>
+          <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni">⚙️</button>
         </div>
 
         <div id="p-reward" class="reward" hidden>
@@ -337,17 +338,19 @@
           <button id="p-continue" class="btn primary">Continua la caccia</button>
         </div>
 
-        <div id="p-hunt" hidden>
-          <div class="subtabs">
-            <button id="sub-indizio-btn" class="subtab">Indizio</button>
-            <button id="sub-foto-btn" class="subtab">Foto</button>
-            <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
-              ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
-            </button>
-            <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni">⚙️</button>
+        <div id="sub-indizio">
+          <div id="p-empty" class="empty">
+            <h1 class="title">Nessuna caccia in corso</h1>
+            <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
+            <button id="p-retry" class="btn primary" hidden>Riprova</button>
           </div>
 
-          <div id="sub-indizio">
+          <div id="p-alldone" class="empty" hidden>
+            <h1 class="title">Hai trovato tutto</h1>
+            <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+          </div>
+
+          <div id="p-clue-card" hidden>
             <div class="plate">
               <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
               <p id="p-clue"></p>
@@ -355,30 +358,30 @@
             </div>
             <ul id="p-todo-list" class="todo"></ul>
           </div>
+        </div>
 
-          <div id="sub-foto" hidden>
-            <div class="viewfinder" id="p-vf">
-              <video id="p-video" playsinline muted autoplay></video>
-              <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-              <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
-            </div>
-            <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
-            <p id="p-status" class="status" role="status"></p>
-            <p id="p-score" class="score"></p>
+        <div id="sub-foto" hidden>
+          <div class="viewfinder" id="p-vf">
+            <video id="p-video" playsinline muted autoplay></video>
+            <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+            <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
           </div>
+          <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
+          <p id="p-status" class="status" role="status"></p>
+          <p id="p-score" class="score"></p>
+        </div>
 
-          <div id="p-inbox" class="inbox" hidden>
-            <h2>Messaggi</h2>
-            <ul id="p-inbox-list"></ul>
-            <button id="p-inbox-close" class="link">Chiudi</button>
-          </div>
+        <div id="p-inbox" class="inbox" hidden>
+          <h2>Messaggi</h2>
+          <ul id="p-inbox-list"></ul>
+          <button id="p-inbox-close" class="link">Chiudi</button>
+        </div>
 
-          <div id="p-settings" class="inbox" hidden>
-            <h2>Impostazioni</h2>
-            <button id="p-change-hunt" class="link">Cambia caccia</button>
-            <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
-            <button id="p-settings-close" class="link">Chiudi</button>
-          </div>
+        <div id="p-settings" class="inbox" hidden>
+          <h2>Impostazioni</h2>
+          <button id="p-change-hunt" class="link">Cambia caccia</button>
+          <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+          <button id="p-settings-close" class="link">Chiudi</button>
         </div>
       </div>
 
@@ -614,6 +617,12 @@ async function startCamera(video) {
 }
 function stopCamera() {
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  // Scollega anche l'elemento video dallo stream fermato: altrimenti resta agganciato
+  // a uno stream morto e mostra un fotogramma congelato quando lo si riattiva (visto
+  // passando Foto → Indizio → Foto: la fotocamera sembrava "incantata").
+  const pv = $("p-video"), mv = $("m-video");
+  if (pv) pv.srcObject = null;
+  if (mv) mv.srcObject = null;
 }
 function flash(vf) { vf.classList.remove("flash"); void vf.offsetWidth; vf.classList.add("flash"); }
 
@@ -1683,6 +1692,7 @@ function mostraTab(tab) {
 function mostraSubTab(sub) {
   subTabAttivo = sub;
   if (sub !== "foto") stopCamera();
+  $("p-reward").hidden = true; // scelta esplicita di scheda: la festa è finita
   $("sub-indizio").hidden = sub !== "indizio";
   $("sub-foto").hidden = sub !== "foto";
   $("p-inbox").hidden = sub !== "messaggi";
@@ -1691,11 +1701,23 @@ function mostraSubTab(sub) {
   $("sub-foto-btn").setAttribute("aria-current", String(sub === "foto"));
   $("sub-msg-btn").setAttribute("aria-current", String(sub === "messaggi"));
   $("sub-settings-btn").setAttribute("aria-current", String(sub === "impostazioni"));
-  if (sub === "foto") { $("p-cam").hidden = !!stream; $("p-shoot").disabled = !stream; }
+  if (sub === "foto") {
+    // .disabled non si azzera da solo lasciando "Foto" (cameraButton() lo rimette a
+    // true solo sull'errore): senza questa riga, tornando qui il bottone "Attiva la
+    // fotocamera" ricompariva ma restava disabilitato, un altro modo in cui la
+    // fotocamera sembrava "incantata".
+    $("p-cam").hidden = !!stream; $("p-cam").disabled = false; $("p-shoot").disabled = !stream;
+  }
   if (sub === "messaggi") { markRead(inbox.map(m => m.id)); renderInbox(); }
 }
 // Aggancio per i test (vedi CLAUDE.md): stato altrimenti privato al modulo.
-Object.assign(window.__test, { tabAttivo: () => tabAttivo, subTabAttivo: () => subTabAttivo, hasStream: () => !!stream });
+Object.assign(window.__test, {
+  tabAttivo: () => tabAttivo, subTabAttivo: () => subTabAttivo, hasStream: () => !!stream,
+  // Simula "ho appena trovato un oggetto" senza passare da fotocamera/riconoscimento
+  // vero: showReward() si aspetta un elenco di nodi e lo stato corrente, entrambi
+  // ricavabili da qui.
+  simulaTrovato: () => showReward([{ nome: "Test", messaggio: "" }], stato()),
+});
 
 const inProva  = () => !!store.get("prova");
 // Chiavi separate per caccia (slug), così bottino e progressi di una non si mescolano
@@ -1916,9 +1938,10 @@ function renderPlayer() {
   $("p-reset").hidden = !game;
   $("p-empty").hidden = !!game;
   if (!game) {
-    for (const id of ["p-hunt", "p-alldone", "p-news"]) $(id).hidden = true;
+    $("p-alldone").hidden = true; $("p-clue-card").hidden = true; $("p-news").hidden = true;
     $("p-progress").textContent = "";
     renderInventory(stato());
+    mostraSubTab(subTabAttivo); // Messaggi/Impostazioni restano raggiungibili anche qui
     return;
   }
   const st = stato();
@@ -1933,17 +1956,17 @@ function renderPlayer() {
 
   if (!todo.length) {
     stopCamera();
-    $("p-hunt").hidden = true; $("p-alldone").hidden = false;
+    $("p-clue-card").hidden = true; $("p-alldone").hidden = false;
+    mostraSubTab(subTabAttivo); // idem: da "Hai trovato tutto" si deve poter ricominciare
     return;
   }
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
-  $("p-hunt").hidden = false;
+  $("p-clue-card").hidden = false;
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
   for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
-  $("p-cam").disabled = false;
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
 }
@@ -1951,7 +1974,10 @@ function renderPlayer() {
 // Il possesso si festeggia sempre: tutti i nodi appena sbloccati da un solo scatto
 // (anche a cascata) si mostrano insieme nella stessa schermata, non più in coda.
 function showReward(nuovi, st) {
-  for (const id of ["p-hunt", "p-news", "p-alldone"]) $(id).hidden = true;
+  // Dopo aver trovato qualcosa si riparte da "Indizio", non si resta su "Foto": lo si
+  // sceglie di nuovo solo quando si è pronti per il prossimo oggetto.
+  subTabAttivo = "indizio";
+  for (const id of ["sub-indizio", "sub-foto", "p-inbox", "p-settings", "p-news"]) $(id).hidden = true;
   $("p-reward").hidden = false;
   const wrap = $("p-reward-list");
   wrap.innerHTML = "";
