@@ -7,7 +7,7 @@
 <title>Caccia · prototipo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --smalto: #16365C;
@@ -21,6 +21,23 @@
     --rosso: #B3302A;
     --display: "Barlow Condensed", "Arial Narrow", sans-serif;
     --testo: "Barlow", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  /* Tema del giocatore (schermata di scelta + gioco, MAI il pannello master, che
+     resta lo strumento di lavoro chiaro di sempre): stessa tavolozza smalto/cemento,
+     ma con i ruoli di chiaro e scuro invertiti — sfondo e non selezionato scuri,
+     selezionato "acceso". Non è --cemento riusato tale e quale come colore acceso:
+     era pensato per essere un grigio neutro di sfondo, non per "illuminarsi", quindi
+     --acceso è un bianco freddo a parte, più elettrico. */
+  body.dark {
+    --sfondo-pagina: var(--smalto-scuro);
+    --superficie: var(--smalto);
+    --bordo-superficie: #2A4568;
+    --testo-chiaro: var(--bianco);
+    --acceso: #EAF6FF;
+    --testo-su-acceso: var(--smalto-scuro);
+    --monitor-sfondo: #16181C;
+    --monitor-testo: #8CFFB0;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -30,6 +47,7 @@
     font: 400 17px/1.5 var(--testo);
     -webkit-font-smoothing: antialiased;
   }
+  body.dark { background: var(--sfondo-pagina); color: var(--testo-chiaro); }
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
   [hidden] { display: none !important; }
 
@@ -294,6 +312,56 @@
   .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
   .diag { white-space: pre-wrap; word-break: break-word; background: #fff; border: 2px solid var(--rosso); color: var(--rosso); border-radius: 8px; padding: 12px; font: 14px/1.4 ui-monospace, monospace; }
 
+  /* ===== Tema scuro (schermata di scelta + gioco, mai il pannello master) =====
+     Stessi elementi, stesse forme (angoli, dimensioni: invariati per scelta) — solo
+     i ruoli di chiaro/scuro invertiti: sfondo e "non selezionato" scuri (--superficie,
+     variante di --smalto), "selezionato" chiaro/elettrico (--acceso), non il
+     --cemento riusato tale e quale (era pensato per restare neutro, non per
+     "illuminarsi"). */
+  body.dark .brand, body.dark .current h2, body.dark .inbox h2,
+  body.dark .unlocked-item h3 { color: var(--testo-chiaro); }
+  body.dark .progress, body.dark .link, body.dark .hint,
+  body.dark .inbox .when, body.dark .inventory h2, body.dark .section h2 { color: #93A9C2; }
+  body.dark .unlocked-item p { color: var(--testo-chiaro); }
+
+  body.dark .current, body.dark .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
+  body.dark .inbox li { border-top-color: var(--bordo-superficie); }
+  body.dark .inventory, body.dark .section { border-top-color: var(--bordo-superficie); }
+
+  body.dark .btn { border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
+  body.dark .btn.primary { background: var(--acceso); color: var(--testo-su-acceso); }
+
+  body.dark .status.ok { color: #6FE39A; }
+  body.dark .status.ko { color: #FF9A8D; }
+
+  body.dark #p-tabbar { background: var(--superficie); border-top-color: var(--bordo-superficie); }
+  body.dark .ptab { color: #93A9C2; }
+  body.dark .ptab[aria-current="true"] { background: var(--acceso); color: var(--testo-su-acceso); }
+
+  body.dark .subtab { border-color: var(--bordo-superficie); color: var(--testo-chiaro); background: transparent; }
+  body.dark .subtab.icon { color: var(--testo-chiaro); }
+  body.dark .subtab[aria-current="true"], body.dark .subtab.icon[aria-current="true"] {
+    background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso);
+  }
+
+  body.dark .todo button { background: var(--superficie); border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
+  body.dark .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
+
+  /* La targa diventa un monitor incassato nella stessa cornice a viti: sfondo grigio
+     neutro (non blu, si legge come un materiale diverso), testo monospace verde
+     fosforescente, un leggero bagliore invece dell'inset bianco/smalto di prima. */
+  body.dark .plate {
+    background: var(--monitor-sfondo);
+    box-shadow: inset 0 0 0 6px #0B0C0E, inset 0 0 0 8px #2A2E33, 0 0 26px rgba(140,255,176,.18);
+  }
+  body.dark .plate p, body.dark .plate:has(.clue-imgs .imgprev) p {
+    text-align: left; text-wrap: wrap; color: var(--monitor-testo);
+    font: 600 clamp(17px, 4.6vw, 22px)/1.55 var(--mono);
+    text-shadow: 0 0 10px rgba(140,255,176,.5);
+  }
+  body.dark .plate p::before { content: "> "; opacity: .7; }
+  body.dark .clue-imgs .imgprev { box-shadow: 0 0 0 2px rgba(140,255,176,.45); }
+
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 <script>
@@ -324,7 +392,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 36)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 37)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -347,7 +415,7 @@
              corso o a caccia finita: altrimenti da "Hai trovato tutto" non si potrebbe
              più arrivare a "Impostazioni" per ricominciare. -->
         <div class="subtabs">
-          <button id="sub-indizio-btn" class="subtab">Indizio</button>
+          <button id="sub-indizio-btn" class="subtab">👣 Traccia</button>
           <button id="sub-foto-btn" class="subtab">Foto</button>
           <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
             ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
@@ -408,10 +476,10 @@
         </div>
       </div>
 
-      <!-- ===== scheda "Oggetti" ===== -->
+      <!-- ===== scheda "Memoria" ===== -->
       <div id="tab-oggetti" class="playertab" hidden>
         <div id="p-inventory" class="section inventory">
-          <h2>Il tuo bottino</h2>
+          <h2>Il tuo impianto neurale</h2>
           <ul id="p-inv-list"></ul>
         </div>
       </div>
@@ -419,7 +487,7 @@
 
     <nav id="p-tabbar">
       <button id="p-tab-cerca" class="ptab">🔍 Cerca</button>
-      <button id="p-tab-oggetti" class="ptab">🎒 Oggetti</button>
+      <button id="p-tab-oggetti" class="ptab">💾 Memoria</button>
     </nav>
   </section>
 
@@ -430,7 +498,7 @@
     </header>
     <div class="current">
       <h2>Scegli una caccia</h2>
-      <p class="hint">La prossima volta si apre direttamente quella scelta: per cambiarla di nuovo, usa "Cambia caccia" nella scheda "Oggetti".</p>
+      <p class="hint">La prossima volta si apre direttamente quella scelta: per cambiarla di nuovo, usa "Cambia caccia" in ⚙️ Impostazioni.</p>
       <div id="chooser-list"></div>
     </div>
   </section>
@@ -2183,6 +2251,9 @@ function route() {
   $("view-collega").hidden = !collega;
   $("view-grafo").hidden = !grafo;
   document.body.classList.toggle("wide", collega || grafo);
+  // Tema scuro per tutto ciò che vede il giocatore (scelta della caccia inclusa),
+  // mai per il pannello master: resta lo strumento di lavoro chiaro di sempre.
+  document.body.classList.toggle("dark", !(master || collega || grafo));
   if (master || collega || grafo) {
     $("view-player").hidden = true; $("view-chooser").hidden = true;
     document.body.classList.remove("playing");
