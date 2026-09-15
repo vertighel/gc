@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 26)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 27)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -330,8 +330,21 @@
     </div>
 
     <footer class="foot">
+      <button id="p-change-hunt" class="link">Cambia caccia</button>
       <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
     </footer>
+  </section>
+
+  <!-- ================= SCELTA DELLA CACCIA ================= -->
+  <section id="view-chooser" hidden>
+    <header class="bar">
+      <span class="brand">Caccia</span>
+    </header>
+    <div class="current">
+      <h2>Scegli una caccia</h2>
+      <p class="hint">La prossima volta si apre direttamente quella scelta: per cambiarla di nuovo, usa "Cambia caccia" in fondo alla pagina.</p>
+      <div id="chooser-list"></div>
+    </div>
   </section>
 
   <!-- ================= MASTER ================= -->
@@ -884,7 +897,7 @@ function aggiornaMenuCacce() {
   sel.innerHTML = "";
   const opt = (value, testo) => { const o = document.createElement("option"); o.value = value; o.textContent = testo; sel.append(o); };
   opt("__new__", "+ Nuova caccia");
-  opt("", "Caccia di sempre (link senza # in fondo)");
+  opt("", "caccia");
   for (const slug of cacceConosciute) opt(slug, slug);
   // Se sto modificando una caccia appena creata, non ancora pubblicata (quindi non
   // ancora in cacce.json), aggiungo comunque una voce per non perdere la selezione.
@@ -1892,6 +1905,11 @@ async function shoot() {
 }
 
 function initPlayer() {
+  // Ricorda l'ultima caccia vista, sia scelta dalla schermata di scelta sia raggiunta
+  // con un link diretto "#c-<slug>": è quello che avvioGiocatore() rilegge la prossima
+  // volta per entrare diretti, senza richiedere la scelta ogni apertura.
+  store.set(CHOOSER_KEY, activeSlug());
+
   game = null;
   const saved = store.get(gameKey());
   if (saved) { try { loadGame(saved); } catch { game = null; } }
@@ -1909,6 +1927,11 @@ function initPlayer() {
     stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
     renderPlayer();
   };
+  $("p-change-hunt").onclick = () => {
+    stopCamera();
+    store.del(CHOOSER_KEY);
+    if (location.hash) location.hash = ""; else mostraSceltaCaccia();
+  };
   $("p-inbox-btn").onclick = () => {
     $("p-inbox").hidden = false;
     markRead(inbox.map(m => m.id));
@@ -1922,15 +1945,62 @@ function initPlayer() {
   syncMessages();
 }
 
-// Quando il giocatore torna sull'app, controlla se ci sono novità
+// Quando il giocatore torna sull'app, controlla se ci sono novità (solo se sta
+// guardando davvero una caccia: se è ferma sulla schermata di scelta non c'è nulla
+// da sincronizzare).
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && !location.hash.startsWith("#master")) { syncGame(); syncMessages(); }
+  if (!document.hidden && !location.hash.startsWith("#master") && $("view-chooser").hidden) { syncGame(); syncMessages(); }
 });
 
+// Ricordata in locale: quale caccia il giocatore ha visto per ultima (scelta dalla
+// schermata di scelta, o raggiunta con un link diretto "#c-<slug>"). null = non ha
+// ancora scelto nulla su questo telefono: vedi avvioGiocatore().
+const CHOOSER_KEY = "caccia-scelta";
+
+function mostraGiocatore() {
+  $("view-chooser").hidden = true;
+  $("view-player").hidden = false;
+  initPlayer();
+}
+
+// Elenco delle cacce mostrato al giocatore: "caccia" (caccia.json, sempre presente)
+// più le cacce con nome note al master (cacce.json) — stesso file, stessa lista che
+// alimenta il menu del pannello master.
+async function mostraSceltaCaccia() {
+  $("view-player").hidden = true;
+  $("view-chooser").hidden = false;
+  let elenco = [];
+  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
+  if (!Array.isArray(elenco)) elenco = [];
+  const cacce = [{ slug: "", nome: "caccia" }, ...elenco.map(slug => ({ slug, nome: slug }))];
+  const wrap = $("chooser-list");
+  wrap.innerHTML = "";
+  for (const c of cacce) {
+    const btn = document.createElement("button"); btn.className = "btn primary"; btn.textContent = c.nome;
+    btn.onclick = () => {
+      store.set(CHOOSER_KEY, c.slug);
+      if (c.slug) location.hash = "c-" + c.slug; else mostraGiocatore();
+    };
+    wrap.append(btn);
+  }
+}
+
+// All'apertura senza hash: se il telefono ricorda già una scelta (fatta qui, o perché
+// si sta già giocando da prima che esistesse questa schermata) entra diretto in quella
+// caccia; altrimenti mostra la scelta.
+async function avvioGiocatore() {
+  if (store.get(CHOOSER_KEY) === null && store.get("gioco")) store.set(CHOOSER_KEY, "");
+  const scelta = store.get(CHOOSER_KEY);
+  if (scelta) { location.hash = "c-" + scelta; return; }
+  if (scelta === "") { mostraGiocatore(); return; }
+  await mostraSceltaCaccia();
+}
+
 /* ---------- navigazione: #master apre il pannello del master,
-   #master-collega la pagina dedicata a collegare gli elementi. Tutto il resto va al
-   giocatore, incluso "#c-<slug>" (una caccia con nome, vedi activeSlug()) e nessun
-   hash (la caccia di sempre) ---------- */
+   #master-collega la pagina dedicata a collegare gli elementi. Un link diretto
+   "#c-<slug>" (una caccia con nome, vedi activeSlug()) va dritto al giocatore, senza
+   la schermata di scelta. Nessun hash: la schermata di scelta, a meno che il telefono
+   non ricordi già una scelta precedente (vedi avvioGiocatore()) ---------- */
 function route() {
   stopCamera();
   const master = location.hash === "#master";
@@ -1939,9 +2009,15 @@ function route() {
   $("view-master").hidden = !master;
   $("view-collega").hidden = !collega;
   $("view-grafo").hidden = !grafo;
-  $("view-player").hidden = master || collega || grafo;
   document.body.classList.toggle("wide", collega || grafo);
-  if (master || collega || grafo) initMaster(); else initPlayer();
+  if (master || collega || grafo) {
+    $("view-player").hidden = true; $("view-chooser").hidden = true;
+    initMaster();
+  } else if (location.hash.startsWith("#c-")) {
+    mostraGiocatore();
+  } else {
+    avvioGiocatore();
+  }
 }
 window.addEventListener("hashchange", route);
 route();
