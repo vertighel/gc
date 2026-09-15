@@ -317,6 +317,214 @@ avrebbe richiesto una scelta editoriale (è un indizio per riconoscere il
 cacciavite, o un'istruzione per il passo dopo?) che non mi competeva
 prendere da solo sui dati già pubblicati del committente.
 
+## Perché il salvataggio della copia di lavoro è diventato un problema vero
+
+Il master registrava oggetti sul campo tenendo `L.nodi` (la copia di lavoro:
+oggetti registrati, collegamenti, testi) **solo in una variabile JavaScript
+in memoria** — un reload accidentale della pagina, o una schermata andata in
+background troppo a lungo, cancellava tutto senza preavviso.
+
+Soluzione a due livelli, non uno solo, perché risolvono problemi diversi:
+- **Autosalvataggio locale** (`salvaLocale()`/`caricaBozzaLocale()`, chiave
+  `m-lavoro` in `localStorage`): scritto a ogni modifica di `L.nodi`, letto
+  all'apertura del pannello master. Protegge dal reload sullo stesso
+  telefono, gratis, senza rete.
+- **"Salva bozza sul server"** (bottone dedicato, scrive `lavoro.json` o
+  `lavoro-<slug>.json`): protegge da un cambio di telefono, o da una pulizia
+  dei dati del browser. Usa lo stesso meccanismo di scrittura
+  (`ghPutFile`) già usato per `caccia.json`/`messaggi.json`.
+
+**Decisivo**: `lavoro*.json` non è mai referenziato dal codice giocatore
+(nessun `fetch` lo cerca) — è per costruzione invisibile ai giocatori, non
+serve nasconderlo o proteggerlo apposta. Questo è anche ciò che tiene
+disaccoppiati "salvare il lavoro" e "pubblicarlo": il primo scrive
+`lavoro*.json` quante volte si vuole, il secondo (bottone "Pubblica la
+caccia", invariato) resta l'unico atto che scrive `caccia*.json` e lo rende
+visibile ai giocatori.
+
+**Bug trovato e corretto durante il test**: quando il pannello master offre
+un menu per passare da una caccia all'altra (vedi sezione successiva),
+cambiare caccia senza aver salvato lasciava l'autosalvataggio locale della
+caccia appena abbandonata intatto — tornandoci sopra, le modifiche "scartate"
+al conferma ricomparivano, smentendo l'avviso mostrato. Corretto riallineando
+subito l'autosalvataggio locale alla caccia appena caricata
+(`caricaCopiaLavoro()` chiama `salvaLocale()` non appena determina cosa
+mostrare, prima di qualunque interazione dell'utente).
+
+## Perché più cacce sono file diversi, non righe di un database
+
+Committente: "il master crea un nuovo gioco, o edita uno esistente [...] il
+giocatore sceglie da una lista uno dei giochi". Senza un database (vedi
+sopra "Perché nessun database, per ora" — vincolo ancora valido), l'unico
+modo onesto di avere più cacce è **un file per caccia**: `caccia.json` per
+quella di sempre (slug vuoto, retrocompatibile con i link già condivisi),
+`caccia-<slug>.json` per le altre. Lo slug è derivato dal nome scelto dal
+master (`slugify()`), e nella versione finale **coincide con il nome**: non
+esistono più un "nome" leggibile e uno "slug" tecnico separati, per
+eliminare in radice la fonte del bug sotto.
+
+`cacce.json` è l'elenco delle cacce con nome (scritto da `registraCaccia()`
+alla prima pubblicazione riuscita di ciascuna) — la caccia di sempre non ci
+compare mai, è sempre la prima voce implicita ovunque questo elenco si
+mostri (menu del master, schermata di scelta del giocatore).
+
+**"caccia" è un nome riservato**, e non per caso: il committente ha aggiunto
+lui stesso la stringa `"caccia"` a mano dentro `cacce.json`, "per coerenza",
+pensando che la caccia di sempre dovesse comparire esplicitamente nella
+lista — risultato, due voci "caccia" nella schermata di scelta (una
+implicita, una dal file). Corretto in due modi, non uno solo: (a)
+`leggiElencoCacce()` filtra `"caccia"` se lo trova nel file, restando
+robusto anche a un'altra modifica a mano futura; (b) creare una caccia
+chiamata "Caccia" viene ora rifiutato esplicitamente con un messaggio,
+invece di produrre di nuovo lo stesso doppione silenzioso. La lezione più
+generale: **la lettura di `cacce.json` viveva copiata in tre punti diversi**
+(menu master, registrazione nuova caccia, schermata del giocatore), ciascuno
+con la propria idea di "aggiungi 'caccia' in testa" — unificata in una sola
+funzione (`leggiElencoCacce()`) usata da tutti e tre.
+
+Effetto collaterale positivo: la stessa `leggiElencoCacce()` che alimenta il
+menu del master è pronta per alimentare, in futuro, una schermata di scelta
+più ricca — non è stato scritto apposta per quello, ma la scelta di
+un'unica fonte di verità lo rende immediato.
+
+## Perché esiste una schermata di scelta della caccia per il giocatore
+
+Conseguenza diretta del punto sopra: se esistono più cacce, il giocatore
+deve poterne scegliere una. Per ora **niente selettore in-app persistente**
+per i link diretti: `#c-<slug>` continua ad aprire dritto quella caccia
+(pensato per condividere link diversi a gruppi diversi). Solo il link di
+sempre, **senza hash**, mostra la schermata di scelta — e solo se il
+telefono non ricorda già una preferenza (chiave `caccia-scelta`).
+
+**Continuità esplicitamente protetta**: chi aveva già una partita in corso
+sulla caccia di sempre (localStorage con chiave `gioco` già popolata) non
+vede la schermata la prima volta che apre questa versione — verrebbe
+altrimenti sorpreso da una schermata mai vista prima, per un giocatore che
+sta già giocando. La scelta si aggiorna da sola (`initPlayer()` la scrive a
+ogni apertura, non solo quando la si sceglie dalla lista), così anche
+arrivare da un link diretto `#c-<slug>` la aggiorna coerentemente.
+
+**Bug trovato e corretto**: un link `#c-` senza nessuno slug dopo il
+trattino (rotto, o digitato a mano incompleto) veniva trattato come link
+diretto valido perché il controllo guardava solo il prefisso dell'indirizzo,
+non se dopo ci fosse davvero qualcosa — risultato, caricava silenziosamente
+`caccia.json` (lo slug vuoto). `route()` ora controlla anche che
+`activeSlug()` non sia vuoto prima di considerare l'indirizzo un link
+diretto valido; altrimenti mostra la lista.
+
+## Perché il giocatore è diventato un'app a schermo intero
+
+Committente, descrivendo il flusso completo (master crea/edita → registra
+sul campo → collega con calma → pubblica → giocatore sceglie dalla lista →
+messaggi broadcast nel mezzo): "la UI dovrebbe essere il più possibile come
+se fosse schermo intero (come se fosse una app, anche se è una pagina web)
+[...] il giocatore dovrebbe avere una sezione oggetti e una foto". Confermato
+che il flusso già costruito (vedi sezioni sopra) corrispondeva esattamente a
+questa descrizione — la parte nuova era solo il livello visivo.
+
+Architettura scelta, dopo uno schema confermato passo per passo col
+committente (non assunta a priori): **due schede fisse in basso**, "Cerca" e
+"Oggetti" (mai "Caccia"/"Bottino" come proposto inizialmente — nome
+scelto dal committente). Dentro "Cerca", **quattro sotto-schede sempre
+mutuamente esclusive**: Indizio, Foto, poi ✉️ Messaggi e ⚙️ Impostazioni,
+spostati lì dall'angolo in alto e dalla scheda Oggetti rispettivamente,
+esplicitamente per essere allo stesso livello di Indizio/Foto, non pannelli
+"aperti sopra" come nella prima versione (bug corretto: restavano visibili
+insieme al resto finché non venivano chiusi a mano).
+
+**Indizio, dopo due giri di correzione sullo stesso schermo**:
+1. Prima versione: targa grande per l'oggetto scelto + lista delle sole
+   ALTERNATIVE sotto (escludendo quello scelto). Sceglierne una saltava
+   subito a "Foto".
+2. Il committente ha chiesto la lista **completa** (tutti gli oggetti
+   raggiungibili, non solo le alternative), con quello scelto evidenziato
+   in blu invece che con un bordo — e restare su "Indizio" dopo aver
+   scelto, non saltare più a "Foto" in automatico.
+3. Poi, "ovviamente" (parola del committente): la targa grande doveva
+   restare per l'oggetto scelto, sopra la lista completa. Risultato finale:
+   **entrambe le cose insieme** — targa in alto per l'attuale, lista intera
+   sotto con l'attuale evidenziato anche lì (leggera ridondanza accettata
+   consapevolmente, non vista come problema). La lezione: quando il
+   committente corregge una mia semplificazione con "ovviamente", di solito
+   vuol dire che avevo tolto qualcosa senza che me lo avesse chiesto, non
+   che il resto della richiesta precedente fosse sbagliato — vanno sommate,
+   non scelte l'una o l'altra.
+
+**Bug "fotocamera incantata" (Foto → Indizio → Foto), due cause reali,
+trovate solo testando con una fotocamera finta a livello di browser
+(`--use-fake-device-for-media-stream`), non solo ispezionando il codice**:
+- `stopCamera()` fermava lo stream ma non scollegava `video.srcObject`:
+  restava un fotogramma congelato agganciato all'elemento video.
+- Il bottone "Attiva la fotocamera" veniva disabilitato all'inizio di
+  `cameraButton()` e **riabilitato solo sul percorso di errore** — sul
+  successo restava disabilitato per sempre, invisibile finché il bottone
+  restava nascosto, ma bloccato non appena si tornava a mostrarlo. Corretto
+  in `mostraSubTab()`: ogni volta che si rientra in "Foto" senza uno stream
+  attivo, il bottone si riabilita esplicitamente.
+
+**Bug "non si può ricominciare a caccia finita"**: la riga delle quattro
+schede viveva dentro lo stesso contenitore che spariva quando non c'era
+niente da cercare (`daTrovare()` vuoto o nessuna caccia pubblicata) — da
+"Hai trovato tutto" non si arrivava più a "Impostazioni" per ricominciare.
+Corretto spostando la riga delle quattro schede fuori da quel contenitore:
+resta sempre raggiungibile, indipendentemente dallo stato della caccia.
+
+**Comportamento deciso esplicitamente**: dopo aver trovato un oggetto, si
+riparte sempre da "Indizio", non si resta su "Foto" (dove inevitabilmente ci
+si trova subito dopo aver scattato). `showReward()` reimposta la
+sotto-scheda attiva prima di mostrare la schermata di sblocco.
+
+La targa smaltata (`.plate`/`.screw`) era rimasta temporaneamente senza
+alcun uso durante il punto 2 sopra — **non cancellata dal CSS** nonostante
+fosse morta in quel momento, perché `CLAUDE.md` la indica esplicitamente
+come elemento da conservare per schermate future. Si è rivelata la scelta
+giusta: è tornata in uso al punto 3, invariata.
+
+## Il bug del riferimento "richiede" rotto: due funzioni che dovevano
+## comportarsi allo stesso modo e non lo facevano
+
+Trovato mentre si testava la schermata di scelta appena costruita: scegliere
+la caccia di sempre mostrava "0 su 4" insieme a "Hai trovato tutto" —
+contraddittorio, e riproducibile anche dopo "Ricomincia". Causa: il commit
+"tolto inizio" (sera precedente) aveva rimosso un nodo modificando
+`caccia.json` **a mano**, fuori dall'app — l'unico modo in cui può succedere,
+perché l'editor del master impedisce di rimuovere un nodo ancora richiesto
+da un altro. Il nodo rimosso era però ancora referenziato nel `richiede` di
+un altro nodo, lasciando un id orfano.
+
+`trovaCiclo()` (controllo pre-pubblicazione) ignora silenziosamente un
+riferimento a un id inesistente (`if (!nodi[r]) continue`) — trattandolo
+come "nessun prerequisito". Ma `chiudi()`/`daTrovare()` (cosa il giocatore
+può cercare) lo trattavano come un prerequisito **mai soddisfacibile**,
+bloccando per sempre tutto ciò che dipendeva da quel nodo, a cascata.
+Nessuno dei due comportamenti è stato scelto a tavolino: sono cresciuti
+indipendentemente, in momenti diversi, senza che nessuno notasse la
+contraddizione — il controllo pre-pubblicazione dava quindi una falsa
+sicurezza, perché non usava la stessa regola del gioco vero.
+
+Corretto rendendo la tolleranza a un riferimento mancante **esplicita e
+condivisa** (`richiedeSoddisfatto()`, una funzione sola usata sia da
+`chiudi()`/`daTrovare()` sia concettualmente coerente con `trovaCiclo()`):
+un `richiede` verso un id che non esiste più non blocca mai nulla, ovunque
+nel codice. Scelta deliberata di non "ripulire" invece il dato pubblicato
+(rimuovere il riferimento orfano da `caccia.json`): la correzione lato
+codice basta a rendere il gioco di nuovo giocabile, senza bisogno di
+ripubblicare nulla, ed è più robusta per definizione contro il prossimo
+edit manuale che lascerà lo stesso tipo di orfano.
+
+## Nota a parte: il sito è stato giù per una notte per un rename manuale
+
+Scoperto all'inizio di questa sessione, non correlato a nessuna richiesta:
+i commit "rename" della sera precedente avevano rinominato `caccia.json` in
+`caccia-3.json` (probabilmente per farlo combaciare col campo `formato`),
+ma il codice cerca ancora `caccia.json` — 404 per ogni giocatore, dalle
+18:38 in poi. Rinominato indietro senza perdita di dati (i 5 oggetti reali
+erano intatti in `caccia-3.json`). Nessuna relazione col formato/schema:
+`formato` (versione della struttura dati) e il nome del file sono e restano
+concetti indipendenti — la coincidenza dei nomi ("caccia-3" sia come valore
+di `formato` sia come nome file scelto quella sera) è ciò che ha reso
+l'incidente comprensibile, non voluto.
+
 ## Perché il pulsante Instagram è stato tolto
 
 È stato implementato su richiesta esplicita ("aggiungi un link per pubblicare

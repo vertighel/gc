@@ -163,3 +163,27 @@ Nota su "social": un pulsante di condivisione su Instagram è già stato
 provato e **esplicitamente rifiutato** dal committente (vedi `memory.md`).
 Se il tema riemerge, chiedere prima che forma preferisce, non riproporre la
 stessa soluzione.
+
+## 7. Più cacce pubblicabili in parallelo — FATTO (2026-09-15)
+
+Non era un punto di questa lista in origine: richiesto direttamente dal
+committente descrivendo il flusso completo del gioco (il master crea o
+edita una caccia, il giocatore ne sceglie una da una lista). Non dipende dai
+punti 1-2 (identità/database): è realizzato con **un file per caccia**
+(`caccia.json`/`caccia-<slug>.json`, stessa filosofia statica di sempre),
+non con righe di un database. Dettagli e decisioni in `memory.md`
+("Perché più cacce sono file diversi..."), schema aggiornato in
+`docs/STATO.md`.
+
+Incluso nello stesso giro di lavoro: autosalvataggio della copia in corso
+sul telefono del master + bozza pubblicabile sul server (`lavoro*.json`,
+mai letto dal giocatore) per proteggere dal reload accidentale; una
+schermata di scelta per il giocatore (link senza hash, con continuità per
+chi giocava già prima che esistesse); e una revisione della UI del
+giocatore a schermo intero, in stile app, con le schede "Cerca"/"Oggetti".
+
+**Non ancora fatto, resta aperto**: nessuna schermata di scelta persistente
+per chi arriva da link diretti `#c-<slug>` (funziona già così di proposito,
+vedi `memory.md`); nessun modo per il master di rinominare o eliminare una
+caccia già pubblicata dal menu (si può solo crearne di nuove); i messaggi
+broadcast restano globali, non per singola caccia.

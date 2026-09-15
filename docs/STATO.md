@@ -1,4 +1,4 @@
-# Stato attuale (versione 23)
+# Stato attuale (versione 32)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -10,57 +10,124 @@ più `tipo` indizio/oggetto/ricompensa, un solo tipo di nodo con tre flag
 booleani — vedi `docs/MODELLO-DATI.md` per lo schema completo e
 `memory.md` per il perché). **Non c'è migrazione automatica** dai formati
 precedenti: se il sito ha ancora pubblicato un `caccia-1`/`caccia-2`, il
-master lo vede segnalato come incompatibile e riparte da zero.
+master lo vede segnalato come incompatibile e riparte da zero. Questo
+`formato` non ha nulla a che fare col nome di una caccia (vedi sotto): sono
+due concetti indipendenti, tenuti deliberatamente separati dopo un
+incidente in cui coincidevano per caso (vedi `memory.md`).
+
+## Più cacce, un file ciascuna
+
+Il gioco non pubblica più una sola caccia: il master può crearne diverse in
+parallelo, ciascuna un file a sé, con lo stesso meccanismo statico di
+sempre (nessun database, vedi `memory.md`). Dettagli del percorso che ci
+ha portato qui, e delle decisioni prese, in `memory.md`.
+
+- **Slug = nome**: il nome che il master sceglie per una caccia (uno
+  slugify di un testo libero: minuscole, spazi e simboli diventati `-`) è
+  anche il suo identificativo tecnico. Non esistono più un "nome" e uno
+  "slug" separati.
+- **La caccia di sempre ha slug vuoto**: file `caccia.json`, link senza `#`
+  in fondo — esattamente quello già condiviso prima che esistesse questa
+  funzionalità, retrocompatibile per costruzione. Le altre cacce sono
+  `caccia-<slug>.json`, raggiunte dal giocatore con `#c-<slug>` in fondo
+  all'indirizzo.
+- **`cacce.json`**: l'elenco delle cacce con nome (la caccia di sempre non
+  ci compare mai, è sempre la prima voce implicita). Scritto da
+  `registraCaccia()` alla prima pubblicazione riuscita di ciascuna caccia
+  con nome. Letto da un'unica funzione condivisa, `leggiElencoCacce()`, sia
+  dal menu del pannello master sia dalla schermata di scelta del giocatore
+  (vedi sotto) — **"caccia" è un nome riservato**, filtrato se ricompare
+  per errore dentro `cacce.json`, e rifiutato esplicitamente se si prova a
+  creare una nuova caccia con quel nome.
+- **Copia di lavoro del master salvata in due modi**, che risolvono
+  problemi diversi (vedi `memory.md` per il perché):
+  - in `localStorage` del telefono (`m-lavoro`), scritta a ogni modifica —
+    protegge da un reload accidentale, gratis, senza rete;
+  - `lavoro.json`/`lavoro-<slug>.json` sul server, scritto solo premendo
+    "Salva bozza sul server" — protegge da un cambio di telefono. **Mai
+    letto dal codice giocatore**: nessun `fetch` lo cerca, per costruzione
+    invisibile finché non si preme "Pubblica la caccia" (che resta
+    l'unico atto che scrive `caccia*.json`, invariato).
 
 ## Modalità giocatore (indirizzo normale, senza `#`)
 
-- **Scarica `caccia.json` da solo**, all'apertura e ogni volta che l'app
-  torna in primo piano (`visibilitychange`). Nessun caricamento manuale di
-  file: quello è stato tolto apposta su richiesta del committente.
-- Mostra l'indizio del nodo scelto dentro una "targa" smaltata (stile
-  grafico volutamente diverso dal solito chat-bot: vedi in fondo a questo
-  file la sezione sullo stile). Il testo viene dal campo `testo` **dello
-  stesso nodo che si sta cercando** — mai da un prerequisito o da un
-  dipendente, vedi `docs/MODELLO-DATI.md`. Se quel nodo ha `conThumb` e una
-  foto, la foto compare accanto al testo.
-- **Lista "Da trovare" sempre visibile**, con tutti i nodi con
-  `daValidare: true` ancora mancanti *e già raggiungibili* (cioè con tutti
-  i propri "richiede" già posseduti), selezionabili in qualunque ordine. I
-  nodi non ancora "visti" da questo giocatore sono etichettati "Nuovo". Ogni
-  riga mostra anche il proprio `testo` e la propria foto-indizio (funzione
-  `immaginiIndizio()`, se `conThumb` è acceso) — utile soprattutto per
-  distinguere due oggetti "fratelli" con lo stesso prerequisito: essendo
-  entrambi auto-riferiti, ciascuno può avere un indizio (testo e foto)
-  diverso dall'altro, anche se diventano raggiungibili nello stesso momento.
-- Scatto e verifica: 5 fotogrammi ravvicinati, vince il migliore dei 5.
-  Il nodo è considerato validato se quel fotogramma supera la soglia
-  calcolata dal master ed è più simile all'oggetto che ai suoi dintorni.
-  Se il nodo ha `richiedePosizione`, il GPS viene controllato *prima* di
-  accendere il confronto immagine (vincolo implicito: `richiedePosizione`
-  non esiste senza `daValidare`, vedi `docs/MODELLO-DATI.md`).
+- **Schermo pieno, come un'app**: barra in alto fissa, contenuto che scorre
+  solo al proprio interno, barra di due schede fissa in basso — "🔍 Cerca"
+  e "🎒 Oggetti". Attivo solo mentre si gioca (classe `playing` sul
+  `<body>`): il pannello master e la schermata di scelta restano pagine
+  normali che scorrono.
+- **Schermata di scelta della caccia**: aprendo il link senza `#`, se il
+  telefono non ricorda ancora una preferenza (chiave `caccia-scelta`),
+  vede l'elenco delle cacce disponibili (`leggiElencoCacce()`) e ne
+  sceglie una. La scelta si ricorda per le aperture successive: si cambia
+  da "⚙️ Impostazioni" → "Cambia caccia" (vedi sotto). Chi ha già una
+  partita in corso sulla caccia di sempre non vede questa schermata la
+  prima volta che apre questa versione (continuità, vedi `memory.md`). Un
+  link diretto `#c-<slug>` la salta sempre, va dritto al giocatore — a
+  meno che lo slug dopo il trattino sia vuoto (link rotto), nel qual caso
+  mostra comunque la lista invece di caricare la caccia di sempre per
+  sbaglio.
+- **Dentro "Cerca", quattro sotto-schede sempre mutuamente esclusive**
+  (una sola visibile alla volta, `mostraSubTab()`):
+  - **Indizio**: una targa smaltata (stile grafico volutamente diverso dal
+    solito chat-bot, vedi in fondo la sezione sullo stile) per l'oggetto
+    scelto adesso, col testo dal campo `testo` **dello stesso nodo che si
+    sta cercando** (mai da un prerequisito o un dipendente, vedi
+    `docs/MODELLO-DATI.md`) e la sua foto se `conThumb` è acceso. Sotto, la
+    lista **completa** di tutti i nodi raggiungibili non ancora trovati
+    (non solo le alternative), ciascuno col proprio indizio e foto per
+    intero — i non ancora "visti" sono etichettati "Nuovo". Toccarne uno
+    lo evidenzia (sfondo blu) e lo rende quello attuale, aggiornando la
+    targa sopra, ma **resta su questa scheda**: passare a "Foto" è una
+    scelta separata del giocatore, non più automatica.
+  - **Foto**: fotocamera e "Scatta e verifica" per l'oggetto attuale. 5
+    fotogrammi ravvicinati, vince il migliore. Il nodo è validato se quel
+    fotogramma supera la soglia calcolata dal master ed è più simile
+    all'oggetto che ai suoi dintorni. Se il nodo ha `richiedePosizione`, il
+    GPS viene controllato *prima* di accendere il confronto immagine
+    (vincolo implicito: non esiste senza `daValidare`). La fotocamera si
+    ferma sempre lasciando questa scheda.
+  - **✉️ Messaggi**: badge col numero di non letti sull'icona. Scarica
+    `messaggi.json` con lo stesso meccanismo di `caccia.json`. Lo stato
+    "letto" è locale al telefono, non tracciato dal master.
+  - **⚙️ Impostazioni**: "Cambia caccia" (dimentica la scelta, torna alla
+    schermata di scelta) e "Ricomincia la caccia" (azzera bottino e
+    progressi di questa caccia).
+  - Questa riga di quattro schede **resta sempre raggiungibile**, anche
+    senza una caccia pubblicata o a caccia interamente trovata: altrimenti
+    da "Hai trovato tutto" non si potrebbe più arrivare a "Impostazioni"
+    per ricominciare (bug corretto, vedi `memory.md`).
 - **Il possesso si festeggia sempre**, per ogni nodo, validato con lo
   scatto o diventato posseduto da solo (`daValidare: false`) perché tutto
   ciò che richiedeva era già posseduto. Un solo scatto può sbloccarne più
   di uno in cascata: si mostrano **tutti insieme nella stessa schermata**
-  (non più in coda uno alla volta), ognuno con la propria foto vera se ce
-  l'ha (altrimenti un colore calcolato dal nome), nome e messaggio —
-  `conThumb` qui non conta: una volta posseduto un nodo, la foto si vede
-  sempre. `conThumb` decide solo se la foto fa da indizio *mentre* il
-  nodo è ancora da trovare (vedi il punto sulla targa, più sopra).
-- **Aggiornamenti incrementali**: se il master pubblica un `caccia.json`
-  con lo stesso `formato` di quello già scaricato, i progressi e il bottino
-  del giocatore restano intatti e i nuovi nodi si aggiungono alla lista.
-  Solo un `formato` diverso azzera tutto (bottino, progressi, nodi visti).
-- Bottino (ogni nodo diventato posseduto, non solo i vecchi "premi")
-  sempre visibile in fondo alla pagina, con lo stesso criterio foto/colore
-  della schermata di sblocco — ed **è cliccabile**: toccare un oggetto
-  riapre il suo `messaggio` (funzione `apriRicordo()`), la stessa scheda
-  vista alla schermata di sblocco — utile per rileggerlo con calma, non
-  più un contenuto usa-e-getta.
-- **Casella messaggi**: icona a busta in alto a destra con badge del numero
-  di non letti, scarica `messaggi.json` con lo stesso meccanismo di
-  `caccia.json`. Lo stato "letto" è **locale al telefono**, non tracciato
-  dal master (coerente con l'assenza di identità dei giocatori).
+  (non in coda uno alla volta), ognuno con la propria foto vera se ce l'ha
+  (altrimenti un colore calcolato dal nome), nome e messaggio — `conThumb`
+  qui non conta: una volta posseduto un nodo, la foto si vede sempre.
+  **Dopo la festa si riparte sempre dalla scheda "Indizio"**, mai restando
+  su "Foto" (dove inevitabilmente ci si trova appena dopo aver scattato).
+- **Un `richiede` verso un id di nodo non più esistente non blocca mai
+  nulla** (può succedere solo modificando `caccia.json` a mano fuori
+  dall'app, bypassando il controllo di "Rimuovi" — vedi `memory.md` per
+  l'incidente che ha portato a questa correzione): trattato ovunque come
+  "nessun prerequisito", coerente col comportamento già usato dal
+  controllo anti-ciclo prima di pubblicare.
+- **Aggiornamenti incrementali**: se il master pubblica una caccia con lo
+  stesso `formato` di quella già scaricata, i progressi e il bottino del
+  giocatore restano intatti e i nuovi nodi si aggiungono alla lista. Solo
+  un `formato` diverso azzera tutto (bottino, progressi, nodi visti).
+- **Bottino** (ogni nodo diventato posseduto, non solo i vecchi "premi")
+  nella scheda "Oggetti", con lo stesso criterio foto/colore della
+  schermata di sblocco — ed **è cliccabile**: toccare un oggetto riapre il
+  suo `messaggio` (funzione `apriRicordo()`), la stessa scheda vista alla
+  schermata di sblocco — utile per rileggerlo con calma, non più un
+  contenuto usa-e-getta.
+- **Progressi separati per caccia**: bottino, stato e messaggi-visti sono
+  namespaced per slug (`gioco:<slug>`, `stato:<slug>`) — la caccia di
+  sempre resta sulle chiavi `gioco`/`stato` già in uso, nessuna migrazione
+  per chi gioca già. I messaggi (`messaggi.json`) restano invece globali,
+  condivisi da tutte le cacce: non c'è ancora un canale di annunci per
+  singola caccia.
 - Funziona offline con l'ultima copia scaricata (tutto in `localStorage`).
 - **Modalità di prova**: se il master preme "Prova su questo telefono" dal
   pannello master, il giocatore su quello stesso telefono entra in uno
@@ -75,10 +142,25 @@ configurazione/meccanismo di scrittura, generico) e **"pubblica la
 caccia"** (l'atto di spedire il contenuto attuale come `caccia.json`, che
 vive solo nella pagina "Collega gli elementi" — vedi sotto).
 
-- All'apertura, **scarica la caccia già pubblicata**. Se non è già
-  `caccia-3`, la tratta come incompatibile (non ne legge i nodi: la copia
-  di lavoro riparte vuota, e pubblicare da "Collega gli elementi" sostituisce
-  interamente il file).
+- **Menu delle cacce in cima al pannello master**: prima voce "+ Nuova
+  caccia" (chiede un nome, che diventa slug e file — vedi sopra "Più
+  cacce, un file ciascuna" — e apre una copia di lavoro vuota, avvisando
+  se si abbandonano modifiche non salvate), poi la caccia di sempre
+  ("caccia"), poi ogni caccia con nome nota (`cacce.json`). Sotto il menu,
+  il link da mandare ai giocatori di quella caccia (`#c-<slug>`, o quello
+  di sempre senza `#`). Sceglierne una dal menu carica la sua copia di
+  lavoro con la stessa precedenza usata all'apertura (bozza locale di
+  QUELLA caccia → bozza sul server → pubblicata → vuota).
+- All'apertura (o scegliendo una caccia dal menu), **carica la sua copia
+  di lavoro** con questa precedenza: bozza salvata in locale su questo
+  telefono (se è di quella caccia) → bozza salvata sul server
+  (`lavoro*.json`) → caccia già pubblicata (`caccia*.json`) → vuota se
+  nessuna delle tre esiste. Se la caccia pubblicata non è già `caccia-3`,
+  viene trattata come incompatibile (non se ne leggono i nodi: pubblicare
+  da "Collega gli elementi" sostituisce interamente il file). Un bottone
+  **"Salva bozza sul server"**, sotto ai controlli di registrazione,
+  scrive la copia di lavoro attuale su `lavoro*.json` senza pubblicarla:
+  resta invisibile ai giocatori finché non si preme "Pubblica la caccia".
 - **"Caccia pubblicata"**: solo un elenco di sola lettura (foto + nome di
   ogni nodo della copia di lavoro condivisa, variabile `L.nodi`) — nessun
   editing qui. La foto è una miniatura cliccabile: al tocco si apre più
@@ -119,7 +201,8 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   spuntarla spunta anche "Da validare" in automatico, e non si può togliere
   l'una senza l'altra) — poi due campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
-  (`testo`, mostrato in "Da trovare" mentre lo si cerca) e il **messaggio**
+  (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si
+  cerca) e il **messaggio**
   (si vede nella propria schermata di sblocco, poi resta rivedibile
   toccando l'oggetto nel bottino) — e un elenco di checkbox "Richiede"
   verso tutti gli altri nodi. Un
@@ -194,6 +277,12 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   foto o solo pos/neg/soglia di un nodo già esistente: per quello serve
   registrarne uno nuovo dal modulo "Registra un nuovo oggetto".
 - Non legge né migra i vecchi `caccia.json` in formato `caccia-1`/`caccia-2`.
+- Non c'è modo dal pannello master di rinominare o eliminare una caccia già
+  pubblicata (si può solo crearne di nuove dal menu).
+- I messaggi broadcast (`messaggi.json`) sono globali: non esiste un canale
+  di annunci per singola caccia.
+- Nessuna schermata di scelta per chi arriva da un link diretto
+  `#c-<slug>`: la salta sempre, di proposito (vedi `memory.md`).
 
 ## Formato dei file pubblicati
 

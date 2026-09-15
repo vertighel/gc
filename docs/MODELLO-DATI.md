@@ -16,6 +16,16 @@ migrazione automatica** fra un formato e l'altro (decisione esplicita: vedi
 `memory.md`). Ogni cambio di `formato` — incluso passare a `caccia-3` —
 azzera i progressi di tutti i giocatori, come sempre.
 
+**`caccia.json` non è più l'unico file di questo tipo**: da quando il
+master può pubblicare più cacce (vedi `docs/STATO.md`), `caccia.json` è
+solo quella con "slug" vuoto (la caccia di sempre); le altre sono
+`caccia-<slug>.json`, stesso schema `caccia-3` descritto qui, un file per
+caccia. `formato` (dentro il file) e lo slug (nel nome del file) sono
+indipendenti: il primo è la versione dello schema, il secondo l'identità
+della caccia — vedi `docs/STATO.md`/`memory.md` per l'incidente che ha
+reso necessario chiarirlo esplicitamente. Vedi più sotto anche `cacce.json`
+e `lavoro*.json`, i due file nuovi legati a questa funzionalità.
+
 ## `caccia.json`, formato `caccia-3` (attuale)
 
 Un solo tipo di nodo, non più tre. Indizio, oggetto e ricompensa sono la
@@ -297,14 +307,45 @@ non modifica né cancella messaggi già pubblicati, solo ne aggiunge). Non
 esiste un campo "destinatario": sono **tutti broadcast**, per scelta (vedi
 `memory.md`).
 
+## `cacce.json` (pubblicato dal master, letto da tutti)
+
+```jsonc
+["centro-storico", "boccadasse"]
+```
+
+Array di stringhe, ogni stringa uno slug di una caccia con nome (vedi
+`docs/STATO.md`). **La caccia di sempre (slug vuoto) non ci compare mai**,
+è sempre la prima voce implicita ovunque questo elenco si mostri.
+**`"caccia"` è un nome riservato**: se ricompare qui (per esempio scritto a
+mano per errore), il codice lo filtra — vedi `memory.md` per l'incidente
+che ha reso necessario questo controllo. Scritto da `registraCaccia()` alla
+prima pubblicazione riuscita di ciascuna caccia con nome; letto da
+`leggiElencoCacce()`, unica funzione condivisa fra il menu del pannello
+master e la schermata di scelta del giocatore.
+
+## `lavoro.json` / `lavoro-<slug>.json` (pubblicato dal master, MAI letto dal giocatore)
+
+Stesso schema di `caccia.json` per `nodi`, ma `{ formato, salvato, nodi }`
+(`salvato`, non `creato`: la data dell'ultimo salvataggio della bozza, non
+di una pubblicazione) — su un nome di file diverso apposta: nessun `fetch`
+nel codice giocatore
+lo cerca mai, quindi resta invisibile ai giocatori per costruzione, non per
+un controllo di accesso. È la bozza della copia di lavoro del master,
+scritta premendo "Salva bozza sul server" — protegge da un cambio di
+telefono o dalla pulizia dei dati del browser, senza rendere pubblico
+nulla prima che il master prema "Pubblica la caccia" (che scrive invece
+`caccia*.json`). Vedi `memory.md` per il perché di due meccanismi di
+salvataggio invece di uno solo.
+
 ## `localStorage` del giocatore (mai condiviso, chiavi principali)
 
 | Chiave | Contenuto |
 |---|---|
-| `gioco` | l'ultimo `caccia.json` scaricato (`caccia-3`) |
-| `stato` | `{ trovati, bottino, visti, scelta }` — vedi sotto |
-| `msg-letti` | array di `id` di messaggi già letti |
-| `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master |
+| `caccia-scelta` | slug dell'ultima caccia scelta/vista (`""` = quella di sempre) — assente = non ha ancora scelto, vedi `docs/STATO.md` |
+| `gioco` / `gioco:<slug>` | l'ultimo `caccia*.json` scaricato per quella caccia (`caccia-3`) — la caccia di sempre resta su `gioco` senza suffisso, per compatibilità con chi giocava già |
+| `stato` / `stato:<slug>` | `{ trovati, bottino, visti, scelta }` — vedi sotto, namespaced come sopra |
+| `msg-letti` | array di `id` di messaggi già letti — **non** namespaced per caccia: i messaggi sono globali |
+| `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master, mai namespaced per caccia |
 
 `stato.trovati` è un array di id di nodi **posseduti**: sia quelli
 validati fisicamente dal giocatore (`daValidare: true`, foto + eventuale
@@ -326,6 +367,7 @@ aggiungerne più di uno in un colpo solo, se sblocca più nodi a cascata.
 | Chiave | Contenuto |
 |---|---|
 | `gh-config` | `{ owner, repo, branch, path, token }` — il token di scrittura GitHub |
+| `m-lavoro` | `{ formato, slug, nodi }` — autosalvataggio della copia di lavoro corrente, scritto a ogni modifica; `slug` dice a quale caccia appartiene, così cambiando caccia dal menu non si vede riapparire la bozza di quella lasciata |
 
 ## Come si tradurrebbe in tabelle, quando arriverà il database
 

@@ -251,7 +251,10 @@
     text-align: left; font: inherit; color: var(--grafite); background: #fff; cursor: pointer;
     border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
   }
-  .todo button .txt { flex: 1; min-width: 0; }
+  /* Testo troncato su una riga sola nel pulsante: con un indizio lungo il bottone
+     resta alto una riga; il testo per intero si legge nella targa, che appare
+     sceglendo la riga (diventa l'oggetto "attuale"). */
+  .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
   .todo button[aria-current="true"] { background: var(--smalto); border-color: var(--smalto); color: var(--bianco); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
@@ -301,7 +304,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 32)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 33)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
