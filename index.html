@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 23)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 24)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -361,11 +361,14 @@
       </div>
       <p id="m-test-status" class="status" role="status"></p>
       <p id="m-add-status" class="status" role="status"></p>
+      <button id="m-save-draft" class="btn" disabled>Salva bozza sul server</button>
+      <p id="m-save-draft-status" class="status" role="status"></p>
     </div>
-    
+
     <div class="current">
       <h2>Elementi</h2>
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
+      <p id="m-draft-status" class="status" role="status"></p>
       <ul id="m-panel-list" class="baselist"></ul>
       <button id="m-base-retry" class="link" hidden>Riprova</button>
     </div>
@@ -466,6 +469,8 @@ const FORMATO = "caccia-3";   // valore iniziale: cambiarlo azzera la caccia
 const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
 const GH_API = "https://api.github.com";
 const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json
+const DRAFT_URL = "lavoro.json";   // bozza di lavoro del master: mai letto dal codice giocatore (vedi initPlayer),
+                                    // solo backup/continuità della copia di lavoro fra ricariche e telefoni diversi
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
@@ -664,6 +669,7 @@ function masterRefresh() {
   $("m-test").disabled = !M.cal || M.busy;
   $("m-add").disabled = !M.cal || M.busy;
   $("m-link-publish").disabled = !esportabile;
+  $("m-save-draft").disabled = !esportabile;
   $("m-local").disabled = !esportabile;
   $("m-rec-pos").disabled = !stream || M.busy;
   $("m-rec-neg").disabled = !stream || M.busy || !M.pos.length;
@@ -801,6 +807,32 @@ function aggiornaContatorePanel() {
   setStatus($("m-base-status"), testoConteggio(Object.keys(L.nodi || {}).length));
 }
 
+// Autosalvataggio della copia di lavoro (L.nodi) su questo telefono: protegge da un
+// reload/chiusura accidentale senza bisogno di pubblicare o di rete. Non è "la caccia
+// pubblicata": i giocatori non la leggono mai (nessun codice giocatore referenzia
+// questa chiave né DRAFT_URL). Chiamata da ogni punto che modifica L.nodi.
+function salvaLocale() {
+  if (!L.nodi) return;
+  store.set("m-lavoro", { formato: ($("m-formato").value || "").trim() || FORMATO, nodi: L.nodi });
+}
+
+function caricaBozzaLocale() {
+  const b = store.get("m-lavoro");
+  return (b && b.formato === FORMATO && b.nodi) ? b : null;
+}
+
+// Bozza salvata sul server (DRAFT_URL, non caccia.json): letta con un fetch semplice,
+// come caccia.json/messaggi.json, non con l'API di GitHub (serve il token solo per
+// scrivere, non per leggere un file pubblico).
+async function loadDraftServer() {
+  try {
+    const r = await fetch(DRAFT_URL, { cache: "no-store" });
+    if (!r.ok) return null;
+    const g = await r.json();
+    return (g && g.formato === FORMATO && g.nodi) ? g : null;
+  } catch { return null; }
+}
+
 async function loadBase() {
   M.loading = true;
   $("m-base-retry").hidden = true;
@@ -829,7 +861,19 @@ async function loadBase() {
     $("m-base-retry").hidden = false;
   }
   M.loading = false;
-  if (!L.nodi) L.nodi = M.base ? clone(M.base.nodi) : {};
+  if (!L.nodi) {
+    const locale = caricaBozzaLocale();
+    const remoto = locale ? null : await loadDraftServer();
+    const bozza = locale || remoto;
+    if (bozza) {
+      L.nodi = bozza.nodi;
+      setStatus($("m-draft-status"), locale
+        ? "Bozza di lavoro ripristinata da questo telefono, non ancora pubblicata."
+        : "Bozza di lavoro ripristinata dal server, non ancora pubblicata.");
+    } else {
+      L.nodi = M.base ? clone(M.base.nodi) : {};
+    }
+  }
   renderPanelList(); masterRefresh(); linkRefresh();
 }
 
@@ -924,7 +968,7 @@ function costruisciTestata(n, id, ids, notify) {
   const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
   const nome = document.createElement("input"); nome.type = "text"; nome.value = n.nome || "";
   nome.oninput = () => { n.nome = nome.value; };
-  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; renderPanelList(); renderLinkList(); notify(); };
+  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; salvaLocale(); renderPanelList(); renderLinkList(); notify(); };
   titlewrap.append(thumbEl(n.immagine), nome);
   const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
   del.onclick = () => {
@@ -932,6 +976,7 @@ function costruisciTestata(n, id, ids, notify) {
     if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
     if (!confirm(`Rimuovere "${n.nome}"?`)) return;
     delete L.nodi[id];
+    salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); renderLinkList();
     notify(true);
   };
@@ -953,17 +998,17 @@ function corpoNodoCampi(n, id, ids, notify) {
   const cbThumb = mkFlag("conThumb", "Con thumb");
   const cbValida = mkFlag("daValidare", "Da validare");
   const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
-  cbThumb.onchange = () => { n.conThumb = cbThumb.checked; notify(); };
+  cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
   cbValida.onchange = () => {
     if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
-    n.daValidare = cbValida.checked; notify();
+    n.daValidare = cbValida.checked; salvaLocale(); notify();
   };
   cbPos.onchange = () => {
     n.richiedePosizione = cbPos.checked;
     if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
-    notify();
+    salvaLocale(); notify();
   };
   frag.append(flags);
 
@@ -974,13 +1019,13 @@ function corpoNodoCampi(n, id, ids, notify) {
   // sblocco una volta, poi sempre rivedibile toccando l'oggetto nel bottino).
   const labelTesto = document.createElement("label"); labelTesto.textContent = "Indizio (aiuta a trovare e riconoscere questo elemento, prima di possederlo)";
   const testo = document.createElement("textarea"); testo.value = n.testo || "";
-  testo.oninput = () => { n.testo = testo.value; };
+  testo.oninput = () => { n.testo = testo.value; salvaLocale(); };
   labelTesto.append(testo);
   frag.append(labelTesto);
 
   const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio (si vede quando lo trovi, e resta nel bottino)";
   const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
-  messaggio.oninput = () => { n.messaggio = messaggio.value; };
+  messaggio.oninput = () => { n.messaggio = messaggio.value; salvaLocale(); };
   labelMsg.append(messaggio);
   frag.append(labelMsg);
 
@@ -1002,7 +1047,7 @@ function corpoNodoCampi(n, id, ids, notify) {
       n.richiede = n.richiede || [];
       if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
       else n.richiede = n.richiede.filter(x => x !== oid);
-      notify();
+      salvaLocale(); notify();
     };
     const txt = document.createElement("span"); txt.textContent = o.nome;
     label.append(cb, txt);
@@ -1111,6 +1156,7 @@ function clicDotGrafo(id) {
   L.nodi[dst].richiede = L.nodi[dst].richiede || [];
   if (L.nodi[dst].richiede.includes(src)) return;
   L.nodi[dst].richiede.push(src);
+  salvaLocale();
   renderLinkList();
   disegnaGrafo();
   if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
@@ -1172,6 +1218,7 @@ function disegnaGrafo() {
         e.stopPropagation();
         if (!confirm(`Togliere il collegamento "${L.nodi[rid].nome}" → "${L.nodi[id].nome}"?`)) return;
         L.nodi[id].richiede = (L.nodi[id].richiede || []).filter(x => x !== rid);
+        salvaLocale();
         renderLinkList(); disegnaGrafo();
         if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
       };
@@ -1310,7 +1357,17 @@ function initMaster() {
     setStatus($("m-train-status"), "");
     setStatus($("m-test-status"), "");
     setStatus($("m-add-status"), `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`, "ok");
+    salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
+  };
+
+  // "Salva bozza sul server": scrive DRAFT_URL (lavoro.json), MAI caccia.json — resta
+  // invisibile ai giocatori finché non si preme "Pubblica la caccia" in "Collega gli
+  // elementi". Serve a portare la bozza da un telefono all'altro, o come backup vero
+  // (l'autosalvataggio locale sopra protegge solo questo telefono).
+  $("m-save-draft").onclick = async () => {
+    const g = { formato: $("m-formato").value.trim() || FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
+    await ghPutFile(DRAFT_URL, JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
   };
 
   $("m-local").onclick = async () => {
