@@ -79,7 +79,7 @@
   .playertab { height: 100%; display: flex; flex-direction: column; }
   .schermo-scheda { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .schermo-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
-  .schermo-card .plate { flex: 1; overflow: hidden; }
+  .schermo-card .plate { flex: 1; overflow-y: auto; }
   .schermo-lista { flex: none; max-height: 45%; overflow-y: auto; }
 
   /* #p-tabbar/.ptab/.subtab* vivono solo nella parte giocatore (sempre scura): una
@@ -354,7 +354,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 39)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 40)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
