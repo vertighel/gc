@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 24)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 25)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -430,6 +430,12 @@
 
       <div id="m-link-list"></div>
 
+      <label>Nome della caccia
+        <input type="text" id="m-nome" placeholder="lascia vuoto per il link di sempre, senza # in fondo">
+      </label>
+      <p id="m-link-hint" class="hint"></p>
+      <button id="m-new-hunt" class="link">Nuova caccia (svuota gli elementi)</button>
+
       <label>Formato
         <input type="text" id="m-formato">
       </label>
@@ -465,12 +471,30 @@
 const MP    = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
 const WASM  = MP + "/wasm";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
-const FORMATO = "caccia-3";   // valore iniziale: cambiarlo azzera la caccia
-const GAME_URL = "caccia.json";   // pubblicato accanto a index.html
+const FORMATO = "caccia-3";   // valore iniziale dello schema dati: cambiarlo azzera la caccia.
+                               // Non c'entra con "nome"/slug qui sotto: quello distingue una caccia
+                               // dall'altra, questo la versione della struttura dati, indipendenti.
 const GH_API = "https://api.github.com";
-const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json
-const DRAFT_URL = "lavoro.json";   // bozza di lavoro del master: mai letto dal codice giocatore (vedi initPlayer),
-                                    // solo backup/continuità della copia di lavoro fra ricariche e telefoni diversi
+const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json — condiviso
+                                    // da tutte le cacce (un solo canale di annunci), non per-caccia
+
+// Più cacce pubblicabili, distinte per "slug" (derivato dal nome scelto dal master in
+// "Collega gli elementi", vedi slugify()). Slug vuoto = la caccia di sempre: file
+// caccia.json/lavoro.json, link senza # in fondo — retrocompatibile con i link già
+// condivisi. Slug non vuoto = caccia-<slug>.json/lavoro-<slug>.json, link "#c-<slug>".
+// lavoro-*.json non è mai letto dal codice giocatore (vedi initPlayer/syncGame): solo
+// backup/continuità della copia di lavoro del master.
+const gameFile  = slug => slug ? `caccia-${slug}.json` : "caccia.json";
+const draftFile = slug => slug ? `lavoro-${slug}.json` : "lavoro.json";
+function slugify(nome) {
+  return (nome || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+// Quale caccia sta guardando il giocatore in questo momento, dedotta dall'indirizzo.
+function activeSlug() {
+  return location.hash.startsWith("#c-") ? decodeURIComponent(location.hash.slice(3)) : "";
+}
+
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
@@ -810,10 +834,14 @@ function aggiornaContatorePanel() {
 // Autosalvataggio della copia di lavoro (L.nodi) su questo telefono: protegge da un
 // reload/chiusura accidentale senza bisogno di pubblicare o di rete. Non è "la caccia
 // pubblicata": i giocatori non la leggono mai (nessun codice giocatore referenzia
-// questa chiave né DRAFT_URL). Chiamata da ogni punto che modifica L.nodi.
+// questa chiave né draftFile()). Chiamata da ogni punto che modifica L.nodi.
 function salvaLocale() {
   if (!L.nodi) return;
-  store.set("m-lavoro", { formato: ($("m-formato").value || "").trim() || FORMATO, nodi: L.nodi });
+  store.set("m-lavoro", {
+    formato: ($("m-formato").value || "").trim() || FORMATO,
+    nome: $("m-nome").value,
+    nodi: L.nodi
+  });
 }
 
 function caricaBozzaLocale() {
@@ -821,12 +849,13 @@ function caricaBozzaLocale() {
   return (b && b.formato === FORMATO && b.nodi) ? b : null;
 }
 
-// Bozza salvata sul server (DRAFT_URL, non caccia.json): letta con un fetch semplice,
+// Bozza salvata sul server (draftFile, non caccia.json): letta con un fetch semplice,
 // come caccia.json/messaggi.json, non con l'API di GitHub (serve il token solo per
-// scrivere, non per leggere un file pubblico).
+// scrivere, non per leggere un file pubblico). Controllata solo per la caccia di sempre
+// (slug vuoto): all'apertura il master non ha ancora scritto un nome per una nuova caccia.
 async function loadDraftServer() {
   try {
-    const r = await fetch(DRAFT_URL, { cache: "no-store" });
+    const r = await fetch(draftFile(""), { cache: "no-store" });
     if (!r.ok) return null;
     const g = await r.json();
     return (g && g.formato === FORMATO && g.nodi) ? g : null;
@@ -838,7 +867,7 @@ async function loadBase() {
   $("m-base-retry").hidden = true;
   setStatus($("m-base-status"), "Leggo la caccia pubblicata…");
   try {
-    const r = await fetch(GAME_URL, { cache: "no-store" });
+    const r = await fetch(gameFile(""), { cache: "no-store" });
     if (r.status === 404) {
       M.base = null;
       setStatus($("m-base-status"), "Sul sito non c'è ancora una caccia: il primo oggetto che aggiungi la crea.");
@@ -855,6 +884,7 @@ async function loadBase() {
     }
     M.baseLoaded = true;
     $("m-formato").value = (M.base && M.base.formato) || FORMATO;
+    $("m-nome").value = (M.base && M.base.nome) || "";
   } catch {
     M.baseLoaded = false;
     setStatus($("m-base-status"), "Non riesco a leggere la caccia pubblicata. Per non perdere gli oggetti esistenti, l'esportazione resta bloccata finché non riprovi con successo.", "ko");
@@ -867,6 +897,7 @@ async function loadBase() {
     const bozza = locale || remoto;
     if (bozza) {
       L.nodi = bozza.nodi;
+      $("m-nome").value = bozza.nome || "";
       setStatus($("m-draft-status"), locale
         ? "Bozza di lavoro ripristinata da questo telefono, non ancora pubblicata."
         : "Bozza di lavoro ripristinata dal server, non ancora pubblicata.");
@@ -874,6 +905,7 @@ async function loadBase() {
       L.nodi = M.base ? clone(M.base.nodi) : {};
     }
   }
+  aggiornaLinkGiocatore();
   renderPanelList(); masterRefresh(); linkRefresh();
 }
 
@@ -901,8 +933,24 @@ function recalibrate() {
   setStatus($("m-train-status"), msg, kind);
 }
 
+// Lo slug della caccia su cui si sta lavorando ORA in "Collega gli elementi", dal campo
+// "Nome della caccia" — decide su quale file si legge/scrive (vedi gameFile/draftFile),
+// non dipende da quale caccia il giocatore stia guardando (quella è activeSlug()).
+function currentSlug() { return slugify($("m-nome").value); }
+
 function currentGame() {
-  return { formato: $("m-formato").value.trim() || FORMATO, creato: new Date().toISOString(), nodi: L.nodi };
+  return { formato: $("m-formato").value.trim() || FORMATO, nome: $("m-nome").value.trim(), creato: new Date().toISOString(), nodi: L.nodi };
+}
+
+// Mostra sotto il campo "Nome della caccia" il link da mandare ai giocatori di QUESTA
+// caccia: quello di sempre (senza #) se il nome è vuoto, "#c-<slug>" altrimenti — non
+// c'è ancora una schermata di scelta in-app, i giocatori arrivano già sul link giusto.
+function aggiornaLinkGiocatore() {
+  const slug = currentSlug();
+  const base = location.origin + location.pathname;
+  $("m-link-hint").textContent = slug
+    ? `Link per i giocatori di questa caccia: ${base}#c-${slug}`
+    : `Link per i giocatori: ${base} (quello di sempre, senza # in fondo)`;
 }
 
 // Cerca un ciclo nel grafo "richiede". Ritorna un elenco di nomi coinvolti, o null se non ce n'è.
@@ -930,7 +978,7 @@ async function publishGame(statusEl) {
   const ciclo = trovaCiclo(L.nodi);
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
   const g = currentGame();
-  const ok = await ghPutFile("caccia.json", JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
+  const ok = await ghPutFile(gameFile(currentSlug()), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) { M.base = g; $("m-formato").value = g.formato; renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh(); }
   return ok;
 }
@@ -1361,13 +1409,28 @@ function initMaster() {
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   };
 
-  // "Salva bozza sul server": scrive DRAFT_URL (lavoro.json), MAI caccia.json — resta
-  // invisibile ai giocatori finché non si preme "Pubblica la caccia" in "Collega gli
-  // elementi". Serve a portare la bozza da un telefono all'altro, o come backup vero
-  // (l'autosalvataggio locale sopra protegge solo questo telefono).
+  // "Salva bozza sul server": scrive draftFile(slug) (lavoro.json o lavoro-<slug>.json),
+  // MAI caccia.json/caccia-<slug>.json — resta invisibile ai giocatori finché non si preme
+  // "Pubblica la caccia" in "Collega gli elementi". Serve a portare la bozza da un
+  // telefono all'altro, o come backup vero (l'autosalvataggio locale protegge solo questo
+  // telefono, e solo per la caccia di sempre viene poi ripristinata in automatico).
   $("m-save-draft").onclick = async () => {
-    const g = { formato: $("m-formato").value.trim() || FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
-    await ghPutFile(DRAFT_URL, JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
+    const g = { formato: $("m-formato").value.trim() || FORMATO, nome: $("m-nome").value.trim(), salvato: new Date().toISOString(), nodi: L.nodi || {} };
+    await ghPutFile(draftFile(currentSlug()), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
+  };
+
+  $("m-nome").oninput = () => { salvaLocale(); aggiornaLinkGiocatore(); };
+
+  // "Nuova caccia": svuota la copia di lavoro per iniziarne un'altra da zero, senza
+  // toccare quanto già pubblicato sotto il nome precedente (resta su GitHub finché
+  // qualcuno non pubblica di nuovo su quel file).
+  $("m-new-hunt").onclick = () => {
+    if (Object.keys(L.nodi || {}).length && !confirm("Svuotare gli elementi per iniziare una nuova caccia? Quanto già pubblicato resta come sta, ma la copia di lavoro attuale (non ancora pubblicata) andrà persa.")) return;
+    L.nodi = {};
+    $("m-nome").value = "";
+    salvaLocale();
+    aggiornaLinkGiocatore();
+    renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   };
 
   $("m-local").onclick = async () => {
@@ -1435,8 +1498,11 @@ async function loadMessages() {
 let game = null;
 
 const inProva  = () => !!store.get("prova");
-const gameKey  = () => inProva() ? "gioco-prova" : "gioco";
-const stateKey = () => inProva() ? "stato-prova" : "stato";
+// Chiavi separate per caccia (slug), così bottino e progressi di una non si mescolano
+// con quelli di un'altra sullo stesso telefono. Lo slug vuoto (la caccia di sempre)
+// resta sulle chiavi "gioco"/"stato" già in uso: nessuna migrazione per chi gioca già.
+const gameKey  = () => inProva() ? "gioco-prova" : (activeSlug() ? "gioco:" + activeSlug() : "gioco");
+const stateKey = () => inProva() ? "stato-prova" : (activeSlug() ? "stato:" + activeSlug() : "stato");
 
 // Decomprime pos/neg (sempre presenti su ogni nodo in caccia-3).
 function loadGame(g) {
@@ -1523,7 +1589,7 @@ async function syncGame() {
   if (inProva() || syncing) return;
   syncing = true;
   try {
-    const r = await fetch(GAME_URL, { cache: "no-store" });
+    const r = await fetch(gameFile(activeSlug()), { cache: "no-store" });
     if (r.status === 404) {
       if (!game) showEmpty("Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
       return;
@@ -1532,10 +1598,10 @@ async function syncGame() {
     const g = await r.json();
     if (game && game.formato === g.formato && game.creato === g.creato) return;
     if (!inCaccia3(g)) { if (!game) showEmpty("La caccia pubblicata non è in un formato compatibile con questa versione del gioco.", true); return; }
-    const prev = store.get("gioco");
+    const prev = store.get(gameKey());
     loadGame(g);
-    if (!prev || prev.formato !== g.formato) store.set("stato", freshState(game));
-    store.set("gioco", g);
+    if (!prev || prev.formato !== g.formato) store.set(stateKey(), freshState(game));
+    store.set(gameKey(), g);
     if ($("p-reward").hidden) renderPlayer();
   } catch {
     if (!game) showEmpty("Non riesco a scaricare la caccia. Controlla la connessione e riprova.", true);
@@ -1788,7 +1854,9 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ---------- navigazione: #master apre il pannello del master,
-   #master-collega la pagina dedicata a collegare gli elementi ---------- */
+   #master-collega la pagina dedicata a collegare gli elementi. Tutto il resto va al
+   giocatore, incluso "#c-<slug>" (una caccia con nome, vedi activeSlug()) e nessun
+   hash (la caccia di sempre) ---------- */
 function route() {
   stopCamera();
   const master = location.hash === "#master";
