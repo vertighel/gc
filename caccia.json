@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-15T13:10:29.840Z",
+  "creato": "2026-09-15T17:08:47.812Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -420,14 +420,11 @@
         "lon": 11.8687877,
         "raggio": 100
       },
-      "daValidare": false,
+      "daValidare": true,
       "conThumb": false,
       "richiedePosizione": false,
       "richiede": [
-        "nmu16lpb4h0p",
-        "nmu16m6zhncv",
-        "nmu16n76mr74",
-        "nmu19yc3er0q"
+        "nmu16lpb4h0p"
       ],
       "testo": "sono una gomma piccola e tonda"
     },
@@ -707,11 +704,13 @@
         "lon": 11.8687257,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
-        "nmu16lpb4h0p"
+        "nmu16m6zhncv",
+        "nmu16mnkqmr3",
+        "nmu16n76mr74"
       ]
     }
   }
