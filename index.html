@@ -22,14 +22,14 @@
     --display: "Barlow Condensed", "Arial Narrow", sans-serif;
     --testo: "Barlow", system-ui, sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  }
-  /* Tema del giocatore (schermata di scelta + gioco, MAI il pannello master, che
-     resta lo strumento di lavoro chiaro di sempre): stessa tavolozza smalto/cemento,
-     ma con i ruoli di chiaro e scuro invertiti — sfondo e non selezionato scuri,
-     selezionato "acceso". Non è --cemento riusato tale e quale come colore acceso:
-     era pensato per essere un grigio neutro di sfondo, non per "illuminarsi", quindi
-     --acceso è un bianco freddo a parte, più elettrico. */
-  body.dark {
+    /* Tema del giocatore (schermata di scelta + gioco, MAI il pannello master, che
+       resta lo strumento di lavoro chiaro di sempre — vedi body.dark più sotto):
+       stessa tavolozza smalto/cemento, ma con i ruoli di chiaro e scuro invertiti —
+       sfondo e non selezionato scuri, selezionato "acceso". Non è --cemento riusato
+       tale e quale come colore acceso: era pensato per restare un grigio neutro di
+       sfondo, non per "illuminarsi", quindi --acceso è un bianco freddo a parte.
+       Sempre definiti (non solo dentro body.dark): le classi che li usano vivono
+       solo nella parte giocatore, sempre scura, senza bisogno di condizionarli. */
     --sfondo-pagina: var(--smalto-scuro);
     --superficie: var(--smalto);
     --bordo-superficie: #2A4568;
@@ -47,6 +47,8 @@
     font: 400 17px/1.5 var(--testo);
     -webkit-font-smoothing: antialiased;
   }
+  /* Unica riga ancora condizionata da body.dark: tutto il resto del tema scuro vive
+     direttamente nelle classi della parte giocatore (vedi sopra il perché). */
   body.dark { background: var(--sfondo-pagina); color: var(--testo-chiaro); }
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
   [hidden] { display: none !important; }
@@ -59,7 +61,7 @@
     body.wide main { max-width: 1180px; }
   }
 
-  /* Modalità giocatore: schermo pieno e fisso come un'app (barra in alto, contenuto
+  /* Modalità giocatore: schermo pieno e fisso come una app (barra in alto, contenuto
      che scorre solo al suo interno, schede "Cerca"/"Oggetti" fisse in basso), invece
      della normale pagina che scorre usata da master/scelta della caccia. Attiva solo
      su body.playing (vedi mostraGiocatore()/route()), per non toccare le altre. */
@@ -80,30 +82,29 @@
   .schermo-card .plate { flex: 1; overflow: hidden; }
   .schermo-lista { flex: none; max-height: 45%; overflow-y: auto; }
 
+  /* #p-tabbar/.ptab/.subtab* vivono solo nella parte giocatore (sempre scura): una
+     sola definizione, non chiara+scura, vedi il perché sopra su :root. */
   #p-tabbar {
     display: flex; flex: none; gap: 4px; margin: 0 -16px;
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
-    border-top: 1.5px solid #C9D0D7; background: #fff;
+    border-top: 1.5px solid var(--bordo-superficie); background: var(--superficie);
   }
   .ptab {
     flex: 1; appearance: none; border: 0; background: none; cursor: pointer;
-    padding: 8px 4px; border-radius: 8px; font: 600 15px/1.2 var(--display); color: var(--grigio);
+    padding: 8px 4px; border-radius: 8px; font: 600 15px/1.2 var(--display); color: #93A9C2;
   }
-  .ptab[aria-current="true"] { color: var(--bianco); background: var(--smalto); }
+  .ptab[aria-current="true"] { color: var(--testo-su-acceso); background: var(--acceso); }
 
   /* Quattro bottoni DENTRO "Cerca": Indizio/Foto (due viste, una attiva alla volta —
      vedi mostraSubTab()) più Messaggi/Impostazioni (due azioni che aprono un pannello
      sopra tutto, non due viste in più: non prendono mai lo stato "attivo"). */
   .subtabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .subtab {
-    flex: 1; appearance: none; border: 1.5px solid var(--smalto); background: transparent; color: var(--smalto);
+    flex: 1; appearance: none; border: 1.5px solid var(--bordo-superficie); background: transparent; color: var(--testo-chiaro);
     border-radius: 8px; padding: 10px; font: 600 16px/1 var(--display); cursor: pointer;
   }
-  .subtab[aria-current="true"] { background: var(--smalto); color: var(--bianco); }
-  .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; border-color: #C9D0D7; color: var(--grafite); font-size: 18px; }
-  /* Più specifica di ".subtab.icon" (stessa specificità di ".subtab[aria-current]",
-     altrimenti quella sopra vince per ordine e l'icona attiva resterebbe grigia). */
-  .subtab.icon[aria-current="true"] { background: var(--smalto); color: var(--bianco); border-color: var(--smalto); }
+  .subtab[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
+  .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; font-size: 18px; }
   .subtab.icon .badge {
     position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 3px;
     border-radius: 8px; background: var(--rosso); color: #fff; font: 700 11px/16px var(--display);
@@ -116,27 +117,35 @@
     position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px;
     border-radius: 9px; background: var(--rosso); color: #fff; font: 700 12px/18px var(--display); text-align: center;
   }
-  .inbox { background: #fff; border-radius: 10px; padding: 14px 16px; margin: 0 0 16px; }
-  .inbox h2 { font: 700 22px/1 var(--display); color: var(--smalto); margin: 0 0 10px; }
+  .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px; }
+  .inbox h2 { font: 700 22px/1 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
   .inbox ul { list-style: none; margin: 0 0 8px; padding: 0; }
-  .inbox li { padding: 10px 0; border-top: 1px solid #DDE2E7; }
+  .inbox li { padding: 10px 0; border-top: 1px solid var(--bordo-superficie); }
   .inbox li:first-child { border-top: none; }
-  .inbox .when { display: block; font-size: 13px; color: var(--grigio); margin-bottom: 2px; }
+  .inbox .when { display: block; font-size: 13px; color: #93A9C2; margin-bottom: 2px; }
   .inbox li.unread .when::before { content: "● "; color: var(--rosso); }
   .brand { font: 700 24px/1 var(--display); color: var(--smalto); letter-spacing: .01em; }
-  .progress { font: 600 18px/1 var(--display); color: var(--grigio); }
+  .progress { font: 600 18px/1 var(--display); color: #93A9C2; }
   .tag { font: 600 16px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 10px; border-radius: 4px; }
 
-  /* La targa smaltata: l'unico elemento "forte" dell'interfaccia */
+  /* La targa: un monitor incassato nella cornice smaltata — sfondo grigio neutro (non
+     blu, si legge come un materiale diverso), testo monospace verde fosforescente. Vive
+     solo nella parte giocatore (sempre scura): una sola definizione, vedi :root. */
   .plate {
     position: relative;
-    background: var(--smalto);
-    color: var(--bianco);
+    background: var(--monitor-sfondo);
     border-radius: 14px;
     padding: 26px 26px;
-    box-shadow: inset 0 0 0 6px var(--smalto), inset 0 0 0 8px var(--bianco), 0 3px 0 var(--smalto-scuro);
+    box-shadow: inset 0 0 0 6px #0B0C0E, inset 0 0 0 8px #2A2E33, 0 0 26px rgba(140,255,176,.18);
   }
-  .plate p { margin: 0; font: 600 clamp(28px, 8.5vw, 40px)/1.08 var(--display); text-align: center; text-wrap: balance; }
+  .plate p {
+    margin: 0; text-align: left; text-wrap: wrap; color: var(--monitor-testo);
+    font: 600 clamp(17px, 4.6vw, 22px)/1.55 var(--mono);
+    text-shadow: 0 0 10px rgba(140,255,176,.5);
+  }
+  .plate p::before { content: "> "; opacity: .7; }
+  .plate .mem-nome { font-weight: 700; margin-bottom: 6px; }
+  .plate .mem-msg { opacity: .85; }
 
   .viewfinder { position: relative; aspect-ratio: 1; background: #1B2129; border-radius: 6px; overflow: hidden; margin: 16px 0; }
   .viewfinder video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -169,7 +178,7 @@
   .hint { color: var(--grigio); margin: 14px 0 8px; }
 
   .empty { padding: 32px 4px; }
-  .title { font: 700 34px/1.05 var(--display); color: var(--smalto); margin: 0 0 10px; }
+  .title { font: 700 34px/1.05 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
 
   .reward { text-align: center; padding: 8px 0 20px; }
   .medal {
@@ -187,8 +196,8 @@
     width: 64px; height: 64px; margin: 0; flex: none; animation: none;
     box-shadow: inset 0 0 0 4px rgba(255,255,255,.4), inset 0 0 0 5px var(--smalto);
   }
-  .unlocked-item h3 { font: 700 20px/1.15 var(--display); color: var(--smalto); margin: 0 0 4px; }
-  .unlocked-item p { margin: 0; color: var(--grafite); }
+  .unlocked-item h3 { font: 700 20px/1.15 var(--display); color: var(--testo-chiaro); margin: 0 0 4px; }
+  .unlocked-item p { margin: 0; color: var(--testo-chiaro); }
 
   .foot { text-align: center; margin-top: 18px; }
   /* Thumb quadrata (foto vera o colore calcolato da medaglia()) per le righe della
@@ -197,7 +206,7 @@
   .todo-thumb-wrap { flex: none; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: #ccd2d8; }
   .todo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* Nella targa di "Memoria" ci sono due righe (nome, poi messaggio) invece di una:
-     il nome un po' più deciso, il messaggio un filo più leggero, stesso monospace. */
+     il nome un poco più deciso, il messaggio un filo più leggero, stesso monospace. */
   .plate .mem-nome { font-weight: 700; margin-bottom: 6px; }
   .plate .mem-msg { opacity: .85; }
 
@@ -209,19 +218,15 @@
   textarea { min-height: 72px; resize: vertical; }
   label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
   label.check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--smalto); }
-  .imgprev { display: block; max-width: 100%; margin-top: 10px; border-radius: 8px; }
-  /* Nella targa, la/le foto-indizio galleggiano a sinistra e il testo ci scorre
-     intorno (serve nell'HTML prima del <p>, i float valgono solo in avanti).
+  /* Nella targa, la/le foto (indizio o ricordo) galleggiano a sinistra e il testo ci
+     scorre intorno (serve nel HTML prima del <p>, i float valgono solo in avanti).
      Senza foto il contenitore è vuoto: non sposta né restringe nulla. */
   .clue-imgs { float: left; display: flex; flex-direction: column; gap: 8px; margin: 0 14px 8px 0; }
-  .clue-imgs .imgprev { width: 84px; height: 84px; object-fit: cover; margin: 0; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
-  /* Testo centrato e "bilanciato" solo quando non c'è foto: con una foto che
-     galleggia, centrare non avrebbe senso (il testo scorrerebbe storto intorno). */
-  .plate:has(.clue-imgs .imgprev) p { text-align: left; text-wrap: wrap; }
+  .clue-imgs img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; box-shadow: 0 0 0 2px rgba(140,255,176,.45); }
   /* Un testo più corto della foto (84px + 26px di padding sopra e sotto) la
      lascerebbe sbordare fuori dalla targa: un float non allunga da solo il
      contenitore che lo ospita. */
-  .plate:has(.clue-imgs .imgprev) { min-height: 136px; }
+  .plate:has(.clue-imgs img) { min-height: 136px; }
 
   /* Due pulsanti sulla stessa riga (Oggetto/Dintorni, Prova/Aggiungi) */
   .btnrow { display: flex; gap: 10px; }
@@ -282,15 +287,15 @@
   .todo { list-style: none; margin: 0; padding: 0; }
   .todo button {
     display: flex; width: 100%; align-items: center; gap: 10px;
-    text-align: left; font: inherit; color: var(--grafite); background: #fff; cursor: pointer;
-    border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+    text-align: left; font: inherit; color: var(--testo-chiaro); background: var(--superficie); cursor: pointer;
+    border: 1.5px solid var(--bordo-superficie); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
   }
   /* Testo troncato su una riga sola nel pulsante: con un indizio lungo il bottone
      resta alto una riga; il testo per intero si legge nella targa, che appare
-     sceglendo la riga (diventa l'oggetto "attuale"). */
+     sceglendo la riga (diventa oggetto "attuale"). */
   .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
-  .todo button[aria-current="true"] { background: var(--smalto); border-color: var(--smalto); color: var(--bianco); }
+  .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
@@ -308,54 +313,16 @@
   .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
   .diag { white-space: pre-wrap; word-break: break-word; background: #fff; border: 2px solid var(--rosso); color: var(--rosso); border-radius: 8px; padding: 12px; font: 14px/1.4 ui-monospace, monospace; }
 
-  /* ===== Tema scuro (schermata di scelta + gioco, mai il pannello master) =====
-     Stessi elementi, stesse forme (angoli, dimensioni: invariati per scelta) — solo
-     i ruoli di chiaro/scuro invertiti: sfondo e "non selezionato" scuri (--superficie,
-     variante di --smalto), "selezionato" chiaro/elettrico (--acceso), non il
-     --cemento riusato tale e quale (era pensato per restare neutro, non per
-     "illuminarsi"). */
-  body.dark .brand, body.dark .current h2, body.dark .inbox h2,
-  body.dark .unlocked-item h3, body.dark .title { color: var(--testo-chiaro); }
-  body.dark .progress, body.dark .link, body.dark .hint,
-  body.dark .inbox .when { color: #93A9C2; }
-  body.dark .unlocked-item p { color: var(--testo-chiaro); }
-
-  body.dark .current, body.dark .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
-  body.dark .inbox li { border-top-color: var(--bordo-superficie); }
-
+  /* ===== Tema scuro del pannello master (unico contesto dove chiaro/scuro convivono
+     davvero: .brand, .current, .status, .link, .hint, .btn compaiono anche lì). Tutto
+     il resto (parte giocatore, sempre scura) ha una sola definizione, vedi sopra. */
+  body.dark .brand, body.dark .current h2 { color: var(--testo-chiaro); }
+  body.dark .link, body.dark .hint { color: #93A9C2; }
+  body.dark .current { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
   body.dark .btn { border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
   body.dark .btn.primary { background: var(--acceso); color: var(--testo-su-acceso); }
-
   body.dark .status.ok { color: #6FE39A; }
   body.dark .status.ko { color: #FF9A8D; }
-
-  body.dark #p-tabbar { background: var(--superficie); border-top-color: var(--bordo-superficie); }
-  body.dark .ptab { color: #93A9C2; }
-  body.dark .ptab[aria-current="true"] { background: var(--acceso); color: var(--testo-su-acceso); }
-
-  body.dark .subtab { border-color: var(--bordo-superficie); color: var(--testo-chiaro); background: transparent; }
-  body.dark .subtab.icon { color: var(--testo-chiaro); }
-  body.dark .subtab[aria-current="true"], body.dark .subtab.icon[aria-current="true"] {
-    background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso);
-  }
-
-  body.dark .todo button { background: var(--superficie); border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
-  body.dark .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
-
-  /* La targa diventa un monitor incassato nella stessa cornice a viti: sfondo grigio
-     neutro (non blu, si legge come un materiale diverso), testo monospace verde
-     fosforescente, un leggero bagliore invece dell'inset bianco/smalto di prima. */
-  body.dark .plate {
-    background: var(--monitor-sfondo);
-    box-shadow: inset 0 0 0 6px #0B0C0E, inset 0 0 0 8px #2A2E33, 0 0 26px rgba(140,255,176,.18);
-  }
-  body.dark .plate p, body.dark .plate:has(.clue-imgs .imgprev) p {
-    text-align: left; text-wrap: wrap; color: var(--monitor-testo);
-    font: 600 clamp(17px, 4.6vw, 22px)/1.55 var(--mono);
-    text-shadow: 0 0 10px rgba(140,255,176,.5);
-  }
-  body.dark .plate p::before { content: "> "; opacity: .7; }
-  body.dark .clue-imgs .imgprev { box-shadow: 0 0 0 2px rgba(140,255,176,.45); }
 
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -387,7 +354,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 38)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 39)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -421,7 +388,7 @@
         <div id="p-reward" class="reward" hidden>
           <p class="done">Sbloccato!</p>
           <div id="p-reward-list" class="unlocked"></div>
-          <button id="p-continue" class="btn primary">Continua la caccia</button>
+          <button id="p-continue" class="btn primary">Continua</button>
         </div>
 
         <div id="sub-indizio" class="schermo-scheda">
@@ -480,6 +447,7 @@
 
           <div id="p-mem-card" class="schermo-card" hidden>
             <div class="plate">
+              <div id="p-mem-imgs" class="clue-imgs"></div>
               <p id="p-mem-nome" class="mem-nome" hidden></p>
               <p id="p-mem-msg" class="mem-msg"></p>
             </div>
@@ -1977,7 +1945,10 @@ function renderMemoria(st) {
   const scelto = st.bottino.find(r => r.nodo === memoriaScelta) || null;
   $("p-mem-nome").hidden = !scelto;
   if (scelto) $("p-mem-nome").textContent = scelto.nome;
-  $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale…";
+  $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale… seleziona un oggetto in memoria!";
+  const memImgs = $("p-mem-imgs");
+  memImgs.innerHTML = "";
+  if (scelto && scelto.immagine) { const img = document.createElement("img"); img.src = scelto.immagine; memImgs.append(img); }
 
   const list = $("p-inv-list");
   list.innerHTML = "";
@@ -2072,7 +2043,7 @@ function renderPlayer() {
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
-  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
+  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.src = src; imgs.append(img); }
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
 }
