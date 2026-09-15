@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 27)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 28)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -510,6 +510,21 @@ function slugify(nome) {
 // Quale caccia sta guardando il giocatore in questo momento, dedotta dall'indirizzo.
 function activeSlug() {
   return location.hash.startsWith("#c-") ? decodeURIComponent(location.hash.slice(3)) : "";
+}
+
+// Elenco di TUTTE le cacce, "caccia" (slug vuoto, sempre presente) compresa e sempre
+// per prima: unica fonte di verità sia per il menu del pannello master sia per la
+// schermata di scelta del giocatore, così le due non possono più disallinearsi (prima
+// ciascuna ricostruiva la lista per conto suo, con lo stesso "caccia" scritto a mano in
+// due punti). "caccia" è un nome riservato: non può comparire come slug di una caccia
+// con nome (collide col nome della caccia di sempre) — filtrato qui per restare robusti
+// anche a un cacce.json modificato a mano fuori dall'app.
+async function leggiElencoCacce() {
+  let elenco = [];
+  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
+  if (!Array.isArray(elenco)) elenco = [];
+  const slug = [...new Set(elenco.filter(s => s && s !== "caccia"))];
+  return [{ slug: "", nome: "caccia" }, ...slug.map(s => ({ slug: s, nome: s }))];
 }
 
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
@@ -880,42 +895,35 @@ async function loadDraftServer(slug) {
   } catch { return null; }
 }
 
-// Elenco delle cacce note (slug, la caccia di sempre esclusa: è sempre la prima voce
-// del menu) — alimenta il menu in cima al pannello master. Vive in cacce.json, scritto
-// da registraCaccia() alla prima pubblicazione di una caccia con nome.
+// Cache in memoria di leggiElencoCacce(), per ridisegnare il menu senza rileggere
+// cacce.json ogni volta — sempre {slug, nome}[], "caccia" compresa e per prima.
 let cacceConosciute = [];
-async function caricaElencoCacce() {
-  try {
-    const r = await fetch("cacce.json", { cache: "no-store" });
-    cacceConosciute = r.ok ? await r.json() : [];
-  } catch { cacceConosciute = []; }
-  if (!Array.isArray(cacceConosciute)) cacceConosciute = [];
-}
+async function caricaElencoCacce() { cacceConosciute = await leggiElencoCacce(); }
 
 function aggiornaMenuCacce() {
   const sel = $("m-hunt-select");
   sel.innerHTML = "";
   const opt = (value, testo) => { const o = document.createElement("option"); o.value = value; o.textContent = testo; sel.append(o); };
   opt("__new__", "+ Nuova caccia");
-  opt("", "caccia");
-  for (const slug of cacceConosciute) opt(slug, slug);
+  for (const c of cacceConosciute) opt(c.slug, c.nome);
   // Se sto modificando una caccia appena creata, non ancora pubblicata (quindi non
   // ancora in cacce.json), aggiungo comunque una voce per non perdere la selezione.
-  if (L.slug && !cacceConosciute.includes(L.slug)) opt(L.slug, `${L.slug} (non ancora pubblicata)`);
+  if (L.slug && !cacceConosciute.some(c => c.slug === L.slug)) opt(L.slug, `${L.slug} (non ancora pubblicata)`);
   sel.value = L.slug;
 }
 
 // Scrive lo slug in cacce.json se non c'è già: chiamata dopo ogni pubblicazione riuscita
-// di una caccia con nome (la caccia di sempre, slug vuoto, non ci va: è implicita).
+// di una caccia con nome (la caccia di sempre, slug vuoto, non ci va: è implicita, vedi
+// leggiElencoCacce()).
 async function registraCaccia(slug) {
-  if (!slug || cacceConosciute.includes(slug)) return;
-  let elenco = cacceConosciute;
-  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : elenco; } catch {}
+  if (!slug || cacceConosciute.some(c => c.slug === slug)) return;
+  let elenco = [];
+  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
   if (!Array.isArray(elenco)) elenco = [];
-  if (elenco.includes(slug)) { cacceConosciute = elenco; return; }
+  if (elenco.includes(slug)) { await caricaElencoCacce(); return; }
   elenco = [...elenco, slug];
   const ok = await ghPutFile("cacce.json", JSON.stringify(elenco, null, 2), `Aggiungi "${slug}" all'elenco delle cacce`, $("m-hunt-status"));
-  if (ok) { cacceConosciute = elenco; aggiornaMenuCacce(); }
+  if (ok) { await caricaElencoCacce(); aggiornaMenuCacce(); }
 }
 
 // Carica nel pannello master la copia di lavoro della caccia "slug" (una delle due vie
@@ -1489,7 +1497,8 @@ function initMaster() {
     if (scelta === null) { aggiornaMenuCacce(); return; }
     const slug = slugify(scelta);
     if (!slug) { alert("Nome non valido: usa almeno una lettera o un numero."); aggiornaMenuCacce(); return; }
-    if (cacceConosciute.includes(slug) || slug === L.slug) { alert(`Esiste già una caccia "${slug}": selezionala dal menu per modificarla.`); aggiornaMenuCacce(); return; }
+    if (slug === "caccia") { alert('"Caccia" è il nome riservato alla caccia di sempre: scegline un altro.'); aggiornaMenuCacce(); return; }
+    if (cacceConosciute.some(c => c.slug === slug) || slug === L.slug) { alert(`Esiste già una caccia "${slug}": selezionala dal menu per modificarla.`); aggiornaMenuCacce(); return; }
     if (Object.keys(L.nodi || {}).length && !confirm(`Iniziare "${slug}" abbandonando le modifiche non salvate della caccia attuale?`)) { aggiornaMenuCacce(); return; }
     L.slug = slug; L.nodi = {};
     M.base = null; M.baseLoaded = true;
@@ -1601,6 +1610,13 @@ function loadGame(g) {
   game = { formato: g.formato, creato: g.creato, nodi };
 }
 
+// Un "richiede" che punta a un id non più esistente (nodo rimosso a mano modificando
+// caccia.json fuori dall'app, l'unico modo in cui può succedere: l'editor del master
+// offre solo id validi) non deve bloccare per sempre chi lo ha come prerequisito —
+// stessa scelta già fatta in trovaCiclo(), qui resa esplicita e riusata da entrambe le
+// funzioni sotto, così le due non possono più disallinearsi come è successo una volta.
+const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
+
 // Chiusura a punto fisso: un nodo con daValidare:true entra nell'insieme "posseduto"
 // solo dopo la validazione reale (foto/GPS), passata dal chiamante dentro "posseduti";
 // un nodo con daValidare:false vi entra da solo appena tutto ciò che richiede lo è già.
@@ -1611,7 +1627,7 @@ function chiudi(nodi, posseduti) {
     cambiato = false;
     for (const [id, n] of Object.entries(nodi)) {
       if (ok.has(id) || n.daValidare) continue;
-      if ((n.richiede || []).every(r => ok.has(r))) { ok.add(id); cambiato = true; }
+      if ((n.richiede || []).every(richiedeSoddisfatto(nodi, ok))) { ok.add(id); cambiato = true; }
     }
   }
   return ok;
@@ -1656,7 +1672,7 @@ const freshState = g => {
 function daTrovare(st) {
   const ok = chiudi(game.nodi, st.trovati);
   return Object.entries(game.nodi)
-    .filter(([id, n]) => n.daValidare && !ok.has(id) && (n.richiede || []).every(r => ok.has(r)))
+    .filter(([id, n]) => n.daValidare && !ok.has(id) && (n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok)))
     .map(([id, n]) => ({ id, ...n }));
 }
 const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
@@ -1963,16 +1979,12 @@ function mostraGiocatore() {
   initPlayer();
 }
 
-// Elenco delle cacce mostrato al giocatore: "caccia" (caccia.json, sempre presente)
-// più le cacce con nome note al master (cacce.json) — stesso file, stessa lista che
-// alimenta il menu del pannello master.
+// Elenco delle cacce mostrato al giocatore: stessa leggiElencoCacce() che alimenta il
+// menu del pannello master, così le due liste non possono più disallinearsi.
 async function mostraSceltaCaccia() {
   $("view-player").hidden = true;
   $("view-chooser").hidden = false;
-  let elenco = [];
-  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
-  if (!Array.isArray(elenco)) elenco = [];
-  const cacce = [{ slug: "", nome: "caccia" }, ...elenco.map(slug => ({ slug, nome: slug }))];
+  const cacce = await leggiElencoCacce();
   const wrap = $("chooser-list");
   wrap.innerHTML = "";
   for (const c of cacce) {
