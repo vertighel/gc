@@ -135,7 +135,7 @@
   .foot { text-align: center; margin-top: 18px; }
 
   label { display: block; font-weight: 500; margin: 12px 0 0; }
-  input[type=text], textarea {
+  input[type=text], textarea, select {
     display: block; width: 100%; margin-top: 4px; font: inherit; padding: 10px 12px;
     border: 1.5px solid #B4BDC6; border-radius: 8px; background: #fff; color: var(--grafite);
   }
@@ -260,7 +260,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 25)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 26)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -340,6 +340,14 @@
       <span class="brand">Caccia</span>
       <span class="tag">Master</span>
     </header>
+
+    <div class="current">
+      <h2>Caccia</h2>
+      <p class="hint">Ogni caccia è un file a sé. Scegline una da modificare, o creane una nuova: il nome scelto è anche il link da dare ai giocatori di quella caccia.</p>
+      <select id="m-hunt-select"></select>
+      <p id="m-link-hint" class="hint"></p>
+      <p id="m-hunt-status" class="status" role="status"></p>
+    </div>
 
     <div class="current">
       <h2>Registra un nuovo elemento</h2>
@@ -430,11 +438,7 @@
 
       <div id="m-link-list"></div>
 
-      <label>Nome della caccia
-        <input type="text" id="m-nome" placeholder="lascia vuoto per il link di sempre, senza # in fondo">
-      </label>
-      <p id="m-link-hint" class="hint"></p>
-      <button id="m-new-hunt" class="link">Nuova caccia (svuota gli elementi)</button>
+      <p class="hint">Per cambiare caccia, o crearne una nuova, usa il menu in cima al pannello master.</p>
 
       <label>Formato
         <input type="text" id="m-formato">
@@ -685,7 +689,10 @@ window.__test = { M, refresh: () => masterRefresh() }; // aggancio per i test (v
 const clone = o => JSON.parse(JSON.stringify(o));
 const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const inCaccia3 = g => !!(g && g.formato === "caccia-3" && g.nodi);
-const L = { nodi: null };
+// L.slug = quale caccia si sta modificando ORA nel pannello master (scelta dal menu in
+// cima), indipendente da quale il giocatore stia guardando (quella è activeSlug()).
+// "" = la caccia di sempre.
+const L = { nodi: null, slug: "" };
 Object.assign(window.__test, { L, disegnaGrafo: () => disegnaGrafo() }); // idem, per i test della pagina del grafo
 
 function masterRefresh() {
@@ -826,7 +833,7 @@ function renderPanelList() {
 }
 
 // Da richiamare dopo add/rinomina/rimozione: il messaggio di errore/incompatibilità
-// impostato da loadBase() non va invece toccato qui, per questo è una funzione a parte.
+// impostato da caricaCopiaLavoro() non va invece toccato qui, per questo è una funzione a parte.
 function aggiornaContatorePanel() {
   setStatus($("m-base-status"), testoConteggio(Object.keys(L.nodi || {}).length));
 }
@@ -834,43 +841,85 @@ function aggiornaContatorePanel() {
 // Autosalvataggio della copia di lavoro (L.nodi) su questo telefono: protegge da un
 // reload/chiusura accidentale senza bisogno di pubblicare o di rete. Non è "la caccia
 // pubblicata": i giocatori non la leggono mai (nessun codice giocatore referenzia
-// questa chiave né draftFile()). Chiamata da ogni punto che modifica L.nodi.
+// questa chiave né draftFile()). Chiamata da ogni punto che modifica L.nodi. Porta con
+// sé lo slug: è l'unico modo per sapere, al prossimo avvio, QUALE caccia stavo modificando.
 function salvaLocale() {
   if (!L.nodi) return;
-  store.set("m-lavoro", {
-    formato: ($("m-formato").value || "").trim() || FORMATO,
-    nome: $("m-nome").value,
-    nodi: L.nodi
-  });
+  store.set("m-lavoro", { formato: ($("m-formato").value || "").trim() || FORMATO, slug: L.slug, nodi: L.nodi });
 }
 
-function caricaBozzaLocale() {
+// Bozza locale valida SOLO se è della caccia richiesta: passare a un'altra caccia dal
+// menu non deve far ricomparire per sbaglio la bozza di quella precedente.
+function caricaBozzaLocale(slug) {
   const b = store.get("m-lavoro");
-  return (b && b.formato === FORMATO && b.nodi) ? b : null;
+  return (b && b.formato === FORMATO && b.nodi && b.slug === slug) ? b : null;
 }
 
-// Bozza salvata sul server (draftFile, non caccia.json): letta con un fetch semplice,
-// come caccia.json/messaggi.json, non con l'API di GitHub (serve il token solo per
-// scrivere, non per leggere un file pubblico). Controllata solo per la caccia di sempre
-// (slug vuoto): all'apertura il master non ha ancora scritto un nome per una nuova caccia.
-async function loadDraftServer() {
+// Bozza salvata sul server (draftFile(slug), non gameFile(slug)): letta con un fetch
+// semplice, come caccia.json/messaggi.json, non con l'API di GitHub (serve il token
+// solo per scrivere, non per leggere un file pubblico).
+async function loadDraftServer(slug) {
   try {
-    const r = await fetch(draftFile(""), { cache: "no-store" });
+    const r = await fetch(draftFile(slug), { cache: "no-store" });
     if (!r.ok) return null;
     const g = await r.json();
     return (g && g.formato === FORMATO && g.nodi) ? g : null;
   } catch { return null; }
 }
 
-async function loadBase() {
+// Elenco delle cacce note (slug, la caccia di sempre esclusa: è sempre la prima voce
+// del menu) — alimenta il menu in cima al pannello master. Vive in cacce.json, scritto
+// da registraCaccia() alla prima pubblicazione di una caccia con nome.
+let cacceConosciute = [];
+async function caricaElencoCacce() {
+  try {
+    const r = await fetch("cacce.json", { cache: "no-store" });
+    cacceConosciute = r.ok ? await r.json() : [];
+  } catch { cacceConosciute = []; }
+  if (!Array.isArray(cacceConosciute)) cacceConosciute = [];
+}
+
+function aggiornaMenuCacce() {
+  const sel = $("m-hunt-select");
+  sel.innerHTML = "";
+  const opt = (value, testo) => { const o = document.createElement("option"); o.value = value; o.textContent = testo; sel.append(o); };
+  opt("__new__", "+ Nuova caccia");
+  opt("", "Caccia di sempre (link senza # in fondo)");
+  for (const slug of cacceConosciute) opt(slug, slug);
+  // Se sto modificando una caccia appena creata, non ancora pubblicata (quindi non
+  // ancora in cacce.json), aggiungo comunque una voce per non perdere la selezione.
+  if (L.slug && !cacceConosciute.includes(L.slug)) opt(L.slug, `${L.slug} (non ancora pubblicata)`);
+  sel.value = L.slug;
+}
+
+// Scrive lo slug in cacce.json se non c'è già: chiamata dopo ogni pubblicazione riuscita
+// di una caccia con nome (la caccia di sempre, slug vuoto, non ci va: è implicita).
+async function registraCaccia(slug) {
+  if (!slug || cacceConosciute.includes(slug)) return;
+  let elenco = cacceConosciute;
+  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : elenco; } catch {}
+  if (!Array.isArray(elenco)) elenco = [];
+  if (elenco.includes(slug)) { cacceConosciute = elenco; return; }
+  elenco = [...elenco, slug];
+  const ok = await ghPutFile("cacce.json", JSON.stringify(elenco, null, 2), `Aggiungi "${slug}" all'elenco delle cacce`, $("m-hunt-status"));
+  if (ok) { cacceConosciute = elenco; aggiornaMenuCacce(); }
+}
+
+// Carica nel pannello master la copia di lavoro della caccia "slug" (una delle due vie
+// per arrivarci: scelta dal menu, o all'avvio con lo slug della bozza locale se c'è).
+// Stessa precedenza di sempre: bozza locale di QUESTA caccia, poi bozza sul server,
+// altrimenti la caccia pubblicata (o vuota, se non esiste ancora).
+async function caricaCopiaLavoro(slug) {
+  L.slug = slug; L.nodi = null;
   M.loading = true;
   $("m-base-retry").hidden = true;
+  setStatus($("m-draft-status"), "");
   setStatus($("m-base-status"), "Leggo la caccia pubblicata…");
   try {
-    const r = await fetch(gameFile(""), { cache: "no-store" });
+    const r = await fetch(gameFile(slug), { cache: "no-store" });
     if (r.status === 404) {
       M.base = null;
-      setStatus($("m-base-status"), "Sul sito non c'è ancora una caccia: il primo oggetto che aggiungi la crea.");
+      setStatus($("m-base-status"), "Questa caccia non è ancora stata pubblicata: il primo oggetto che aggiungi la crea.");
     } else {
       if (!r.ok) throw new Error("HTTP " + r.status);
       const g = await r.json();
@@ -884,28 +933,30 @@ async function loadBase() {
     }
     M.baseLoaded = true;
     $("m-formato").value = (M.base && M.base.formato) || FORMATO;
-    $("m-nome").value = (M.base && M.base.nome) || "";
   } catch {
     M.baseLoaded = false;
     setStatus($("m-base-status"), "Non riesco a leggere la caccia pubblicata. Per non perdere gli oggetti esistenti, l'esportazione resta bloccata finché non riprovi con successo.", "ko");
     $("m-base-retry").hidden = false;
   }
   M.loading = false;
-  if (!L.nodi) {
-    const locale = caricaBozzaLocale();
-    const remoto = locale ? null : await loadDraftServer();
-    const bozza = locale || remoto;
-    if (bozza) {
-      L.nodi = bozza.nodi;
-      $("m-nome").value = bozza.nome || "";
-      setStatus($("m-draft-status"), locale
-        ? "Bozza di lavoro ripristinata da questo telefono, non ancora pubblicata."
-        : "Bozza di lavoro ripristinata dal server, non ancora pubblicata.");
-    } else {
-      L.nodi = M.base ? clone(M.base.nodi) : {};
-    }
+
+  const locale = caricaBozzaLocale(slug);
+  const remoto = locale ? null : await loadDraftServer(slug);
+  const bozza = locale || remoto;
+  if (bozza) {
+    L.nodi = bozza.nodi;
+    setStatus($("m-draft-status"), locale
+      ? "Bozza di lavoro ripristinata da questo telefono, non ancora pubblicata."
+      : "Bozza di lavoro ripristinata dal server, non ancora pubblicata.");
+  } else {
+    L.nodi = M.base ? clone(M.base.nodi) : {};
   }
-  aggiornaLinkGiocatore();
+  // Riallinea subito l'autosalvataggio locale a QUESTA caccia: altrimenti la bozza non
+  // salvata di quella lasciata poco fa resterebbe lì e "risorgerebbe" tornandoci sopra,
+  // smentendo l'avviso mostrato prima di cambiare caccia dal menu.
+  salvaLocale();
+
+  aggiornaMenuCacce(); aggiornaLinkGiocatore();
   renderPanelList(); masterRefresh(); linkRefresh();
 }
 
@@ -933,23 +984,17 @@ function recalibrate() {
   setStatus($("m-train-status"), msg, kind);
 }
 
-// Lo slug della caccia su cui si sta lavorando ORA in "Collega gli elementi", dal campo
-// "Nome della caccia" — decide su quale file si legge/scrive (vedi gameFile/draftFile),
-// non dipende da quale caccia il giocatore stia guardando (quella è activeSlug()).
-function currentSlug() { return slugify($("m-nome").value); }
-
 function currentGame() {
-  return { formato: $("m-formato").value.trim() || FORMATO, nome: $("m-nome").value.trim(), creato: new Date().toISOString(), nodi: L.nodi };
+  return { formato: $("m-formato").value.trim() || FORMATO, creato: new Date().toISOString(), nodi: L.nodi };
 }
 
-// Mostra sotto il campo "Nome della caccia" il link da mandare ai giocatori di QUESTA
-// caccia: quello di sempre (senza #) se il nome è vuoto, "#c-<slug>" altrimenti — non
-// c'è ancora una schermata di scelta in-app, i giocatori arrivano già sul link giusto.
+// Mostra sotto il menu delle cacce il link da mandare ai giocatori di QUESTA caccia:
+// quello di sempre (senza #) per lo slug vuoto, "#c-<slug>" altrimenti — non c'è ancora
+// una schermata di scelta in-app, i giocatori arrivano già sul link giusto.
 function aggiornaLinkGiocatore() {
-  const slug = currentSlug();
   const base = location.origin + location.pathname;
-  $("m-link-hint").textContent = slug
-    ? `Link per i giocatori di questa caccia: ${base}#c-${slug}`
+  $("m-link-hint").textContent = L.slug
+    ? `Link per i giocatori di questa caccia: ${base}#c-${L.slug}`
     : `Link per i giocatori: ${base} (quello di sempre, senza # in fondo)`;
 }
 
@@ -978,8 +1023,12 @@ async function publishGame(statusEl) {
   const ciclo = trovaCiclo(L.nodi);
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
   const g = currentGame();
-  const ok = await ghPutFile(gameFile(currentSlug()), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
-  if (ok) { M.base = g; $("m-formato").value = g.formato; renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh(); }
+  const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
+  if (ok) {
+    M.base = g; $("m-formato").value = g.formato;
+    await registraCaccia(L.slug);
+    renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
+  }
   return ok;
 }
 
@@ -1353,7 +1402,7 @@ function chiudiPannelloGrafo() {
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
-  $("m-base-retry").onclick = loadBase;
+  $("m-base-retry").onclick = () => caricaCopiaLavoro(L.slug);
 
   wireGhConfigPanel({ owner: "cfg-owner", repo: "cfg-repo", branch: "cfg-branch", token: "cfg-token", save: "cfg-save", clear: "cfg-clear", status: "cfg-status" });
   ghConfigStatus();
@@ -1415,22 +1464,38 @@ function initMaster() {
   // telefono all'altro, o come backup vero (l'autosalvataggio locale protegge solo questo
   // telefono, e solo per la caccia di sempre viene poi ripristinata in automatico).
   $("m-save-draft").onclick = async () => {
-    const g = { formato: $("m-formato").value.trim() || FORMATO, nome: $("m-nome").value.trim(), salvato: new Date().toISOString(), nodi: L.nodi || {} };
-    await ghPutFile(draftFile(currentSlug()), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
+    const g = { formato: $("m-formato").value.trim() || FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
+    await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
   };
 
-  $("m-nome").oninput = () => { salvaLocale(); aggiornaLinkGiocatore(); };
-
-  // "Nuova caccia": svuota la copia di lavoro per iniziarne un'altra da zero, senza
-  // toccare quanto già pubblicato sotto il nome precedente (resta su GitHub finché
-  // qualcuno non pubblica di nuovo su quel file).
-  $("m-new-hunt").onclick = () => {
-    if (Object.keys(L.nodi || {}).length && !confirm("Svuotare gli elementi per iniziare una nuova caccia? Quanto già pubblicato resta come sta, ma la copia di lavoro attuale (non ancora pubblicata) andrà persa.")) return;
-    L.nodi = {};
-    $("m-nome").value = "";
+  // "+ Nuova caccia": chiede un nome (diventa lo slug: file e link), avvisa se la copia
+  // di lavoro attuale non è salvata, poi parte da una caccia vuota. Passare a una caccia
+  // ESISTENTE dal menu ricarica invece la sua copia di lavoro (bozza o pubblicata).
+  async function creaNuovaCaccia() {
+    const scelta = prompt('Nome della nuova caccia (diventa anche il link per i giocatori): es. "centro storico"');
+    if (scelta === null) { aggiornaMenuCacce(); return; }
+    const slug = slugify(scelta);
+    if (!slug) { alert("Nome non valido: usa almeno una lettera o un numero."); aggiornaMenuCacce(); return; }
+    if (cacceConosciute.includes(slug) || slug === L.slug) { alert(`Esiste già una caccia "${slug}": selezionala dal menu per modificarla.`); aggiornaMenuCacce(); return; }
+    if (Object.keys(L.nodi || {}).length && !confirm(`Iniziare "${slug}" abbandonando le modifiche non salvate della caccia attuale?`)) { aggiornaMenuCacce(); return; }
+    L.slug = slug; L.nodi = {};
+    M.base = null; M.baseLoaded = true;
+    setStatus($("m-base-status"), "Nuova caccia, non ancora pubblicata: il primo oggetto che aggiungi la crea.");
+    setStatus($("m-draft-status"), "");
     salvaLocale();
-    aggiornaLinkGiocatore();
+    aggiornaMenuCacce(); aggiornaLinkGiocatore();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
+  }
+
+  $("m-hunt-select").onchange = async () => {
+    const v = $("m-hunt-select").value;
+    if (v === "__new__") { await creaNuovaCaccia(); return; }
+    if (v === L.slug) return;
+    if (Object.keys(L.nodi || {}).length && !confirm("Passare a un'altra caccia abbandona le modifiche non salvate di questa (quanto già pubblicato resta come sta). Continuare?")) {
+      aggiornaMenuCacce();
+      return;
+    }
+    await caricaCopiaLavoro(v);
   };
 
   $("m-local").onclick = async () => {
@@ -1462,7 +1527,16 @@ function initMaster() {
     $("m-link-publish").disabled = false;
   };
 
-  if (!M.baseLoaded && !M.loading) loadBase(); else { renderPanelList(); linkRefresh(); }
+  if (!M.baseLoaded && !M.loading) {
+    caricaElencoCacce().then(() => {
+      // Riparte dalla caccia della bozza locale, se c'è: coerente con l'autosalvataggio,
+      // non si perde il filo di quale caccia si stava modificando a un reload.
+      const b = store.get("m-lavoro");
+      caricaCopiaLavoro(b && b.slug ? b.slug : "");
+    });
+  } else {
+    aggiornaMenuCacce(); renderPanelList(); linkRefresh();
+  }
   masterRefresh();
 }
 
