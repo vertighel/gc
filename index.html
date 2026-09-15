@@ -41,6 +41,38 @@
     body.wide main { max-width: 1180px; }
   }
 
+  /* Modalità giocatore: schermo pieno e fisso come un'app (barra in alto, contenuto
+     che scorre solo al suo interno, schede "Cerca"/"Oggetti" fisse in basso), invece
+     della normale pagina che scorre usata da master/scelta della caccia. Attiva solo
+     su body.playing (vedi mostraGiocatore()/route()), per non toccare le altre. */
+  body.playing { height: 100vh; height: 100dvh; overflow: hidden; }
+  body.playing main { height: 100%; padding: 0; max-width: none; margin: 0; display: flex; justify-content: center; }
+  body.playing #view-player { width: 100%; max-width: 480px; height: 100%; display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
+  @media (min-width: 700px) { body.playing #view-player { max-width: 640px; } }
+
+  #p-content { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
+  .playertab { height: 100%; }
+
+  #p-tabbar {
+    display: flex; flex: none; gap: 4px; margin: 0 -16px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1.5px solid #C9D0D7; background: #fff;
+  }
+  .ptab {
+    flex: 1; appearance: none; border: 0; background: none; cursor: pointer;
+    padding: 8px 4px; border-radius: 8px; font: 600 15px/1.2 var(--display); color: var(--grigio);
+  }
+  .ptab[aria-current="true"] { color: var(--bianco); background: var(--smalto); }
+
+  /* Le due schede DENTRO "Cerca": l'indizio (con l'elenco di cosa è raggiungibile
+     adesso) separato dalla fotocamera, sempre entrambe presenti. */
+  .subtabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .subtab {
+    flex: 1; appearance: none; border: 1.5px solid var(--smalto); background: transparent; color: var(--smalto);
+    border-radius: 8px; padding: 10px; font: 600 16px/1 var(--display); cursor: pointer;
+  }
+  .subtab[aria-current="true"] { background: var(--smalto); color: var(--bianco); }
+
   .bar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 18px; }
   .bar-right { display: flex; align-items: center; gap: 10px; }
   .inbox-btn { position: relative; border: 0; background: none; font-size: 22px; line-height: 1; padding: 6px; cursor: pointer; }
@@ -260,7 +292,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 28)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 29)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -282,57 +314,75 @@
       <button id="p-inbox-close" class="link">Chiudi</button>
     </div>
 
-    <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
-    <p id="p-news" class="newsbar" role="status" hidden></p>
+    <div id="p-content">
+      <!-- ===== scheda "Cerca" ===== -->
+      <div id="tab-cerca" class="playertab">
+        <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
+        <p id="p-news" class="newsbar" role="status" hidden></p>
 
-    <div id="p-empty" class="empty">
-      <h1 class="title">Nessuna caccia in corso</h1>
-      <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
-      <button id="p-retry" class="btn primary" hidden>Riprova</button>
-    </div>
+        <div id="p-empty" class="empty">
+          <h1 class="title">Nessuna caccia in corso</h1>
+          <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
+          <button id="p-retry" class="btn primary" hidden>Riprova</button>
+        </div>
 
-    <div id="p-game" hidden>
-      <div class="plate">
-        <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
-        <p id="p-clue"></p>
-        <div id="p-clue-imgs" class="clue-imgs"></div>
+        <div id="p-alldone" class="empty" hidden>
+          <h1 class="title">Hai trovato tutto</h1>
+          <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+        </div>
+
+        <div id="p-reward" class="reward" hidden>
+          <p class="done">Sbloccato!</p>
+          <div id="p-reward-list" class="unlocked"></div>
+          <button id="p-continue" class="btn primary">Continua la caccia</button>
+        </div>
+
+        <div id="p-hunt" hidden>
+          <div class="subtabs">
+            <button id="sub-indizio-btn" class="subtab">Indizio</button>
+            <button id="sub-foto-btn" class="subtab">Foto</button>
+          </div>
+
+          <div id="sub-indizio">
+            <div class="plate">
+              <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+              <p id="p-clue"></p>
+              <div id="p-clue-imgs" class="clue-imgs"></div>
+            </div>
+            <p id="p-todo-heading" class="hint" hidden>Puoi cercare anche uno di questi:</p>
+            <ul id="p-todo-list" class="todo"></ul>
+          </div>
+
+          <div id="sub-foto" hidden>
+            <div class="viewfinder" id="p-vf">
+              <video id="p-video" playsinline muted autoplay></video>
+              <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+              <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
+            </div>
+            <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
+            <p id="p-status" class="status" role="status"></p>
+            <p id="p-score" class="score"></p>
+          </div>
+        </div>
       </div>
-      <p id="p-step" class="score" hidden></p>
-      <div class="viewfinder" id="p-vf">
-        <video id="p-video" playsinline muted autoplay></video>
-        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-        <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
+
+      <!-- ===== scheda "Oggetti" ===== -->
+      <div id="tab-oggetti" class="playertab" hidden>
+        <div id="p-inventory" class="section inventory">
+          <h2>Il tuo bottino</h2>
+          <ul id="p-inv-list"></ul>
+        </div>
+        <footer class="foot">
+          <button id="p-change-hunt" class="link">Cambia caccia</button>
+          <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+        </footer>
       </div>
-      <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
-      <p id="p-status" class="status" role="status"></p>
-      <p id="p-score" class="score"></p>
     </div>
 
-    <div id="p-reward" class="reward" hidden>
-      <p class="done">Sbloccato!</p>
-      <div id="p-reward-list" class="unlocked"></div>
-      <button id="p-continue" class="btn primary">Continua la caccia</button>
-    </div>
-
-    <div id="p-alldone" class="empty" hidden>
-      <h1 class="title">Hai trovato tutto</h1>
-      <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
-    </div>
-
-    <div id="p-todo" class="section" hidden>
-      <h2>Da trovare</h2>
-      <ul id="p-todo-list" class="todo"></ul>
-    </div>
-
-    <div id="p-inventory" class="section inventory" hidden>
-      <h2>Il tuo bottino</h2>
-      <ul id="p-inv-list"></ul>
-    </div>
-
-    <footer class="foot">
-      <button id="p-change-hunt" class="link">Cambia caccia</button>
-      <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
-    </footer>
+    <nav id="p-tabbar">
+      <button id="p-tab-cerca" class="ptab">🔍 Cerca</button>
+      <button id="p-tab-oggetti" class="ptab">🎒 Oggetti</button>
+    </nav>
   </section>
 
   <!-- ================= SCELTA DELLA CACCIA ================= -->
@@ -342,7 +392,7 @@
     </header>
     <div class="current">
       <h2>Scegli una caccia</h2>
-      <p class="hint">La prossima volta si apre direttamente quella scelta: per cambiarla di nuovo, usa "Cambia caccia" in fondo alla pagina.</p>
+      <p class="hint">La prossima volta si apre direttamente quella scelta: per cambiarla di nuovo, usa "Cambia caccia" nella scheda "Oggetti".</p>
       <div id="chooser-list"></div>
     </div>
   </section>
@@ -1593,6 +1643,41 @@ async function loadMessages() {
    ================================================================= */
 let game = null;
 
+// Quale scheda principale ("cerca"/"oggetti") e quale sotto-scheda di "Cerca"
+// ("indizio"/"foto") sta guardando il giocatore in questo momento — vedi
+// mostraTab()/mostraSubTab() più sotto. Ripartono da qui a ogni initPlayer()
+// (nuova caccia, o riapertura): non ha senso ricordarle da una sessione all'altra.
+let tabAttivo = "cerca";
+let subTabAttivo = "indizio";
+
+// Passa fra "Cerca" e "Oggetti": ferma sempre la fotocamera lasciando "Cerca" (come
+// già succede cambiando schermata altrove) — nessun motivo di tenerla accesa mentre
+// si guarda il bottino.
+function mostraTab(tab) {
+  tabAttivo = tab;
+  if (tab !== "cerca") stopCamera();
+  $("tab-cerca").hidden = tab !== "cerca";
+  $("tab-oggetti").hidden = tab !== "oggetti";
+  $("p-tab-cerca").setAttribute("aria-current", String(tab === "cerca"));
+  $("p-tab-oggetti").setAttribute("aria-current", String(tab === "oggetti"));
+  if (tab === "cerca") renderPlayer();
+}
+
+// Passa fra "Indizio" e "Foto" DENTRO "Cerca": ferma la fotocamera lasciando "Foto",
+// così tornandoci si riparte sempre da "Attiva la fotocamera", mai da un fotogramma
+// fermo di quando si era usciti.
+function mostraSubTab(sub) {
+  subTabAttivo = sub;
+  if (sub !== "foto") stopCamera();
+  $("sub-indizio").hidden = sub !== "indizio";
+  $("sub-foto").hidden = sub !== "foto";
+  $("sub-indizio-btn").setAttribute("aria-current", String(sub === "indizio"));
+  $("sub-foto-btn").setAttribute("aria-current", String(sub === "foto"));
+  if (sub === "foto") { $("p-cam").hidden = !!stream; $("p-shoot").disabled = !stream; }
+}
+// Aggancio per i test (vedi CLAUDE.md): stato altrimenti privato al modulo.
+Object.assign(window.__test, { tabAttivo: () => tabAttivo, subTabAttivo: () => subTabAttivo, hasStream: () => !!stream });
+
 const inProva  = () => !!store.get("prova");
 // Chiavi separate per caccia (slug), così bottino e progressi di una non si mescolano
 // con quelli di un'altra sullo stesso telefono. Lo slug vuoto (la caccia di sempre)
@@ -1775,21 +1860,22 @@ function renderInventory(st) {
   }
 }
 
+// Scheda "Indizio": la targa mostra l'oggetto scelto adesso (impostata da chi chiama,
+// vedi renderPlayer), qui sotto l'elenco delle ALTRE alternative raggiungibili — non
+// serve ripetere anche l'attuale, la targa sopra basta. Sceglierne una la rende
+// "attuale" e passa subito alla scheda "Foto", pronta per scattare.
 function renderTodo(st, todo, cur) {
-  $("p-todo").hidden = false;   // mostra sempre tutti gli oggetti ancora da trovare
   const list = $("p-todo-list");
   list.innerHTML = "";
-  for (const m of todo) {
+  const altre = todo.filter(m => !cur || m.id !== cur.id);
+  $("p-todo-heading").hidden = !altre.length;
+  for (const m of altre) {
     const li = document.createElement("li");
     const b = document.createElement("button");
-    // Stesso "Con thumb" della targa in alto (vedi renderPlayer/immaginiIndizio):
-    // aiuta a distinguere a colpo d'occhio due oggetti "da trovare" simili fra
-    // loro prima ancora di sceglierli.
     for (const src of immaginiIndizio(m)) { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; b.append(img); }
     const t = document.createElement("span"); t.className = "txt"; t.textContent = etichettaOggetto(m.id);
     b.append(t);
     if (!st.visti.includes(m.id)) { const n = document.createElement("span"); n.className = "new"; n.textContent = "Nuovo"; b.append(n); }
-    if (cur && m.id === cur.id) b.setAttribute("aria-current", "true");
     b.onclick = () => {
       const s = stato();
       s.scelta = m.id;
@@ -1797,7 +1883,7 @@ function renderTodo(st, todo, cur) {
       saveState(s);
       setStatus($("p-status"), ""); $("p-score").textContent = "";
       renderPlayer();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      mostraSubTab("foto");
     };
     li.append(b);
     list.append(li);
@@ -1814,7 +1900,7 @@ function renderPlayer() {
   $("p-reset").hidden = !game;
   $("p-empty").hidden = !!game;
   if (!game) {
-    for (const id of ["p-game", "p-alldone", "p-todo", "p-news"]) $(id).hidden = true;
+    for (const id of ["p-hunt", "p-alldone", "p-news"]) $(id).hidden = true;
     $("p-progress").textContent = "";
     renderInventory(stato());
     return;
@@ -1831,27 +1917,25 @@ function renderPlayer() {
 
   if (!todo.length) {
     stopCamera();
-    $("p-game").hidden = true; $("p-todo").hidden = true; $("p-alldone").hidden = false;
+    $("p-hunt").hidden = true; $("p-alldone").hidden = false;
     return;
   }
   $("p-alldone").hidden = true;
   const cur = attuale(st, todo);
-  $("p-game").hidden = false;
+  $("p-hunt").hidden = false;
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
   for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.className = "imgprev"; img.src = src; imgs.append(img); }
-  $("p-step").hidden = true; // nessun equivalente pulito di "tappa X di Y" in un grafo libero
-  $("p-shoot").disabled = !stream;
-  $("p-cam").hidden = !!stream;
   $("p-cam").disabled = false;
   renderTodo(st, todo, cur);
+  mostraSubTab(subTabAttivo);
 }
 
 // Il possesso si festeggia sempre: tutti i nodi appena sbloccati da un solo scatto
 // (anche a cascata) si mostrano insieme nella stessa schermata, non più in coda.
 function showReward(nuovi, st) {
-  for (const id of ["p-game", "p-todo", "p-news", "p-alldone"]) $(id).hidden = true;
+  for (const id of ["p-hunt", "p-news", "p-alldone"]) $(id).hidden = true;
   $("p-reward").hidden = false;
   const wrap = $("p-reward-list");
   wrap.innerHTML = "";
@@ -1934,7 +2018,7 @@ function initPlayer() {
 
   $("p-test-exit").onclick = () => { store.del("prova"); stopCamera(); initPlayer(); };
   $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
-  $("p-continue").onclick = () => { renderPlayer(); window.scrollTo({ top: 0 }); };
+  $("p-continue").onclick = () => { renderPlayer(); $("p-content").scrollTop = 0; };
   $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; }, $("p-status"));
   $("p-shoot").onclick = shoot;
   $("p-reset").onclick = () => {
@@ -1955,7 +2039,15 @@ function initPlayer() {
   };
   $("p-inbox-close").onclick = () => { $("p-inbox").hidden = true; };
 
-  renderPlayer();
+  $("p-tab-cerca").onclick = () => mostraTab("cerca");
+  $("p-tab-oggetti").onclick = () => mostraTab("oggetti");
+  $("sub-indizio-btn").onclick = () => mostraSubTab("indizio");
+  $("sub-foto-btn").onclick = () => mostraSubTab("foto");
+
+  // Si riparte sempre da "Cerca" → "Indizio": non ha senso ricordare le schede da una
+  // sessione all'altra (nuova caccia, o semplice riapertura dell'app).
+  tabAttivo = "cerca"; subTabAttivo = "indizio";
+  mostraTab("cerca");
   renderInbox();
   syncGame();
   syncMessages();
@@ -1976,6 +2068,7 @@ const CHOOSER_KEY = "caccia-scelta";
 function mostraGiocatore() {
   $("view-chooser").hidden = true;
   $("view-player").hidden = false;
+  document.body.classList.add("playing"); // schermo pieno stile app, vedi CSS
   initPlayer();
 }
 
@@ -1984,6 +2077,7 @@ function mostraGiocatore() {
 async function mostraSceltaCaccia() {
   $("view-player").hidden = true;
   $("view-chooser").hidden = false;
+  document.body.classList.remove("playing"); // questa schermata scorre normalmente
   const cacce = await leggiElencoCacce();
   const wrap = $("chooser-list");
   wrap.innerHTML = "";
@@ -2024,6 +2118,7 @@ function route() {
   document.body.classList.toggle("wide", collega || grafo);
   if (master || collega || grafo) {
     $("view-player").hidden = true; $("view-chooser").hidden = true;
+    document.body.classList.remove("playing");
     initMaster();
   } else if (location.hash.startsWith("#c-")) {
     mostraGiocatore();
