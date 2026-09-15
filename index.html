@@ -192,6 +192,10 @@
   /* Testo centrato e "bilanciato" solo quando non c'è foto: con una foto che
      galleggia, centrare non avrebbe senso (il testo scorrerebbe storto intorno). */
   .plate:has(.clue-imgs .imgprev) p { text-align: left; text-wrap: wrap; }
+  /* Un testo più corto della foto (84px + 26px di padding sopra e sotto) la
+     lascerebbe sbordare fuori dalla targa: un float non allunga da solo il
+     contenitore che lo ospita. */
+  .plate:has(.clue-imgs .imgprev) { min-height: 136px; }
 
   /* Due pulsanti sulla stessa riga (Oggetto/Dintorni, Prova/Aggiungi) */
   .btnrow { display: flex; gap: 10px; }
@@ -310,7 +314,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 34)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 35)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
