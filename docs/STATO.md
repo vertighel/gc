@@ -44,18 +44,25 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   - in `localStorage` del telefono (`m-lavoro`), scritta a ogni modifica —
     protegge da un reload accidentale, gratis, senza rete;
   - `lavoro.json`/`lavoro-<slug>.json` sul server, scritto solo premendo
-    "Salva bozza sul server" — protegge da un cambio di telefono. **Mai
-    letto dal codice giocatore**: nessun `fetch` lo cerca, per costruzione
-    invisibile finché non si preme "Pubblica la caccia" (che resta
-    l'unico atto che scrive `caccia*.json`, invariato).
+    "Salva bozza sul server" — protegge da un cambio di telefono, e
+    permette di provarla come un vero giocatore col link `#b`/`#b-<slug>`
+    (vedi sotto "Link di prova della bozza"). Il giocatore **normale** (link
+    `#c-<slug>` o senza `#`) non lo legge mai: resta invisibile a chi gioca
+    davvero finché non si preme "Pubblica" (che resta l'unico atto che
+    scrive `caccia*.json`, invariato).
 
 ## Modalità giocatore (indirizzo normale, senza `#`)
 
 - **Schermo pieno, come un'app**: barra in alto fissa, contenuto che scorre
   solo al proprio interno, barra di due schede fissa in basso — "🔍 Cerca"
-  e "🎒 Oggetti". Attivo solo mentre si gioca (classe `playing` sul
+  e "💽 Memoria". Attivo solo mentre si gioca (classe `playing` sul
   `<body>`): il pannello master e la schermata di scelta restano pagine
-  normali che scorrono.
+  normali che scorrono. **Si apre sempre su "Memoria"**, non su "Cerca"
+  (`mostraTab("oggetti")` in `initPlayer()`): chi non ha ancora nulla lo
+  capisce dal testo lì (`#p-mem-empty`), che suggerisce di passare a
+  "Cerca" — eccetto quando c'è una festa/sblocco da mostrare (vedi sotto
+  "Il possesso si festeggia sempre"), che vive dentro "Cerca" e quindi ci
+  passa automaticamente.
 - **Schermata di scelta della caccia**: aprendo il link senza `#`, se il
   telefono non ricorda ancora una preferenza (chiave `caccia-scelta`),
   vede l'elenco delle cacce disponibili (`leggiElencoCacce()`) e ne
@@ -106,6 +113,11 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   qui non conta: una volta posseduto un nodo, la foto si vede sempre.
   **Dopo la festa si riparte sempre dalla scheda "Indizio"**, mai restando
   su "Foto" (dove inevitabilmente ci si trova appena dopo aver scattato).
+  Un nodo "regalo" a **zero prerequisiti** (`daValidare: false`,
+  `richiede: []`, es. un dono iniziale) si festeggia già al primo avvio o
+  alla prima sincronizzazione, non solo dopo un'altra foto — corretto un
+  bug per cui restava per sempre invisibile in Memoria (vedi `memory.md`,
+  sezione "Bug: un regalo non compariva mai in Memoria").
 - **Un `richiede` verso un id di nodo non più esistente non blocca mai
   nulla** (può succedere solo modificando `caccia.json` a mano fuori
   dall'app, bypassando il controllo di "Rimuovi" — vedi `memory.md` per
@@ -117,7 +129,7 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   giocatore restano intatti e i nuovi nodi si aggiungono alla lista. Solo
   un `formato` diverso azzera tutto (bottino, progressi, nodi visti).
 - **Bottino** (ogni nodo diventato posseduto, non solo i vecchi "premi")
-  nella scheda "Oggetti", con lo stesso criterio foto/colore della
+  nella scheda "Memoria", con lo stesso criterio foto/colore della
   schermata di sblocco — ed **è cliccabile**: toccare un oggetto riapre il
   suo `messaggio` (funzione `apriRicordo()`), la stessa scheda vista alla
   schermata di sblocco — utile per rileggerlo con calma, non più un
@@ -133,7 +145,18 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   pannello master, il giocatore su quello stesso telefono entra in uno
   spazio *separato* (chiavi `localStorage` diverse, prefisso `-prova`),
   segnalato da una striscia gialla, senza toccare i dati della caccia
-  realmente pubblicata.
+  realmente pubblicata. Istantaneo (nessun salvataggio né rete), ma
+  **funziona solo su questo stesso telefono**: una finestra in incognito
+  ha uno storage isolato, quindi lì non troverebbe nulla.
+- **Link di prova della bozza**: `#b` (caccia di sempre) o `#b-<slug>`
+  fanno scaricare al giocatore `lavoro*.json` (la bozza salvata sul server
+  con "Salva bozza sul server", vedi sotto) invece di `caccia*.json` —
+  stessa striscia gialla di "Modalità di prova". A differenza di "Prova su
+  questo telefono" è un vero `fetch()`, quindi funziona da qualunque
+  browser, telefono o finestra incognito, senza bisogno di pubblicare
+  davvero. Stato e bottino di questa modalità hanno chiavi proprie
+  (`gioco-bozza:<slug>`/`stato-bozza:<slug>`) e non contano come "la
+  caccia scelta" su questo telefono (`caccia-scelta` resta invariato).
 
 ## Modalità master (indirizzo con `#master` in fondo)
 
@@ -160,7 +183,9 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   da "Collega gli elementi" sostituisce interamente il file). Un bottone
   **"Salva bozza sul server"**, sotto ai controlli di registrazione,
   scrive la copia di lavoro attuale su `lavoro*.json` senza pubblicarla:
-  resta invisibile ai giocatori finché non si preme "Pubblica la caccia".
+  resta invisibile ai giocatori normali finché non si preme "Pubblica" —
+  ma da qui in poi provabile da subito col link "#b"/"#b-<slug>" mostrato
+  sotto lo stesso bottone.
 - **"Caccia pubblicata"**: solo un elenco di sola lettura (foto + nome di
   ogni nodo della copia di lavoro condivisa, variabile `L.nodi`) — nessun
   editing qui. La foto è una miniatura cliccabile: al tocco si apre più
@@ -207,9 +232,13 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   toccando l'oggetto nel bottino) — e un elenco di checkbox "Richiede"
   verso tutti gli altri nodi. Un
   pulsante "Rimuovi" per scheda, bloccato se un altro nodo lo richiede
-  ancora. In fondo: il campo "Formato", e **da qui si pubblica la
-  caccia** — pulsante "Pubblica la caccia" (verso GitHub) e "Prova su
-  questo telefono" (modalità di prova locale). Prima di pubblicare
+  ancora. In fondo, **da qui si pubblica la caccia** — pulsante
+  "Pubblica" (verso GitHub, rende la caccia visibile a tutti) e "Prova su
+  questo telefono" (modalità di prova locale, vedi sopra "Modalità
+  giocatore"). Non c'è più un campo "Formato" modificabile a mano: era un
+  residuo della migrazione manuale `caccia-1`→`caccia-2` (vedi
+  `docs/MODELLO-DATI.md`), oggi il valore resta fissato internamente alla
+  costante `FORMATO`. Prima di pubblicare
   controlla che i collegamenti non formino un ciclo (bloccando con un
   messaggio se lo trova).
 - **Pagina "Grafo" (`#master-grafo`, raggiungibile da un link in "Collega gli

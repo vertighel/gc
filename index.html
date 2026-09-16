@@ -354,7 +354,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 40)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 41)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -512,6 +512,7 @@
       <p id="m-add-status" class="status" role="status"></p>
       <button id="m-save-draft" class="btn" disabled>Salva bozza sul server</button>
       <p id="m-save-draft-status" class="status" role="status"></p>
+      <p id="m-draft-link-hint" class="hint"></p>
     </div>
 
     <div class="current">
@@ -581,12 +582,7 @@
 
       <p class="hint">Per cambiare caccia, o crearne una nuova, usa il menu in cima al pannello master.</p>
 
-      <label>Formato
-        <input type="text" id="m-formato">
-      </label>
-      <p class="hint">Cambialo solo per far ripartire tutti i giocatori da zero: progressi e bottino verranno azzerati.</p>
-
-      <button id="m-link-publish" class="btn primary" disabled>Pubblica la caccia</button>
+      <button id="m-link-publish" class="btn primary" disabled>Pubblica</button>
       <p id="m-link-status" class="status" role="status"></p>
 
       <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
@@ -627,18 +623,29 @@ const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come cacc
 // "Collega gli elementi", vedi slugify()). Slug vuoto = la caccia di sempre: file
 // caccia.json/lavoro.json, link senza # in fondo — retrocompatibile con i link già
 // condivisi. Slug non vuoto = caccia-<slug>.json/lavoro-<slug>.json, link "#c-<slug>".
-// lavoro-*.json non è mai letto dal codice giocatore (vedi initPlayer/syncGame): solo
-// backup/continuità della copia di lavoro del master.
+// lavoro-*.json non è letto dal codice giocatore nel percorso normale (vedi
+// initPlayer/syncGame): solo backup/continuità della copia di lavoro del master — TRANNE
+// che nel link di prova "#b"/"#b-<slug>" (vedi inBozza()), pensato apposta per farglielo
+// leggere senza pubblicare davvero.
 const gameFile  = slug => slug ? `caccia-${slug}.json` : "caccia.json";
 const draftFile = slug => slug ? `lavoro-${slug}.json` : "lavoro.json";
 function slugify(nome) {
   return (nome || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-// Quale caccia sta guardando il giocatore in questo momento, dedotta dall'indirizzo.
+// Quale caccia sta guardando il giocatore in questo momento, dedotta dall'indirizzo:
+// "#c-<slug>" (link normale) o "#b-<slug>"/"#b" (link di prova bozza, vedi inBozza()).
 function activeSlug() {
-  return location.hash.startsWith("#c-") ? decodeURIComponent(location.hash.slice(3)) : "";
+  if (location.hash.startsWith("#c-")) return decodeURIComponent(location.hash.slice(3));
+  if (location.hash.startsWith("#b-")) return decodeURIComponent(location.hash.slice(3));
+  return "";
 }
+// Link di prova: "#b" (caccia di sempre) o "#b-<slug>" — scarica draftFile() invece di
+// gameFile(), per provare la bozza salvata sul server come un vero giocatore, da
+// qualunque browser (anche incognito) senza pubblicare. Concettualmente vicino a
+// inProva() (stesso banner giallo, vedi renderPlayer), ma quello è istantaneo e locale
+// a QUESTO telefono, questo è un fetch vero e funziona ovunque.
+const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
 
 // Elenco di TUTTE le cacce, "caccia" (slug vuoto, sempre presente) compresa e sempre
 // per prima: unica fonte di verità sia per il menu del pannello master sia per la
@@ -875,7 +882,7 @@ function ghConfig() { return store.get("gh-config") || null; }
 
 function ghConfigStatus() {
   const c = ghConfig();
-  $("m-link-publish").textContent = c ? "Pubblica la caccia" : "Pubblica la caccia (configura prima)";
+  $("m-link-publish").textContent = c ? "Pubblica" : "Pubblica (configura prima)";
 }
 
 // Scrive un file nel repository tramite l'API di GitHub (crea o aggiorna).
@@ -987,7 +994,7 @@ function aggiornaContatorePanel() {
 // sé lo slug: è l'unico modo per sapere, al prossimo avvio, QUALE caccia stavo modificando.
 function salvaLocale() {
   if (!L.nodi) return;
-  store.set("m-lavoro", { formato: ($("m-formato").value || "").trim() || FORMATO, slug: L.slug, nodi: L.nodi });
+  store.set("m-lavoro", { formato: FORMATO, slug: L.slug, nodi: L.nodi });
 }
 
 // Bozza locale valida SOLO se è della caccia richiesta: passare a un'altra caccia dal
@@ -1067,7 +1074,6 @@ async function caricaCopiaLavoro(slug) {
       }
     }
     M.baseLoaded = true;
-    $("m-formato").value = (M.base && M.base.formato) || FORMATO;
   } catch {
     M.baseLoaded = false;
     setStatus($("m-base-status"), "Non riesco a leggere la caccia pubblicata. Per non perdere gli oggetti esistenti, l'esportazione resta bloccata finché non riprovi con successo.", "ko");
@@ -1091,7 +1097,7 @@ async function caricaCopiaLavoro(slug) {
   // smentendo l'avviso mostrato prima di cambiare caccia dal menu.
   salvaLocale();
 
-  aggiornaMenuCacce(); aggiornaLinkGiocatore();
+  aggiornaMenuCacce(); aggiornaLinkGiocatore(); aggiornaLinkBozza();
   renderPanelList(); masterRefresh(); linkRefresh();
 }
 
@@ -1120,7 +1126,7 @@ function recalibrate() {
 }
 
 function currentGame() {
-  return { formato: $("m-formato").value.trim() || FORMATO, creato: new Date().toISOString(), nodi: L.nodi };
+  return { formato: FORMATO, creato: new Date().toISOString(), nodi: L.nodi };
 }
 
 // Mostra sotto il menu delle cacce il link da mandare ai giocatori di QUESTA caccia:
@@ -1131,6 +1137,18 @@ function aggiornaLinkGiocatore() {
   $("m-link-hint").textContent = L.slug
     ? `Link per i giocatori di questa caccia: ${base}#c-${L.slug}`
     : `Link per i giocatori: ${base} (quello di sempre, senza # in fondo)`;
+}
+
+// Link per provare la BOZZA (draftFile(slug), non gameFile(slug)) come un vero
+// giocatore — funziona anche in incognito o da un altro telefono, perché scarica
+// un file vero con fetch(), non lo storage di questo browser (a differenza di "Prova
+// su questo telefono"). Va salvata almeno una volta con "Salva bozza sul server"
+// prima che il link abbia qualcosa da leggere.
+function aggiornaLinkBozza() {
+  const base = location.origin + location.pathname;
+  $("m-draft-link-hint").textContent = L.slug
+    ? `Link per provare la bozza (anche in incognito): ${base}#b-${L.slug}`
+    : `Link per provare la bozza (anche in incognito): ${base}#b`;
 }
 
 // Cerca un ciclo nel grafo "richiede". Ritorna un elenco di nomi coinvolti, o null se non ce n'è.
@@ -1160,7 +1178,7 @@ async function publishGame(statusEl) {
   const g = currentGame();
   const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) {
-    M.base = g; $("m-formato").value = g.formato;
+    M.base = g;
     await registraCaccia(L.slug);
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   }
@@ -1595,11 +1613,15 @@ function initMaster() {
 
   // "Salva bozza sul server": scrive draftFile(slug) (lavoro.json o lavoro-<slug>.json),
   // MAI caccia.json/caccia-<slug>.json — resta invisibile ai giocatori finché non si preme
-  // "Pubblica la caccia" in "Collega gli elementi". Serve a portare la bozza da un
-  // telefono all'altro, o come backup vero (l'autosalvataggio locale protegge solo questo
-  // telefono, e solo per la caccia di sempre viene poi ripristinata in automatico).
+  // "Pubblica" in "Collega gli elementi". Serve a portare la bozza da un telefono
+  // all'altro (letta anche dal pannello master su un browser "vuoto", vedi
+  // caricaCopiaLavoro), o come backup vero (l'autosalvataggio locale protegge solo
+  // questo telefono, e solo per la caccia di sempre viene poi ripristinata in
+  // automatico). Da qui in poi il link di prova qui sotto ("#b-<slug>") scarica
+  // proprio questo file, non caccia*.json: permette di provare come un vero
+  // giocatore (anche in incognito, anche da un altro telefono) senza pubblicare.
   $("m-save-draft").onclick = async () => {
-    const g = { formato: $("m-formato").value.trim() || FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
+    const g = { formato: FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
     await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
   };
 
@@ -1619,7 +1641,7 @@ function initMaster() {
     setStatus($("m-base-status"), "Nuova caccia, non ancora pubblicata: il primo oggetto che aggiungi la crea.");
     setStatus($("m-draft-status"), "");
     salvaLocale();
-    aggiornaMenuCacce(); aggiornaLinkGiocatore();
+    aggiornaMenuCacce(); aggiornaLinkGiocatore(); aggiornaLinkBozza();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   }
 
@@ -1729,7 +1751,7 @@ function mostraTab(tab) {
   $("tab-oggetti").hidden = tab !== "oggetti";
   $("p-tab-cerca").setAttribute("aria-current", String(tab === "cerca"));
   $("p-tab-oggetti").setAttribute("aria-current", String(tab === "oggetti"));
-  if (tab === "cerca") renderPlayer();
+  renderPlayer(); // sempre, non solo su "Cerca": anche "Memoria" deve riflettere subito lo stato attuale
 }
 
 // Le quattro schede DENTRO "Cerca" sono mutuamente esclusive, come Indizio/Foto lo
@@ -1771,17 +1793,24 @@ const inProva  = () => !!store.get("prova");
 // Chiavi separate per caccia (slug), così bottino e progressi di una non si mescolano
 // con quelli di un'altra sullo stesso telefono. Lo slug vuoto (la caccia di sempre)
 // resta sulle chiavi "gioco"/"stato" già in uso: nessuna migrazione per chi gioca già.
-const gameKey  = () => inProva() ? "gioco-prova" : (activeSlug() ? "gioco:" + activeSlug() : "gioco");
-const stateKey = () => inProva() ? "stato-prova" : (activeSlug() ? "stato:" + activeSlug() : "stato");
+// Anche la modalità bozza (inBozza()) ha le sue chiavi separate, per non confondere i
+// progressi di prova con quelli veri se il master apre il link di prova sul suo stesso
+// telefono invece che in incognito.
+const gameKey  = () => inProva() ? "gioco-prova" : inBozza() ? "gioco-bozza:" + activeSlug() : (activeSlug() ? "gioco:" + activeSlug() : "gioco");
+const stateKey = () => inProva() ? "stato-prova" : inBozza() ? "stato-bozza:" + activeSlug() : (activeSlug() ? "stato:" + activeSlug() : "stato");
 
 // Decomprime pos/neg (sempre presenti su ogni nodo in caccia-3).
+// "creato" (caccia*.json) e "salvato" (lavoro*.json, letto solo in modalità bozza,
+// vedi inBozza()) sono marche temporali equivalenti scritte da due form diversi dello
+// stesso file: tenerle entrambe qui permette a syncGame() di riconoscere un
+// aggiornamento indipendentemente da quale delle due il file scaricato porta.
 function loadGame(g) {
   if (!inCaccia3(g)) throw new Error("Caccia non valida");
   const nodi = {};
   for (const [id, n] of Object.entries(g.nodi)) {
     nodi[id] = { ...n, pos: (n.pos || []).map(unpack), neg: (n.neg || []).map(unpack) };
   }
-  game = { formato: g.formato, creato: g.creato, nodi };
+  game = { formato: g.formato, creato: g.creato, salvato: g.salvato, nodi };
 }
 
 // Un "richiede" che punta a un id non più esistente (nodo rimosso a mano modificando
@@ -1805,6 +1834,26 @@ function chiudi(nodi, posseduti) {
     }
   }
   return ok;
+}
+
+// Chiude st.trovati con chiudi() e registra in st.bottino ciò che diventa posseduto
+// per la prima volta — sia un vero ritrovamento (id passato in "extra", es. dopo una
+// foto valida) sia un nodo "regalo" (daValidare:false, richiede soddisfatto) che
+// diventa posseduto da solo. "prima" DEVE essere il set grezzo già registrato
+// (st.trovati), mai un chiudi() ricalcolato al volo: chiudi() richiude sempre anche i
+// regali senza prerequisiti, quindi un chiudi()-su-chiudi() li troverebbe "già dentro"
+// fin dalla primissima chiamata e non li segnalerebbe mai come nuovi — bug che rendeva
+// invisibili in Memoria i regali a zero prerequisiti (es. "rifiuto-quantistico" in
+// caccia-strada), corretto qui il 2026-09-16, vedi memory.md.
+function chiudiEAggiorna(st, extra = []) {
+  const prima = new Set(st.trovati);
+  const dopo = chiudi(game.nodi, [...st.trovati, ...extra]);
+  const nuovi = [...dopo].filter(id => !prima.has(id)).map(id => ({ id, ...game.nodi[id] }));
+  st.trovati = [...dopo];
+  for (const n of nuovi) {
+    st.bottino.push({ nome: n.nome, messaggio: n.messaggio, conThumb: n.conThumb, immagine: n.immagine, nodo: n.id, quando: new Date().toISOString() });
+  }
+  return nuovi;
 }
 
 // L'indizio di un nodo "da trovare" riguarda SEMPRE lui stesso, mai un suo
@@ -1858,7 +1907,7 @@ function showEmpty(msg, retry) {
   renderPlayer();
 }
 
-// Scarica caccia.json dal sito.
+// Scarica caccia.json dal sito (o lavoro.json, in modalità bozza: vedi inBozza()).
 // Stesso "formato": i progressi restano e gli oggetti aggiunti compaiono come nuovi.
 // "Formato" diverso: si riparte da zero. Senza rete si continua con la copia salvata.
 let syncing = false;
@@ -1866,22 +1915,39 @@ async function syncGame() {
   if (inProva() || syncing) return;
   syncing = true;
   try {
-    const r = await fetch(gameFile(activeSlug()), { cache: "no-store" });
+    const file = inBozza() ? draftFile(activeSlug()) : gameFile(activeSlug());
+    const r = await fetch(file, { cache: "no-store" });
     if (r.status === 404) {
-      if (!game) showEmpty("Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
+      if (!game) showEmpty(inBozza()
+        ? "Nessuna bozza salvata per questa caccia. Dal pannello master, premi \"Salva bozza sul server\"."
+        : "Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
       return;
     }
     if (!r.ok) throw new Error("HTTP " + r.status);
     const g = await r.json();
-    if (game && game.formato === g.formato && game.creato === g.creato) return;
+    // "creato" (caccia*.json) o "salvato" (lavoro*.json): vedi loadGame().
+    if (game && game.formato === g.formato && (game.creato || game.salvato) === (g.creato || g.salvato)) return;
     if (!inCaccia3(g)) { if (!game) showEmpty("La caccia pubblicata non è in un formato compatibile con questa versione del gioco.", true); return; }
     const prev = store.get(gameKey());
     loadGame(g);
     if (!prev || prev.formato !== g.formato) store.set(stateKey(), freshState(game));
     store.set(gameKey(), g);
-    if ($("p-reward").hidden) renderPlayer();
+    if ($("p-reward").hidden) {
+      // Anche senza una foto vera: se il caricamento sblocca da solo un nuovo nodo
+      // "regalo" (daValidare:false, richiede già soddisfatto — vedi chiudiEAggiorna()),
+      // si festeggia comunque, come qualunque altro ritrovamento. La schermata di festa
+      // vive dentro "Cerca" (mostraTab("cerca") prima di showReward()): se il giocatore
+      // era su "Memoria" quando la sincronizzazione in sottofondo scopre il regalo, va
+      // comunque vista, non solo registrata in silenzio.
+      const st = stato();
+      const nuovi = chiudiEAggiorna(st);
+      if (nuovi.length) { saveState(st); mostraTab("cerca"); showReward(nuovi, st); }
+      else renderPlayer();
+    }
   } catch {
-    if (!game) showEmpty("Non riesco a scaricare la caccia. Controlla la connessione e riprova.", true);
+    if (!game) showEmpty(inBozza()
+      ? "Non riesco a scaricare la bozza. Controlla la connessione e riprova."
+      : "Non riesco a scaricare la caccia. Controlla la connessione e riprova.", true);
   } finally {
     syncing = false;
   }
@@ -2011,7 +2077,7 @@ function contaTrovati(st) {
 
 function renderPlayer() {
   $("p-reward").hidden = true;
-  $("p-test").hidden = !inProva();
+  $("p-test").hidden = !(inProva() || inBozza());
   $("p-reset").hidden = !game;
   $("p-empty").hidden = !!game;
   if (!game) {
@@ -2104,13 +2170,7 @@ async function shoot() {
       setStatus(status, "Oggetto non valido. Avvicinati, inquadralo per intero ed evita il controluce.", "ko");
       return;
     }
-    const primaOk = chiudi(game.nodi, st.trovati);
-    const dopoOk = chiudi(game.nodi, [...st.trovati, m.id]);
-    const nuovi = [...dopoOk].filter(id => !primaOk.has(id)).map(id => ({ id, ...game.nodi[id] }));
-    st.trovati = [...dopoOk];
-    for (const n of nuovi) {
-      st.bottino.push({ nome: n.nome, messaggio: n.messaggio, conThumb: n.conThumb, immagine: n.immagine, nodo: n.id, quando: new Date().toISOString() });
-    }
+    const nuovi = chiudiEAggiorna(st, [m.id]);
     st.scelta = null;
     saveState(st);
     setStatus(status, ""); $("p-score").textContent = "";
@@ -2126,9 +2186,11 @@ async function shoot() {
 function initPlayer() {
   // Ricorda l'ultima caccia vista, sia scelta dalla schermata di scelta sia raggiunta
   // con un link diretto "#c-<slug>": è quello che avvioGiocatore() rilegge la prossima
-  // volta per entrare diretti, senza richiedere la scelta ogni apertura.
+  // volta per entrare diretti, senza richiedere la scelta ogni apertura. Un link di
+  // prova bozza (inBozza()) non deve sovrascrivere questa preferenza: è una sessione
+  // temporanea, non la scelta vera del giocatore su questo telefono.
   const slug = activeSlug();
-  store.set(CHOOSER_KEY, slug);
+  if (!inBozza()) store.set(CHOOSER_KEY, slug);
   // Il titolo in alto è il nome di QUESTA caccia (il file), non più il testo fisso
   // "Caccia": quello resta solo nella schermata di scelta, dove non se n'è ancora
   // scelta una.
@@ -2141,7 +2203,10 @@ function initPlayer() {
   $("p-empty-msg").textContent = "Controllo se il master ha pubblicato una caccia…";
   $("p-retry").hidden = true;
 
-  $("p-test-exit").onclick = () => { store.del("prova"); stopCamera(); initPlayer(); };
+  $("p-test-exit").onclick = () => {
+    if (inBozza()) { stopCamera(); location.hash = ""; return; }
+    store.del("prova"); stopCamera(); initPlayer();
+  };
   $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
   $("p-continue").onclick = () => { renderPlayer(); $("p-content").scrollTop = 0; };
   $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; }, $("p-status"));
@@ -2168,11 +2233,20 @@ function initPlayer() {
   $("sub-indizio-btn").onclick = () => mostraSubTab("indizio");
   $("sub-foto-btn").onclick = () => mostraSubTab("foto");
 
-  // Si riparte sempre da "Cerca" → "Indizio": non ha senso ricordare le schede da una
-  // sessione all'altra (nuova caccia, o semplice riapertura dell'app).
-  tabAttivo = "cerca"; subTabAttivo = "indizio";
-  mostraTab("cerca");
+  // Si riparte sempre da "Memoria": non ha senso ricordare le schede da una sessione
+  // all'altra (nuova caccia, o semplice riapertura dell'app), e "Memoria" è il punto
+  // di partenza scelto per l'app (chi non ha ancora nulla lo capisce dal testo lì).
+  tabAttivo = "oggetti"; subTabAttivo = "indizio";
+  mostraTab("oggetti");
   renderInbox();
+  // Anche con la copia già in cache (offline, o prima che syncGame() risponda): un
+  // regalo a zero prerequisiti mai registrato prima (vedi chiudiEAggiorna()) deve
+  // comparire e festeggiarsi subito, non solo dopo il prossimo aggiornamento da rete.
+  if (game) {
+    const st = stato();
+    const nuovi = chiudiEAggiorna(st);
+    if (nuovi.length) { saveState(st); mostraTab("cerca"); showReward(nuovi, st); }
+  }
   syncGame();
   syncMessages();
 }
@@ -2233,7 +2307,10 @@ async function avvioGiocatore() {
    digitato a mano) NON deve caricare la caccia di sempre per sbaglio solo perché lo slug
    vuoto punta a gameFile("") — va trattato come indirizzo senza caccia, schermata di
    scelta sempre mostrata. Nessun hash: la schermata di scelta, a meno che il telefono
-   non ricordi già una scelta precedente (vedi avvioGiocatore()) ---------- */
+   non ricordi già una scelta precedente (vedi avvioGiocatore()). "#b"/"#b-<slug>" (link
+   di prova di una bozza, vedi inBozza()) va SEMPRE dritto al giocatore, mai alla
+   schermata di scelta: a differenza di "#c-" da solo, "#b" da solo è una forma valida
+   (la bozza della caccia di sempre), non un link rotto. ---------- */
 function route() {
   stopCamera();
   const master = location.hash === "#master";
@@ -2250,6 +2327,8 @@ function route() {
     $("view-player").hidden = true; $("view-chooser").hidden = true;
     document.body.classList.remove("playing");
     initMaster();
+  } else if (inBozza()) {
+    mostraGiocatore();
   } else if (location.hash.startsWith("#c-") && activeSlug()) {
     mostraGiocatore();
   } else if (location.hash.startsWith("#c-")) {

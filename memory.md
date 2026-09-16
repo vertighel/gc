@@ -535,3 +535,85 @@ Il committente lo ha giudicato "non mi piace" e ha chiesto il ripristino
 immediato, senza ulteriori dettagli sul motivo. **Non riproporlo** in una
 forma simile senza che sia il committente a richiederlo di nuovo — se serve
 di nuovo condivisione social, chiedere prima che forma preferisce.
+
+## Link di prova della bozza ("#b"/"#b-<slug>"), separato da "Prova su questo telefono"
+
+Il committente lavora così: scatta gli oggetti dal telefono, li salva come
+bozza sul server, poi passa al **computer** per "Collega gli elementi"
+(pensata per schermi larghi), e infine torna al telefono per provare il
+risultato **in incognito** (per vedere davvero cosa scaricherebbe un
+giocatore, non lo stato residuo del proprio browser).
+
+Il pannello master, aprendo una caccia da un browser "vuoto" (il computer),
+già leggeva `lavoro*.json` dal server come bozza di riserva
+(`caricaCopiaLavoro()`, righe ~1043 e seguenti) — quel pezzo funzionava
+prima ancora di questa sessione. Mancava solo il lato giocatore: prima
+d'ora l'unico modo di vedere la caccia come un vero giocatore era
+"Pubblica" (rendendola visibile a tutti) o "Prova su questo telefono"
+(`localStorage`, **non funziona in incognito**: una finestra incognito ha
+uno storage isolato da quella normale, quindi non trova nulla da leggere).
+
+Aggiunto un link `#b` (caccia di sempre) / `#b-<slug>` che fa scaricare al
+giocatore `draftFile(slug)` invece di `gameFile(slug)` (vedi `inBozza()` in
+`index.html`): un fetch vero, funziona da qualunque browser o telefono,
+incognito compreso, senza pubblicare nulla. Decisioni prese:
+
+- **Chiavi di stato separate** (`gioco-bozza:<slug>`/`stato-bozza:<slug>`):
+  se il master apre il link sullo stesso telefono invece che in incognito,
+  non deve mescolare i progressi di prova con quelli veri.
+- **Non sovrascrive `caccia-scelta`**: aprire un link di prova è una
+  sessione temporanea, non "il giocatore ha scelto questa caccia".
+- **"Prova su questo telefono" resta**, non sostituito: è istantaneo (nessun
+  salvataggio richiesto, nessuna rete) per iterare in fretta sullo stesso
+  telefono; il link di prova serve per il caso — diverso — di un altro
+  dispositivo o di incognito.
+- **Il banner giallo "stai provando..."** è condiviso fra le due modalità
+  (`inProva() || inBozza()` in `renderPlayer()`): stesso avviso, stesso
+  concetto ("non è la caccia pubblicata").
+
+## Il campo "Formato" del pannello master era vestigiale, e rotto se usato
+
+Il testo libero "Formato" in "Collega gli elementi" era un residuo di
+quando `formato` era davvero migrabile a mano (`caccia-1`→`caccia-2`,
+pulsante "Passa al formato con collegamenti", vedi
+`docs/MODELLO-DATI.md`). Oggi il codice fissa i controlli di compatibilità
+al valore letterale della costante `FORMATO` ("caccia-3"): editare quel
+campo a un valore diverso rompeva silenziosamente la lettura della propria
+stessa bozza/pubblicazione al giro successivo (`caricaCopiaLavoro()`
+confrontava `b.formato === FORMATO`, non un valore scelto dal master).
+Rimosso dall'interfaccia; il valore resta scritto internamente, sempre
+uguale a `FORMATO`, mai più modificabile a mano.
+
+## Bug: un "regalo" (nodo daValidare:false, richiede:[]) non compariva mai in Memoria
+
+Scoperto guardando `caccia-strada.json`: il nodo "rifiuto-quantistico"
+(pensato come regalo iniziale, zero prerequisiti) non risultava mai nel
+bottino di nessun giocatore. Causa: `chiudi()` chiude SEMPRE, a ogni
+chiamata, tutti i nodi `daValidare:false` con `richiede` già soddisfatto —
+quindi un regalo a zero prerequisiti risultava "già dentro" fin dal primo
+calcolo, prima ancora che il giocatore facesse qualcosa. Il confronto che
+decideva cosa fosse "nuovo" (`verifica()`/`shoot()`, dentro `index.html`)
+ricalcolava `chiudi()` anche per la base "prima", quindi il regalo non
+risultava MAI nuovo, per tutta la partita.
+
+Corretto centralizzando la chiusura in `chiudiEAggiorna(st, extra)`: la
+base del confronto è sempre `st.trovati` grezzo (mai un `chiudi()`
+ricalcolato). Chiamata sia dopo una foto vera (`verifica()`, con l'id
+appena validato in `extra`) sia al caricamento/sincronizzazione della
+caccia (`initPlayer()`, `syncGame()`), così un regalo compare — festeggiato
+con la stessa schermata di sblocco di qualunque altro ritrovamento, per
+scelta esplicita del committente — anche prima di aver mai fatto una foto,
+e anche se il master lo aggiunge dopo a una caccia già in corso. Dato che
+la schermata di festa vive dentro la scheda "Cerca" (`#p-reward` è
+figlio di `#tab-cerca`), scoprirlo mentre si è su "Memoria" richiede di
+passare a "Cerca" prima di mostrarla (`mostraTab("cerca")` prima di
+`showReward()`): altrimenti la festa restava "accesa" ma invisibile,
+nascosta dietro la scheda sbagliata — bug notato e corretto in questa
+stessa sessione, prima di consegnare.
+
+## L'app parte dalla scheda "Memoria", non più da "Cerca"
+
+Richiesto esplicitamente: prima l'app apriva sempre su "Cerca", ora apre
+su "Memoria" (`mostraTab("oggetti")` in `initPlayer()`). Il testo per chi
+non ha ancora nulla in Memoria (`#p-mem-empty`) è lasciato al committente
+da scrivere, per suggerire di passare a "Cerca".
