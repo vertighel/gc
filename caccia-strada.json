@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-16T06:31:57.043Z",
+  "creato": "2026-09-16T06:44:34.851Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -286,7 +286,10 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p20fjxka",
+        "nmu3p0yasfqr"
+      ]
     },
     "nmu3onj3x9wq": {
       "nome": "cassonetto-2",
@@ -426,7 +429,10 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p20fjxka",
+        "nmu3p0yasfqr"
+      ]
     },
     "nmu3opf6v5yw": {
       "nome": "cassonetto-3",
@@ -566,7 +572,10 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p20fjxka",
+        "nmu3p0yasfqr"
+      ]
     },
     "nmu3ovfeybyl": {
       "nome": "cassonetto-4",
@@ -706,7 +715,10 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p20fjxka",
+        "nmu3p0yasfqr"
+      ]
     },
     "nmu3p0yasfqr": {
       "nome": "profano",
@@ -1131,7 +1143,8 @@
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
-        "nmu3p7ssyz5n"
+        "nmu3pa4lvcb1",
+        "nmu3pal7lti4"
       ]
     },
     "nmu3p7ssyz5n": {
@@ -1273,8 +1286,7 @@
       "conThumb": true,
       "richiedePosizione": true,
       "richiede": [
-        "nmu3pa4lvcb1",
-        "nmu3pal7lti4"
+        "nmu3pmk6vax9"
       ]
     },
     "nmu3p9g3v5iq": {
@@ -1415,7 +1427,9 @@
       "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
-      "richiede": []
+      "richiede": [
+        "nmu3p7ssyz5n"
+      ]
     },
     "nmu3pa4lvcb1": {
       "nome": "ammesso-1",
