@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-16T06:23:30.931Z",
+  "creato": "2026-09-16T06:31:57.043Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -140,7 +140,13 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3okctuq03",
+        "nmu3onj3x9wq",
+        "nmu3opf6v5yw",
+        "nmu3ovfeybyl",
+        "nmu3pmk6vax9"
+      ]
     },
     "nmu3okctuq03": {
       "nome": "cassonetto-1",
@@ -840,7 +846,9 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p3cqg0tt"
+      ]
     },
     "nmu3p20fjxka": {
       "nome": "sacro",
@@ -980,7 +988,9 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p3cqg0tt"
+      ]
     },
     "nmu3p3cqg0tt": {
       "nome": "angolo sacro-profano",
@@ -1120,7 +1130,9 @@
       "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
-      "richiede": []
+      "richiede": [
+        "nmu3p7ssyz5n"
+      ]
     },
     "nmu3p7ssyz5n": {
       "nome": "specola",
@@ -1260,7 +1272,10 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3pa4lvcb1",
+        "nmu3pal7lti4"
+      ]
     },
     "nmu3p9g3v5iq": {
       "nome": "cartello",
@@ -1540,7 +1555,9 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p9g3v5iq"
+      ]
     },
     "nmu3pal7lti4": {
       "nome": "ammesso-2",
@@ -1680,7 +1697,9 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": []
+      "richiede": [
+        "nmu3p9g3v5iq"
+      ]
     },
     "nmu3pmk6vax9": {
       "nome": "rifiuto-quantistico",
