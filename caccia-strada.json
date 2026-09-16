@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-16T06:44:34.851Z",
+  "creato": "2026-09-16T06:54:09.684Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -1285,9 +1285,7 @@
       "daValidare": true,
       "conThumb": true,
       "richiedePosizione": true,
-      "richiede": [
-        "nmu3pmk6vax9"
-      ]
+      "richiede": []
     },
     "nmu3p9g3v5iq": {
       "nome": "cartello",
