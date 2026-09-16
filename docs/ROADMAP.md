@@ -145,8 +145,7 @@ tipo di nodo, distinto solo da flag (`daValidare`/`conThumb`/
 `richiedePosizione`) invece che da un `tipo` fisso — "Indizi (bozze)" e
 `bozze.json` sono stati eliminati di conseguenza (ogni nodo nasce ora dalla
 stessa cattura fotocamera+GPS, sul campo). Vedi `docs/STATO.md` per lo
-stato attuale, `docs/MODELLO-DATI.md` per lo schema e `memory.md` per il
-perché.
+stato attuale, `docs/MODELLO-DATI.md` per lo schema.
 
 ## 6. Narrazione, coinvolgimento social
 
@@ -171,9 +170,7 @@ committente descrivendo il flusso completo del gioco (il master crea o
 edita una caccia, il giocatore ne sceglie una da una lista). Non dipende dai
 punti 1-2 (identità/database): è realizzato con **un file per caccia**
 (`caccia.json`/`caccia-<slug>.json`, stessa filosofia statica di sempre),
-non con righe di un database. Dettagli e decisioni in `memory.md`
-("Perché più cacce sono file diversi..."), schema aggiornato in
-`docs/STATO.md`.
+non con righe di un database. Schema aggiornato in `docs/STATO.md`.
 
 Incluso nello stesso giro di lavoro: autosalvataggio della copia in corso
 sul telefono del master + bozza pubblicabile sul server (`lavoro*.json`,

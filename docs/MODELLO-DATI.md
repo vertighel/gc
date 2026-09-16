@@ -12,9 +12,9 @@ I formati precedenti (`caccia-1`, missioni a tappa singola; `caccia-2`,
 nodi ancora divisi per tipo) restano descritti più sotto solo come
 **archivio storico**, per chi legge vecchi commit o vecchie copie di
 `caccia.json`: il codice attuale non li legge più, e **non esiste
-migrazione automatica** fra un formato e l'altro (decisione esplicita: vedi
-`memory.md`). Ogni cambio di `formato` — incluso passare a `caccia-3` —
-azzera i progressi di tutti i giocatori, come sempre.
+migrazione automatica** fra un formato e l'altro (decisione esplicita).
+Ogni cambio di `formato` — incluso passare a `caccia-3` — azzera i
+progressi di tutti i giocatori, come sempre.
 
 **`caccia.json` non è più l'unico file di questo tipo**: da quando il
 master può pubblicare più cacce (vedi `docs/STATO.md`), `caccia.json` è
@@ -22,8 +22,8 @@ solo quella con "slug" vuoto (la caccia di sempre); le altre sono
 `caccia-<slug>.json`, stesso schema `caccia-3` descritto qui, un file per
 caccia. `formato` (dentro il file) e lo slug (nel nome del file) sono
 indipendenti: il primo è la versione dello schema, il secondo l'identità
-della caccia — vedi `docs/STATO.md`/`memory.md` per l'incidente che ha
-reso necessario chiarirlo esplicitamente. Vedi più sotto anche `cacce.json`
+della caccia — vedi `memory.md` (i due non vanno mai fatti coincidere per
+convenzione informale). Vedi più sotto anche `cacce.json`
 e `lavoro*.json`, i due file nuovi legati a questa funzionalità.
 
 ## `caccia.json`, formato `caccia-3` (attuale)
@@ -118,11 +118,6 @@ Regole:
   più un nodo-indizio a monte dedicato. Una volta posseduto, la foto torna
   comunque sempre visibile indipendentemente da `conThumb` (vedi punto
   precedente) — quello non è cambiato.
-  Questo modello ha sostituito, in due passaggi nella stessa serata, un
-  disegno precedente in cui `testo`/`messaggio` erano l'uno il riferimento
-  incrociato dell'altro (l'indizio di un nodo veniva letto dal nodo che lo
-  richiedeva): vedi `memory.md` per il percorso completo e perché è stato
-  abbandonato due volte.
 - **Aciclicità non garantita per costruzione**, stessa cosa delle versioni
   precedenti: `trovaCiclo()` controlla prima di ogni pubblicazione.
 - **Nessuna migrazione da `caccia-1`/`caccia-2`**: se la caccia pubblicata
@@ -317,8 +312,7 @@ Array di stringhe, ogni stringa uno slug di una caccia con nome (vedi
 `docs/STATO.md`). **La caccia di sempre (slug vuoto) non ci compare mai**,
 è sempre la prima voce implicita ovunque questo elenco si mostri.
 **`"caccia"` è un nome riservato**: se ricompare qui (per esempio scritto a
-mano per errore), il codice lo filtra — vedi `memory.md` per l'incidente
-che ha reso necessario questo controllo. Scritto da `registraCaccia()` alla
+mano per errore), il codice lo filtra (vedi `memory.md`). Scritto da `registraCaccia()` alla
 prima pubblicazione riuscita di ciascuna caccia con nome; letto da
 `leggiElencoCacce()`, unica funzione condivisa fra il menu del pannello
 master e la schermata di scelta del giocatore.
@@ -333,9 +327,8 @@ lo cerca mai, quindi resta invisibile ai giocatori per costruzione, non per
 un controllo di accesso. È la bozza della copia di lavoro del master,
 scritta premendo "Salva bozza sul server" — protegge da un cambio di
 telefono o dalla pulizia dei dati del browser, senza rendere pubblico
-nulla prima che il master prema "Pubblica la caccia" (che scrive invece
-`caccia*.json`). Vedi `memory.md` per il perché di due meccanismi di
-salvataggio invece di uno solo.
+nulla prima che il master prema "Pubblica" (che scrive invece
+`caccia*.json`).
 
 ## `localStorage` del giocatore (mai condiviso, chiavi principali)
 

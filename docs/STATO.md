@@ -7,8 +7,8 @@ della pagina.
 
 La caccia pubblicata è nel formato `caccia-3` (nodi **unificati**: niente
 più `tipo` indizio/oggetto/ricompensa, un solo tipo di nodo con tre flag
-booleani — vedi `docs/MODELLO-DATI.md` per lo schema completo e
-`memory.md` per il perché). **Non c'è migrazione automatica** dai formati
+booleani — vedi `docs/MODELLO-DATI.md` per lo schema completo). **Non c'è
+migrazione automatica** dai formati
 precedenti: se il sito ha ancora pubblicato un `caccia-1`/`caccia-2`, il
 master lo vede segnalato come incompatibile e riparte da zero. Questo
 `formato` non ha nulla a che fare col nome di una caccia (vedi sotto): sono
@@ -19,8 +19,7 @@ incidente in cui coincidevano per caso (vedi `memory.md`).
 
 Il gioco non pubblica più una sola caccia: il master può crearne diverse in
 parallelo, ciascuna un file a sé, con lo stesso meccanismo statico di
-sempre (nessun database, vedi `memory.md`). Dettagli del percorso che ci
-ha portato qui, e delle decisioni prese, in `memory.md`.
+sempre (nessun database, vedi `memory.md`).
 
 - **Slug = nome**: il nome che il master sceglie per una caccia (uno
   slugify di un testo libero: minuscole, spazi e simboli diventati `-`) è
@@ -40,7 +39,7 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   per errore dentro `cacce.json`, e rifiutato esplicitamente se si prova a
   creare una nuova caccia con quel nome.
 - **Copia di lavoro del master salvata in due modi**, che risolvono
-  problemi diversi (vedi `memory.md` per il perché):
+  problemi diversi:
   - in `localStorage` del telefono (`m-lavoro`), scritta a ogni modifica —
     protegge da un reload accidentale, gratis, senza rete;
   - `lavoro.json`/`lavoro-<slug>.json` sul server, scritto solo premendo
@@ -69,7 +68,7 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   sceglie una. La scelta si ricorda per le aperture successive: si cambia
   da "⚙️ Impostazioni" → "Cambia caccia" (vedi sotto). Chi ha già una
   partita in corso sulla caccia di sempre non vede questa schermata la
-  prima volta che apre questa versione (continuità, vedi `memory.md`). Un
+  prima volta che apre questa versione (continuità). Un
   link diretto `#c-<slug>` la salta sempre, va dritto al giocatore — a
   meno che lo slug dopo il trattino sia vuoto (link rotto), nel qual caso
   mostra comunque la lista invece di caricare la caccia di sempre per
@@ -103,7 +102,7 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   - Questa riga di quattro schede **resta sempre raggiungibile**, anche
     senza una caccia pubblicata o a caccia interamente trovata: altrimenti
     da "Hai trovato tutto" non si potrebbe più arrivare a "Impostazioni"
-    per ricominciare (bug corretto, vedi `memory.md`).
+    per ricominciare.
 - **Il possesso si festeggia sempre**, per ogni nodo, validato con lo
   scatto o diventato posseduto da solo (`daValidare: false`) perché tutto
   ciò che richiedeva era già posseduto. Un solo scatto può sbloccarne più
@@ -115,13 +114,10 @@ ha portato qui, e delle decisioni prese, in `memory.md`.
   su "Foto" (dove inevitabilmente ci si trova appena dopo aver scattato).
   Un nodo "regalo" a **zero prerequisiti** (`daValidare: false`,
   `richiede: []`, es. un dono iniziale) si festeggia già al primo avvio o
-  alla prima sincronizzazione, non solo dopo un'altra foto — corretto un
-  bug per cui restava per sempre invisibile in Memoria (vedi `memory.md`,
-  sezione "Bug: un regalo non compariva mai in Memoria").
+  alla prima sincronizzazione, non solo dopo un'altra foto.
 - **Un `richiede` verso un id di nodo non più esistente non blocca mai
   nulla** (può succedere solo modificando `caccia.json` a mano fuori
-  dall'app, bypassando il controllo di "Rimuovi" — vedi `memory.md` per
-  l'incidente che ha portato a questa correzione): trattato ovunque come
+  dall'app, bypassando il controllo di "Rimuovi"): trattato ovunque come
   "nessun prerequisito", coerente col comportamento già usato dal
   controllo anti-ciclo prima di pubblicare.
 - **Aggiornamenti incrementali**: se il master pubblica una caccia con lo
@@ -243,11 +239,10 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   messaggio se lo trova).
 - **Pagina "Grafo" (`#master-grafo`, raggiungibile da un link in "Collega gli
   elementi")**: stessi collegamenti "richiede" visti come disegno invece che
-  come elenco di checkbox, per non ripetere per distrazione l'errore delle
-  due flag scambiate (`daValidare` su "evidenziatore giallo" e "gomma",
-  vedi `memory.md`) — con un colpo d'occhio si vede la forma del flusso, non
-  solo la lista di chi richiede cosa. Anche questa pagina è pensata per un
-  computer, non per il telefono. Layout automatico **verticale** per
+  come elenco di checkbox — con un colpo d'occhio si vede la forma del
+  flusso, non solo la lista di chi richiede cosa. Anche questa pagina è
+  pensata per un computer, non per il telefono. Layout automatico
+  **verticale** per
   "livello" di dipendenza (nessuna coordinata salvata, si scorre verso il
   basso invece che verso destra — pensato per una trama lunga, che altrimenti
   crescerebbe fuori schermo in larghezza): un nodo senza "richiede" sta

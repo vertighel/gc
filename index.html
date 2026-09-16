@@ -103,7 +103,7 @@
     flex: 1; appearance: none; border: 1.5px solid var(--bordo-superficie); background: transparent; color: var(--testo-chiaro);
     border-radius: 8px; padding: 10px; font: 600 16px/1 var(--display); cursor: pointer;
   }
-  .subtab[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
+  .subtab[aria-current="true"], .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
   .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; font-size: 18px; }
   .subtab.icon .badge {
     position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 3px;
@@ -186,7 +186,7 @@
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
     animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
   }
-  .medal img, .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .medal img, .thumb img, .todo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
   .done { font: 600 20px/1 var(--display); color: var(--verde); margin: 0 0 14px; }
 
@@ -204,11 +204,6 @@
      lista "Memoria": stessa forma di .todo-thumb (Traccia), ma è un contenitore —
      medaglia() a volte mette solo un colore di sfondo, senza <img>. */
   .todo-thumb-wrap { flex: none; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: #ccd2d8; }
-  .todo-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  /* Nella targa di "Memoria" ci sono due righe (nome, poi messaggio) invece di una:
-     il nome un poco più deciso, il messaggio un filo più leggero, stesso monospace. */
-  .plate .mem-nome { font-weight: 700; margin-bottom: 6px; }
-  .plate .mem-msg { opacity: .85; }
 
   label { display: block; font-weight: 500; margin: 12px 0 0; }
   input[type=text], textarea, select {
@@ -244,11 +239,14 @@
   .lightbox img { max-width: min(92vw, 480px); max-height: 80vh; border-radius: 12px; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .lightbox .current { margin: 0; max-width: min(92vw, 420px); cursor: auto; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
-  .linknode .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-  .linknode .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-  .linknode .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
-  .linknode .head .link { color: var(--rosso); flex: none; }
-  .linknode label { margin-top: 10px; }
+  /* Stessa testata (foto, nome, flag) generata da un solo pezzo di JS
+     (costruisciTestata()) sia in "Collega gli elementi" (.linknode) sia nel
+     riquadro laterale del grafo (.grafopanel): una sola definizione per entrambi. */
+  .linknode .head, .grafopanel .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .linknode .head .titlewrap, .grafopanel .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .linknode .head .titlewrap input, .grafopanel .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
+  .linknode .head .link, .grafopanel .head .link { color: var(--rosso); flex: none; }
+  .linknode label, .grafopanel label { margin-top: 10px; }
   .flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
   .flags label.check { margin-top: 0; }
   .linkreq { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
@@ -260,11 +258,6 @@
   #m-grafo-wrap { flex: 1 1 480px; min-width: 280px; overflow: auto; border: 1.5px solid #C9D0D7; border-radius: 8px; background: #fff; }
   #m-grafo-svg { display: block; }
   .grafopanel { flex: 0 0 320px; border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; position: sticky; top: 10px; }
-  .grafopanel .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-  .grafopanel .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-  .grafopanel .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
-  .grafopanel .head .link { color: var(--rosso); flex: none; }
-  .grafopanel label { margin-top: 10px; }
   .grafopanel > .btn { margin-top: 14px; }
 
   .grafonode { width: 100%; height: 100%; box-sizing: border-box; border: 1.5px solid #C9D0D7; border-radius: 8px; background: #fff; display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; font: 400 14px/1.3 var(--testo); }
@@ -295,7 +288,6 @@
      sceglendo la riga (diventa oggetto "attuale"). */
   .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
-  .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
@@ -354,7 +346,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 42)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 43)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -619,14 +611,10 @@ const GH_API = "https://api.github.com";
 const MSG_URL = "messaggi.json";   // pubblicato accanto a index.html, come caccia.json — condiviso
                                     // da tutte le cacce (un solo canale di annunci), non per-caccia
 
-// Più cacce pubblicabili, distinte per "slug" (derivato dal nome scelto dal master in
-// "Collega gli elementi", vedi slugify()). Slug vuoto = la caccia di sempre: file
-// caccia.json/lavoro.json, link senza # in fondo — retrocompatibile con i link già
-// condivisi. Slug non vuoto = caccia-<slug>.json/lavoro-<slug>.json, link "#c-<slug>".
-// lavoro-*.json non è letto dal codice giocatore nel percorso normale (vedi
-// initPlayer/syncGame): solo backup/continuità della copia di lavoro del master — TRANNE
-// che nel link di prova "#b"/"#b-<slug>" (vedi inBozza()), pensato apposta per farglielo
-// leggere senza pubblicare davvero.
+// Più cacce, distinte per "slug" (da slugify() del nome in "Collega gli elementi").
+// Slug vuoto = caccia di sempre: caccia.json/lavoro.json, link senza # (retrocompatibile).
+// Slug pieno = caccia-<slug>.json/lavoro-<slug>.json, link "#c-<slug>". lavoro*.json
+// non è letto dal giocatore normale, solo dal link di prova "#b"/"#b-<slug>" (inBozza()).
 const gameFile  = slug => slug ? `caccia-${slug}.json` : "caccia.json";
 const draftFile = slug => slug ? `lavoro-${slug}.json` : "lavoro.json";
 function slugify(nome) {
@@ -647,18 +635,22 @@ function activeSlug() {
 // a QUESTO telefono, questo è un fetch vero e funziona ovunque.
 const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
 
+// Array grezzo di slug da cacce.json (mai un fetch fallito o un contenuto malformato:
+// sempre almeno []), condiviso da leggiElencoCacce() e registraCaccia().
+async function leggiCacceGrezzo() {
+  try {
+    const r = await fetch("cacce.json", { cache: "no-store" });
+    const elenco = r.ok ? await r.json() : [];
+    return Array.isArray(elenco) ? elenco : [];
+  } catch { return []; }
+}
+
 // Elenco di TUTTE le cacce, "caccia" (slug vuoto, sempre presente) compresa e sempre
 // per prima: unica fonte di verità sia per il menu del pannello master sia per la
-// schermata di scelta del giocatore, così le due non possono più disallinearsi (prima
-// ciascuna ricostruiva la lista per conto suo, con lo stesso "caccia" scritto a mano in
-// due punti). "caccia" è un nome riservato: non può comparire come slug di una caccia
-// con nome (collide col nome della caccia di sempre) — filtrato qui per restare robusti
-// anche a un cacce.json modificato a mano fuori dall'app.
+// schermata di scelta del giocatore. "caccia" è un nome riservato: filtrato qui per
+// restare robusti anche a un cacce.json modificato a mano fuori dall'app.
 async function leggiElencoCacce() {
-  let elenco = [];
-  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
-  if (!Array.isArray(elenco)) elenco = [];
-  const slug = [...new Set(elenco.filter(s => s && s !== "caccia"))];
+  const slug = [...new Set((await leggiCacceGrezzo()).filter(s => s && s !== "caccia"))];
   return [{ slug: "", nome: "caccia" }, ...slug.map(s => ({ slug: s, nome: s }))];
 }
 
@@ -1038,9 +1030,7 @@ function aggiornaMenuCacce() {
 // leggiElencoCacce()).
 async function registraCaccia(slug) {
   if (!slug || cacceConosciute.some(c => c.slug === slug)) return;
-  let elenco = [];
-  try { const r = await fetch("cacce.json", { cache: "no-store" }); elenco = r.ok ? await r.json() : []; } catch {}
-  if (!Array.isArray(elenco)) elenco = [];
+  let elenco = await leggiCacceGrezzo();
   if (elenco.includes(slug)) { await caricaElencoCacce(); return; }
   elenco = [...elenco, slug];
   const ok = await ghPutFile("cacce.json", JSON.stringify(elenco, null, 2), `Aggiungi "${slug}" all'elenco delle cacce`, $("m-hunt-status"));
@@ -1204,15 +1194,11 @@ function renderLinkList() {
   for (const id of ids) wrap.append(schedaNodo(id, ids));
 }
 
-// Intestazione (foto, nome editabile, "Rimuovi") e corpo (flag, testo, messaggio,
-// "Richiede") di una scheda-nodo: fattorizzati fuori da schedaNodo() perché li
-// riusa anche il riquadro laterale della pagina del grafo (vedi disegnaGrafo()/
-// apriPannelloGrafo() più sotto) — un solo posto dove vivono le regole (es.
-// l'implicazione "richiede posizione" ⇒ "da validare"), non due copie che
-// possono disallinearsi. `notify` viene chiamato dopo ogni modifica che deve
-// riflettersi altrove (nome, flag, "richiede"); con `true` quando il nodo è
-// stato rimosso. testo/messaggio non chiamano notify: non hanno effetto sul
-// grafo o sulle altre pagine, e ridisegnare a ogni tasto premuto è inutile.
+// Intestazione e corpo di una scheda-nodo, condivisi con il riquadro laterale del
+// grafo (vedi disegnaGrafo()): una sola definizione delle regole (es. "richiede
+// posizione" ⇒ "da validare"). notify() gira dopo ogni modifica che deve riflettersi
+// altrove (nome, flag, richiede — true se il nodo è stato rimosso), mai per
+// testo/messaggio, che non toccano il grafo.
 function costruisciTestata(n, id, ids, notify) {
   const head = document.createElement("div"); head.className = "head";
   const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
@@ -1611,15 +1597,10 @@ function initMaster() {
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   };
 
-  // "Salva bozza sul server": scrive draftFile(slug) (lavoro.json o lavoro-<slug>.json),
-  // MAI caccia.json/caccia-<slug>.json — resta invisibile ai giocatori finché non si preme
-  // "Pubblica" in "Collega gli elementi". Serve a portare la bozza da un telefono
-  // all'altro (letta anche dal pannello master su un browser "vuoto", vedi
-  // caricaCopiaLavoro), o come backup vero (l'autosalvataggio locale protegge solo
-  // questo telefono, e solo per la caccia di sempre viene poi ripristinata in
-  // automatico). Da qui in poi il link di prova qui sotto ("#b-<slug>") scarica
-  // proprio questo file, non caccia*.json: permette di provare come un vero
-  // giocatore (anche in incognito, anche da un altro telefono) senza pubblicare.
+  // Scrive draftFile(slug), mai caccia*.json: resta invisibile ai giocatori finché non
+  // si preme "Pubblica". Porta la bozza da un telefono all'altro (letta anche dal
+  // pannello master su un browser "vuoto", vedi caricaCopiaLavoro) e alimenta il link
+  // di prova "#b-<slug>" qui sotto, per testarla da giocatore senza pubblicare.
   $("m-save-draft").onclick = async () => {
     const g = { formato: FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
     await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
@@ -1836,15 +1817,11 @@ function chiudi(nodi, posseduti) {
   return ok;
 }
 
-// Chiude st.trovati con chiudi() e registra in st.bottino ciò che diventa posseduto
-// per la prima volta — sia un vero ritrovamento (id passato in "extra", es. dopo una
-// foto valida) sia un nodo "regalo" (daValidare:false, richiede soddisfatto) che
-// diventa posseduto da solo. "prima" DEVE essere il set grezzo già registrato
-// (st.trovati), mai un chiudi() ricalcolato al volo: chiudi() richiude sempre anche i
-// regali senza prerequisiti, quindi un chiudi()-su-chiudi() li troverebbe "già dentro"
-// fin dalla primissima chiamata e non li segnalerebbe mai come nuovi — bug che rendeva
-// invisibili in Memoria i regali a zero prerequisiti (es. "rifiuto-quantistico" in
-// caccia-strada), corretto qui il 2026-09-16, vedi memory.md.
+// Chiude st.trovati e registra in st.bottino ciò che diventa posseduto per la prima
+// volta: un vero ritrovamento (id in "extra") o un "regalo" (daValidare:false, richiede
+// soddisfatto). "prima" resta il set grezzo di st.trovati, mai un chiudi() ricalcolato:
+// altrimenti un regalo a zero prerequisiti risulterebbe "già dentro" da subito e mai
+// "nuovo".
 function chiudiEAggiorna(st, extra = []) {
   const prima = new Set(st.trovati);
   const dopo = chiudi(game.nodi, [...st.trovati, ...extra]);
@@ -1854,6 +1831,17 @@ function chiudiEAggiorna(st, extra = []) {
     st.bottino.push({ nome: n.nome, messaggio: n.messaggio, conThumb: n.conThumb, immagine: n.immagine, nodo: n.id, quando: new Date().toISOString() });
   }
   return nuovi;
+}
+
+// Festeggia eventuali regali scoperti senza una foto vera (avvio, copia in cache,
+// sincronizzazione): stessa schermata di sblocco di un ritrovamento normale, spostando
+// su "Cerca" se serve (#p-reward vive lì). Ritorna true se ha festeggiato qualcosa.
+function festeggiaAutomatici() {
+  const st = stato();
+  const nuovi = chiudiEAggiorna(st);
+  if (!nuovi.length) return false;
+  saveState(st); mostraTab("cerca"); showReward(nuovi, st);
+  return true;
 }
 
 // L'indizio di un nodo "da trovare" riguarda SEMPRE lui stesso, mai un suo
@@ -1933,16 +1921,7 @@ async function syncGame() {
     if (!prev || prev.formato !== g.formato) store.set(stateKey(), freshState(game));
     store.set(gameKey(), g);
     if ($("p-reward").hidden) {
-      // Anche senza una foto vera: se il caricamento sblocca da solo un nuovo nodo
-      // "regalo" (daValidare:false, richiede già soddisfatto — vedi chiudiEAggiorna()),
-      // si festeggia comunque, come qualunque altro ritrovamento. La schermata di festa
-      // vive dentro "Cerca" (mostraTab("cerca") prima di showReward()): se il giocatore
-      // era su "Memoria" quando la sincronizzazione in sottofondo scopre il regalo, va
-      // comunque vista, non solo registrata in silenzio.
-      const st = stato();
-      const nuovi = chiudiEAggiorna(st);
-      if (nuovi.length) { saveState(st); mostraTab("cerca"); showReward(nuovi, st); }
-      else renderPlayer();
+      if (!festeggiaAutomatici()) renderPlayer();
     }
   } catch {
     if (!game) showEmpty(inBozza()
@@ -2074,6 +2053,10 @@ function renderTodo(st, todo, cur) {
 function contaTrovati(st) {
   return st.trovati.filter(id => game.nodi[id] && game.nodi[id].daValidare).length;
 }
+function aggiornaProgresso(st) {
+  const tot = Object.values(game.nodi).filter(n => n.daValidare).length;
+  $("p-progress").textContent = `Trovati ${contaTrovati(st)} di ${tot}`;
+}
 
 function renderPlayer() {
   $("p-reward").hidden = true;
@@ -2089,8 +2072,7 @@ function renderPlayer() {
   }
   const st = stato();
   const todo = daTrovare(st);
-  const tot = Object.values(game.nodi).filter(n => n.daValidare).length;
-  $("p-progress").textContent = `Trovati ${contaTrovati(st)} di ${tot}`;
+  aggiornaProgresso(st);
 
   const nuovi = todo.filter(m => !st.visti.includes(m.id));
   $("p-news").hidden = !nuovi.length;
@@ -2135,8 +2117,7 @@ function showReward(nuovi, st) {
     item.append(medal, testo);
     wrap.append(item);
   }
-  const tot = Object.values(game.nodi).filter(n => n.daValidare).length;
-  $("p-progress").textContent = `Trovati ${contaTrovati(st)} di ${tot}`;
+  aggiornaProgresso(st);
   renderMemoria(st);
 }
 
@@ -2250,14 +2231,7 @@ function initPlayer() {
   tabAttivo = "oggetti"; subTabAttivo = "indizio";
   mostraTab("oggetti");
   renderInbox();
-  // Anche con la copia già in cache (offline, o prima che syncGame() risponda): un
-  // regalo a zero prerequisiti mai registrato prima (vedi chiudiEAggiorna()) deve
-  // comparire e festeggiarsi subito, non solo dopo il prossimo aggiornamento da rete.
-  if (game) {
-    const st = stato();
-    const nuovi = chiudiEAggiorna(st);
-    if (nuovi.length) { saveState(st); mostraTab("cerca"); showReward(nuovi, st); }
-  }
+  if (game) festeggiaAutomatici(); // copia in cache: non aspettare syncGame() per un regalo già dovuto
   syncGame();
   syncMessages();
 }
@@ -2273,13 +2247,9 @@ document.addEventListener("visibilitychange", () => {
 // schermata di scelta, o raggiunta con un link diretto "#c-<slug>"). null = non ha
 // ancora scelto nulla su questo telefono: vedi avvioGiocatore().
 const CHOOSER_KEY = "caccia-scelta";
-// Segna che la continuità "chi giocava già prima che esistesse questa schermata non la
-// vede" (avvioGiocatore()) è già scattata una volta: senza questo marcatore, ogni volta
-// che CHOOSER_KEY torna null — non solo la primissima apertura, ma anche dopo un
-// esplicito "Cambia caccia" in Impostazioni — chi ha mai giocato la caccia di sempre
-// (chiave "gioco" presente) veniva rispedito lì invece di vedere la schermata di scelta:
-// bastava un secondo tocco su "Cambia caccia" perché il ramo diretto a
-// mostraSceltaCaccia() (hash già vuoto) evitasse del tutto avvioGiocatore().
+// Segna che la continuità "chi giocava già prima di questa schermata non la vede"
+// (avvioGiocatore()) è già scattata: evita che riscatti anche dopo un "Cambia caccia"
+// esplicito, quando CHOOSER_KEY torna null per lo stesso motivo del primo avvio.
 const CONTINUITA_KEY = "caccia-scelta-continuita-vista";
 
 function mostraGiocatore() {
