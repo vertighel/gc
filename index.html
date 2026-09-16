@@ -216,8 +216,11 @@
   /* Nella targa, la/le foto (indizio o ricordo) galleggiano a sinistra e il testo ci
      scorre intorno (serve nel HTML prima del <p>, i float valgono solo in avanti).
      Senza foto il contenitore è vuoto: non sposta né restringe nulla. */
-  .clue-imgs { float: left; display: flex; flex-direction: column; gap: 8px; margin: 0 14px 8px 0; }
-  .clue-imgs img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; box-shadow: 0 0 0 2px rgba(140,255,176,.45); }
+  /* position+z-index: senza, il testo corto che segue (spec. in Memoria, due righe che
+     non "girano" visibilmente intorno alla foto) può finire sopra alla foto nell'ordine
+     di hit-test, rendendola non cliccabile proprio dove serve ingrandirla. */
+  .clue-imgs { float: left; display: flex; flex-direction: column; gap: 8px; margin: 0 14px 8px 0; position: relative; z-index: 1; }
+  .clue-imgs img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; box-shadow: 0 0 0 2px rgba(140,255,176,.45); cursor: zoom-in; }
   /* Un testo più corto della foto (84px + 26px di padding sopra e sotto) la
      lascerebbe sbordare fuori dalla targa: un float non allunga da solo il
      contenitore che lo ospita. */
@@ -346,7 +349,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 43)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 44)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -938,8 +941,8 @@ function erroreGitHub(e, prefisso) {
   return `${prefisso} (${s || (e && e.message) || "errore sconosciuto"}).`;
 }
 
-// Ingrandisce una foto al tocco/clic: nel pallino piccolo si vede solo un ritaglio,
-// spesso non abbastanza per distinguere un oggetto dall'altro.
+// Ingrandisce una foto al tocco/clic (pallini del master, foto nel monitor del
+// giocatore): un secondo clic, ovunque sull'overlay, la richiude.
 function apriAnteprima(src) {
   if (!src) return;
   const overlay = document.createElement("div"); overlay.className = "lightbox";
@@ -1993,7 +1996,10 @@ function renderMemoria(st) {
   $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale… seleziona un oggetto in memoria!";
   const memImgs = $("p-mem-imgs");
   memImgs.innerHTML = "";
-  if (scelto && scelto.immagine) { const img = document.createElement("img"); img.src = scelto.immagine; memImgs.append(img); }
+  if (scelto && scelto.immagine) {
+    const img = document.createElement("img"); img.src = scelto.immagine; img.onclick = () => apriAnteprima(scelto.immagine);
+    memImgs.append(img);
+  }
 
   const list = $("p-inv-list");
   list.innerHTML = "";
@@ -2091,7 +2097,10 @@ function renderPlayer() {
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
-  for (const src of immaginiIndizio(cur)) { const img = document.createElement("img"); img.src = src; imgs.append(img); }
+  for (const src of immaginiIndizio(cur)) {
+    const img = document.createElement("img"); img.src = src; img.onclick = () => apriAnteprima(src);
+    imgs.append(img);
+  }
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
 }
