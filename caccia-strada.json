@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-16T06:21:52.878Z",
+  "creato": "2026-09-16T06:23:30.931Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -139,7 +139,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3okctuq03": {
@@ -279,7 +279,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3onj3x9wq": {
@@ -419,7 +419,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3opf6v5yw": {
@@ -559,7 +559,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3ovfeybyl": {
@@ -699,7 +699,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3p0yasfqr": {
@@ -839,7 +839,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3p20fjxka": {
@@ -979,7 +979,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3p3cqg0tt": {
@@ -1117,7 +1117,7 @@
         "lon": 11.8684619,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": []
@@ -1259,7 +1259,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3p9g3v5iq": {
@@ -1397,7 +1397,7 @@
         "lon": 11.8679951,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": []
@@ -1539,7 +1539,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3pal7lti4": {
@@ -1679,7 +1679,7 @@
       },
       "daValidare": true,
       "conThumb": true,
-      "richiedePosizione": false,
+      "richiedePosizione": true,
       "richiede": []
     },
     "nmu3pmk6vax9": {
@@ -1817,7 +1817,7 @@
         "lon": 11.8687353,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": []
