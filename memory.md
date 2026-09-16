@@ -617,3 +617,34 @@ Richiesto esplicitamente: prima l'app apriva sempre su "Cerca", ora apre
 su "Memoria" (`mostraTab("oggetti")` in `initPlayer()`). Il testo per chi
 non ha ancora nulla in Memoria (`#p-mem-empty`) è lasciato al committente
 da scrivere, per suggerire di passare a "Cerca".
+
+## Bug: "Cambia caccia" serviva due tocchi, il primo rispediva alla caccia di sempre
+
+Segnalato dal committente su una caccia con nome (es. "strada"): il primo
+tocco su "⚙️ Impostazioni" → "Cambia caccia" non mostrava la schermata di
+scelta ma rientrava dritto in `caccia.json` (la caccia di sempre); solo il
+secondo tocco funzionava.
+
+Causa: `avvioGiocatore()` contiene una regola di continuità pensata per un
+caso preciso — chi giocava già la caccia di sempre PRIMA che esistesse la
+schermata di scelta (quindi ha la chiave `gioco` ma mai una scelta salvata
+in `caccia-scelta`) non deve vedersela comparire di sorpresa, ed entra
+diretto. Ma la condizione era `store.get(CHOOSER_KEY) === null`, vera anche
+subito dopo un "Cambia caccia" esplicito (che cancella `caccia-scelta` con
+`store.del()`): chiunque avesse mai avuto una partita sulla caccia di
+sempre (chiave `gioco` presente, capita spesso testando) veniva rispedito
+lì invece che alla schermata di scelta. Il secondo tocco "funzionava" solo
+per un dettaglio implementativo: con l'hash già vuoto dal primo tentativo,
+il gestore del pulsante saltava del tutto `avvioGiocatore()` e chiamava
+`mostraSceltaCaccia()` direttamente.
+
+Corretto in due parti: (1) un marcatore separato, `CONTINUITA_KEY`
+(`caccia-scelta-continuita-vista`), impostato la prima volta che
+`avvioGiocatore()` gira E messo a `true` esplicitamente dentro il gestore
+di "Cambia caccia" — così la regola di continuità non scatta mai più una
+volta che il giocatore ha interagito almeno una volta col sistema di
+scelta della caccia, comunque sia successo; (2) il gestore di "Cambia
+caccia" non passa più da `location.hash = ""` (che fa scattare
+`hashchange` → `route()` in modo asincrono, una finestra in cui poteva
+ancora inserirsi la vecchia regola) ma usa `history.replaceState()` — che
+non spara eventi — e chiama `mostraSceltaCaccia()` direttamente, subito.

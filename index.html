@@ -354,7 +354,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 41)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 42)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -2221,7 +2221,18 @@ function initPlayer() {
   $("p-change-hunt").onclick = () => {
     stopCamera();
     store.del(CHOOSER_KEY);
-    if (location.hash) location.hash = ""; else mostraSceltaCaccia();
+    // Scelta esplicita del giocatore: la continuità per chi giocava già prima che
+    // esistesse questa schermata (avvioGiocatore()) non deve più applicarsi da qui in
+    // poi, altrimenti — con la chiave "gioco" (caccia di sempre) ancora presente —
+    // si finiva rispediti dritti lì invece che alla schermata di scelta.
+    store.set(CONTINUITA_KEY, true);
+    // Niente location.hash = "" (fa scattare hashchange → route() → avvioGiocatore()
+    // in modo asincrono, con un'increspatura possibile prima che CONTINUITA_KEY sia
+    // stato letto): riscrive l'indirizzo senza sparare l'evento, poi mostra la
+    // schermata di scelta direttamente, stesso tema scuro che le darebbe route().
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    document.body.classList.add("dark");
+    mostraSceltaCaccia();
   };
   $("sub-msg-btn").onclick = () => mostraSubTab("messaggi");
   $("p-inbox-close").onclick = () => mostraSubTab("indizio");
@@ -2262,6 +2273,14 @@ document.addEventListener("visibilitychange", () => {
 // schermata di scelta, o raggiunta con un link diretto "#c-<slug>"). null = non ha
 // ancora scelto nulla su questo telefono: vedi avvioGiocatore().
 const CHOOSER_KEY = "caccia-scelta";
+// Segna che la continuità "chi giocava già prima che esistesse questa schermata non la
+// vede" (avvioGiocatore()) è già scattata una volta: senza questo marcatore, ogni volta
+// che CHOOSER_KEY torna null — non solo la primissima apertura, ma anche dopo un
+// esplicito "Cambia caccia" in Impostazioni — chi ha mai giocato la caccia di sempre
+// (chiave "gioco" presente) veniva rispedito lì invece di vedere la schermata di scelta:
+// bastava un secondo tocco su "Cambia caccia" perché il ramo diretto a
+// mostraSceltaCaccia() (hash già vuoto) evitasse del tutto avvioGiocatore().
+const CONTINUITA_KEY = "caccia-scelta-continuita-vista";
 
 function mostraGiocatore() {
   $("view-chooser").hidden = true;
@@ -2291,9 +2310,13 @@ async function mostraSceltaCaccia() {
 
 // All'apertura senza hash: se il telefono ricorda già una scelta (fatta qui, o perché
 // si sta già giocando da prima che esistesse questa schermata) entra diretto in quella
-// caccia; altrimenti mostra la scelta.
+// caccia; altrimenti mostra la scelta. La continuità per chi giocava già prima di questa
+// schermata (CONTINUITA_KEY) scatta una volta sola nella vita del telefono: dopo un
+// "Cambia caccia" esplicito, CHOOSER_KEY torna null ma non deve far scattare di nuovo
+// l'ingresso automatico nella caccia di sempre.
 async function avvioGiocatore() {
-  if (store.get(CHOOSER_KEY) === null && store.get("gioco")) store.set(CHOOSER_KEY, "");
+  if (store.get(CHOOSER_KEY) === null && !store.get(CONTINUITA_KEY) && store.get("gioco")) store.set(CHOOSER_KEY, "");
+  store.set(CONTINUITA_KEY, true);
   const scelta = store.get(CHOOSER_KEY);
   if (scelta) { location.hash = "c-" + scelta; return; }
   if (scelta === "") { mostraGiocatore(); return; }
