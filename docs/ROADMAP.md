@@ -76,6 +76,21 @@ un'ottimizzazione dell'esperienza, non più un prerequisito di correttezza.
 Test a tavolino del protocollo: `tests/scambio.test.mjs` (vedi
 `CLAUDE.md`).
 
+**Regali a istanze — FATTO (2026-09-17, versione 53)**, senza database né
+identità: un regalo `istanze: true` produce un'istanza diversa (id `K7X`)
+per ogni telefono che lo sblocca, una sola volta; le istanze si condividono
+e un nodo può richiederne "almeno N diverse" (`istanzeRichieste`). È il primo
+meccanismo che rende **obbligatorio l'incontro fra giocatori**: nessuno può
+produrre due istanze, quindi la seconda deve arrivare da un altro telefono.
+Decisioni prese col committente: solo `duplicabile` (mai scambiabile), può
+ricondividere chiunque abbia una copia (copie di copie), il reset che azzera
+`prodotti` è un buco accettato, id a 3 caratteri con alfabeto completo
+(≈0,7 % di collisione con 10 produttori, monospaziato per leggerlo bene).
+Schema in `docs/MODELLO-DATI.md`. **Non** copre "quanti telefoni diversi ha
+attraversato una copia" né totali globali: il primo richiede un token stabile
+per telefono (identità anonima, da decidere esplicitamente), il secondo il
+database. Da provare sul campo.
+
 Resta **non** implementata la sola `scorta` limitata (il
 contatore condiviso da tutti i giocatori, sotto): quella richiede davvero
 un'operazione atomica su un database, per il motivo spiegato sotto. Il

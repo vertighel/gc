@@ -62,11 +62,51 @@ espliciti, non più in base a un `tipo` fisso.
                              // c'entra col possesso — vedi sotto
       "richiedePosizione": false,  // true = in aggiunta al match fotografico, il giocatore deve
                                     // essere entro `luogo.raggio` — IMPLICA daValidare: true
-      "richiede": []        // AND verso altri id di nodi, come nei formati precedenti
+      "richiede": [],       // AND verso altri id di nodi, come nei formati precedenti
+      "scambiabile": false, // facoltativi, solo se daValidare è false (regali): 🔄 il
+      "duplicabile": false, // cedente lo perde / 👥 il cedente lo tiene — vedi docs/STATO.md
+      "istanze": false,     // facoltativo, solo su un regalo: "a istanze" — ogni telefono che
+                             // ne soddisfa i richiede ne PRODUCE una istanza propria (id casuale
+                             // lettera-cifra-lettera), una sola volta; le istanze si condividono.
+                             // Implica duplicabile: true e scambiabile: false. Vedi sotto.
+      "istanzeRichieste": { "<idNodo>": 2 }  // facoltativo, sul nodo che richiede: "almeno N
+                             // istanze DIVERSE" di quel prerequisito (assente = 1); ignorato se
+                             // il prerequisito non è a istanze. `richiede` resta la lista di id.
     }
   }
 }
 ```
+
+### Nodi a istanze (`istanze: true`)
+
+Un regalo normale è **uno**: o lo possiedi o no. Un regalo a istanze è un
+"sigillo" di cui ogni giocatore produce la **propria** copia, distinta da
+quelle degli altri per un id casuale a tre caratteri (`"K7X"`: lettera,
+cifra, lettera — 6760 combinazioni, mostrato sempre in monospaziato). Le
+regole, tutte in `chiudiEAggiorna()`/`prerequisitiSoddisfatti()`:
+
+- **Produzione**: quando i `richiede` del nodo sono soddisfatti, il
+  telefono genera la sua istanza e la segna in `stato.prodotti` — **una
+  sola volta per nodo**, anche se nel frattempo ha ricevuto istanze di
+  altri (chi prima riceve una copia e poi trova l'oggetto produce comunque
+  la sua).
+- **Condivisione**: l'istanza viaggia nel QR dello scambio (settimo
+  campo) e chi la riceve la tiene accanto alle proprie; rifiuta solo la
+  *stessa* istanza. **Chiunque** la abbia può ricondividerla (copie di
+  copie): "3 istanze diverse" significa "esistono 3 produttori", non "hai
+  incontrato 3 persone".
+- **Requisito**: un nodo con `istanzeRichieste: { G: 2 }` si chiude solo
+  con ≥ 2 istanze **distinte** di G in mano. Se non c'è più nulla da
+  fotografare ma manca questo, la fine caccia dice "Ti manca: G ×1" invece
+  di "Hai trovato tutto".
+- **Niente identità**: nessuno sa *di chi* è `K7X`; il giocatore vede
+  "★ tua" solo sulle proprie. Collisioni casuali fra due produttori (~0,7 %
+  con 10 produttori) fanno contare una istanza in meno, nulla di peggio.
+  Il reset ("Ricomincia la caccia") azzera `prodotti`: limite accettato.
+
+È il modo di rendere **obbligatorio l'incontro** fra giocatori senza
+database né identità: nessuno può produrre due istanze, quindi la seconda
+deve arrivare da un altro telefono. Vedi `memory.md`.
 
 Regole:
 
@@ -336,7 +376,7 @@ nulla prima che il master prema "Pubblica" (che scrive invece
 |---|---|
 | `caccia-scelta` | slug dell'ultima caccia scelta/vista (`""` = quella di sempre) — assente = non ha ancora scelto, vedi `docs/STATO.md` |
 | `gioco` / `gioco:<slug>` | l'ultimo `caccia*.json` scaricato per quella caccia (`caccia-3`) — la caccia di sempre resta su `gioco` senza suffisso, per compatibilità con chi giocava già |
-| `stato` / `stato:<slug>` | `{ trovati, bottino, visti, scelta }` — vedi sotto, namespaced come sopra |
+| `stato` / `stato:<slug>` | `{ trovati, bottino, visti, scelta, ceduti, prodotti }` — vedi sotto, namespaced come sopra |
 | `msg-letti` | array di `id` di messaggi già letti — **non** namespaced per caccia: i messaggi sono globali |
 | `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master, mai namespaced per caccia |
 
@@ -354,6 +394,13 @@ altrimenti conterebbe anche gli sblocchi automatici.
 quelli validati (copie dei campi `nome`/`messaggio`/`conThumb`/`immagine`
 del nodo, con l'id del nodo e `quando` aggiunti) — un solo scatto può
 aggiungerne più di uno in un colpo solo, se sblocca più nodi a cascata.
+Per un nodo a istanze ci sono **più voci per lo stesso nodo**, ciascuna con
+`istanza` (l'id a tre caratteri) e `prodotta` (`true` se generata da questo
+telefono, `false` se ricevuta); `trovati` contiene comunque l'id del nodo
+una volta sola (= "ne ho almeno una").
+`stato.ceduti` sono i nodi ceduti con uno scambio 🔄, esclusi per sempre
+dalla chiusura automatica (vedi `memory.md`); `stato.prodotti` i nodi a
+istanze di cui questo telefono ha già generato la propria istanza.
 
 ## `localStorage` del master (mai condiviso, chiavi principali)
 

@@ -28,7 +28,7 @@ let html = readFileSync(join(repo, "index.html"), "utf8");
 html = html.replace("window.__avviato = true;", `
 window.__debug = {
   get scambio() { return scambio; },
-  apriScambio, scambioTickCorpo, scambioDomanda, decodificaQr, gestisciQrFoto, stato, saveState, chiudiEAggiorna,
+  apriScambio, scambioTickCorpo, scambioDomanda, decodificaQr, gestisciQrFoto, stato, saveState, chiudiEAggiorna, renderPlayer, mancanoIstanze,
   get game() { return game; },
   setLeggiQr(fn) { leggiQr = fn; },
   stubCamera() {
@@ -41,11 +41,16 @@ window.__avviato = true;`);
 writeFileSync(join(dir, "index.html"), html);
 // Un oggetto da fotografare (obj1) e un regalo che lo richiede (gift1), scambiabile e
 // duplicabile: il "telefono A" parte con obj1 trovato (quindi possiede gift1), B no.
+// Più un secondo oggetto (obj2) che produce un regalo A ISTANZE (sig), e un regalo
+// finale (fin) che richiede almeno 2 istanze diverse di sig.
 const v = { m: 0.2, q: Buffer.from([1, 2, 3, 4]).toString("base64") };
 const nodo = (extra) => ({ messaggio: "", testo: "", conThumb: false, richiedePosizione: false, pos: [v], neg: [v], soglia: 0.5, ...extra });
 writeFileSync(join(dir, "caccia.json"), JSON.stringify({ formato: "caccia-3", creato: "2026-09-17T00:00:00Z", nodi: {
   obj1: nodo({ nome: "Portone", richiede: [], daValidare: true }),
   gift1: nodo({ nome: "Chiave", messaggio: "una chiave", richiede: ["obj1"], daValidare: false, scambiabile: true, duplicabile: true }),
+  obj2: nodo({ nome: "Saracinesca", richiede: [], daValidare: true }),
+  sig: nodo({ nome: "Sigillo", messaggio: "un sigillo", richiede: ["obj2"], daValidare: false, duplicabile: true, istanze: true }),
+  fin: nodo({ nome: "Tesoro", messaggio: "fine", richiede: ["sig"], istanzeRichieste: { sig: 2 }, daValidare: false }),
 } }));
 writeFileSync(join(dir, "messaggi.json"), '{"messaggi":[]}');
 writeFileSync(join(dir, "cacce.json"), "[]");
@@ -73,7 +78,7 @@ async function telefono(browser, { possiede }) {
   }, possiede);
   return page;
 }
-const S = p => p.evaluate(() => { const s = window.__debug.scambio; return s && { ruolo: s.ruolo, tipo: s.tipo, mySeq: s.mySeq, myReadCount: s.myReadCount, theirAck: s.theirAck, committed: s.committed, domanda: s.domanda, theirAckKAt: s.theirAckKAt, sessionId: s.sessionId, inizio: s.inizio }; });
+const S = p => p.evaluate(() => { const s = window.__debug.scambio; return s && { ruolo: s.ruolo, tipo: s.tipo, mySeq: s.mySeq, myReadCount: s.myReadCount, theirAck: s.theirAck, committed: s.committed, domanda: s.domanda, theirAckKAt: s.theirAckKAt, sessionId: s.sessionId, inizio: s.inizio, istanza: s.istanza }; });
 const qr = p => p.evaluate(() => window.__lastQr);
 const feed = (p, t) => p.evaluate(t => { window.__feed = t; }, t);
 const tick = p => p.evaluate(() => window.__debug.scambioTickCorpo());
@@ -266,6 +271,89 @@ for (const risposta of ["si", "no"]) {
   await B.evaluate(t => window.__debug.gestisciQrFoto(t), "gc1:S:ABCDEFGH:gift1:9:3:ZZ99");
   ok((await txt(B, "p-status")).includes("già concluso") && !(await S(B)), "[Foto] QR 'fatto' letto da un terzo: 'già concluso', nessuno scambio aperto");
   await B.context().close();
+}
+
+// ================= nodi a istanze =================
+const ISTANZA_RE = /^[A-Z][0-9][A-Z]$/;
+const bottino = (p, nodo) => p.evaluate(nodo => window.__debug.stato().bottino.filter(r => r.nodo === nodo).map(r => ({ istanza: r.istanza, prodotta: !!r.prodotta })), nodo);
+const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato(); const n = window.__debug.chiudiEAggiorna(st, ids); window.__debug.saveState(st); return n.map(x => ({ id: x.id, istanza: x.istanza || null, prodotta: !!x.prodotta })); }, ids);
+
+// ---- I1. produzione: una istanza L-C-L, una volta sola; "Ti manca" a fine caccia
+{
+  const A = await telefono(browser, { possiede: true });
+  let nuovi = await trova(A, ["obj2"]);
+  let b = await bottino(A, "sig");
+  ok(b.length === 1 && ISTANZA_RE.test(b[0].istanza) && b[0].prodotta, `[I1] A produce una istanza (${b[0] && b[0].istanza}), prodotta: true`);
+  ok(nuovi.some(n => n.id === "sig" && n.istanza === b[0].istanza && n.prodotta), "[I1] la festa porta l'istanza");
+  ok(!(await stato(A)).trovati.includes("fin"), "[I1] con 1 istanza il Tesoro (×2) resta chiuso");
+  nuovi = await trova(A, []);
+  b = await bottino(A, "sig");
+  ok(b.length === 1 && !nuovi.length && (await stato(A)).prodotti.includes("sig"), "[I1] una seconda chiusura non produce nulla (prodotti)");
+  await A.evaluate(() => window.__debug.renderPlayer());
+  ok((await txt(A, "p-alldone-titolo")) === "Ti manca qualcosa" && (await txt(A, "p-alldone-testo")).includes("Sigillo ×1"), "[I1] fine caccia: 'Ti manca qualcosa … Sigillo ×1'");
+  const m = await A.evaluate(() => window.__debug.mancanoIstanze(window.__debug.stato()));
+  ok(m.length === 1 && m[0].id === "sig" && m[0].quante === 1, "[I1] mancanoIstanze = sig ×1");
+  await A.context().close();
+}
+
+// ---- I2/I3. due produttori; A condivide la sua a B → B ha 2 istanze diverse → Tesoro
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await trova(A, ["obj2"]); await trova(B, ["obj2"]);
+  const ia = (await bottino(A, "sig"))[0].istanza, ib = (await bottino(B, "sig"))[0].istanza;
+  ok(ISTANZA_RE.test(ia) && ISTANZA_RE.test(ib), `[I2] A=${ia} B=${ib}`);
+  if (ia === ib) console.log("   (collisione casuale 1/6760: i controlli seguenti potrebbero fallire, rilanciare)");
+  await apri(A, { ruolo: "cedente", tipo: "duplica", nodo: "sig", istanza: ia }); await tick(A);
+  const qa = await qr(A);
+  ok(qa.split(":").length === 8 && qa.endsWith(":" + ia), `[I3] il QR di A porta l'istanza come 7º campo (${qa.length} byte)`);
+  await B.evaluate(t => window.__debug.gestisciQrFoto(t), qa);
+  await B.waitForTimeout(50); await B.evaluate(() => window.__debug.fermaTimer());
+  ok((await S(B)) && (await S(B)).ruolo === "ricevente", "[I3] B accetta l'istanza di A (ne ha già una diversa)");
+  let giri = 0;
+  while (giri++ < 20) { await feed(B, await qr(A)); await tick(B); await feed(A, await qr(B)); await tick(A); if ((await S(A)).committed) break; }
+  ok((await S(A)).committed && (await S(B)).committed, "[I3] scambio concluso");
+  const bb = await bottino(B, "sig");
+  ok(bb.length === 2 && bb.some(r => r.istanza === ia && !r.prodotta) && bb.some(r => r.istanza === ib && r.prodotta), "[I3] B ha la propria (★) e quella di A");
+  ok((await stato(B)).trovati.includes("fin"), "[I3] Tesoro chiuso per B (2 istanze diverse)");
+  const festa = await B.evaluate(() => window.__debug.scambio.esito.nuovi.map(n => ({ id: n.id, istanza: n.istanza || null })));
+  ok(festa.some(n => n.id === "sig" && n.istanza === ia) && festa.some(n => n.id === "fin"), "[I3] la festa di B mostra l'istanza ricevuta e il Tesoro");
+  ok((await bottino(A, "sig")).length === 1 && !(await stato(A)).trovati.includes("fin"), "[I3] A invariato (duplica)");
+  // I4. stessa istanza di nuovo → rifiutata
+  await B.click("#p-scambio-chiudi");
+  await B.evaluate(t => window.__debug.gestisciQrFoto(t), qa.replace("gc1:d:", "gc1:d:"));
+  ok((await txt(B, "p-status")).includes("Hai già l'istanza " + ia) && !(await S(B)), "[I4] B rifiuta una seconda copia della stessa istanza");
+  // I8. Memoria: due righe Sigillo con badge, il 👥 della riga condivide QUELLA istanza
+  await B.evaluate(() => window.__debug.renderPlayer());
+  const righe = await B.evaluate(() => [...document.querySelectorAll("#p-inv-list li")].map(li => ({ testo: li.querySelector(".txt").textContent, badge: li.querySelector(".istanza") && li.querySelector(".istanza").textContent, tua: !!li.querySelector(".istanza-tua"), azione: li.querySelector(".todo-action") && li.querySelector(".todo-action").textContent })));
+  const rs = righe.filter(r => r.badge);
+  ok(rs.length === 2 && rs.some(r => r.badge === ia && !r.tua && r.azione === "👥") && rs.some(r => r.badge === ib && r.tua), "[I8] Memoria: due righe Sigillo, badge, ★ tua solo sulla propria");
+  await B.evaluate(ia => { [...document.querySelectorAll("#p-inv-list li")].find(li => li.querySelector(".istanza") && li.querySelector(".istanza").textContent === ia).querySelector(".todo-action").click(); }, ia);
+  ok((await S(B)) && (await S(B)).ruolo === "cedente" && (await S(B)).istanza === ia && (await S(B)).tipo === "duplica", "[I8] il 👥 della riga apre la condivisione di quella istanza (copia di copia)");
+  // I5. copia di copia: B passa l'istanza di A a C; poi C trova la saracinesca → produce la sua → Tesoro
+  await B.waitForTimeout(50); await B.evaluate(() => window.__debug.fermaTimer()); await tick(B);
+  const C = await telefono(browser, { possiede: false });
+  await C.evaluate(t => window.__debug.gestisciQrFoto(t), await qr(B));
+  await C.waitForTimeout(50); await C.evaluate(() => window.__debug.fermaTimer());
+  giri = 0;
+  while (giri++ < 20) { await feed(C, await qr(B)); await tick(C); await feed(B, await qr(C)); await tick(B); if ((await S(B)).committed) break; }
+  let bc = await bottino(C, "sig");
+  ok(bc.length === 1 && bc[0].istanza === ia && !bc[0].prodotta && !(await stato(C)).prodotti.length, "[I5] C ha la copia di A ricevuta da B, non ha prodotto nulla");
+  await C.click("#p-scambio-chiudi");
+  const nuoviC = await trova(C, ["obj2"]);
+  bc = await bottino(C, "sig");
+  ok(bc.length === 2 && bc.some(r => r.prodotta && ISTANZA_RE.test(r.istanza) && r.istanza !== ia), "[I5] C, trovata la saracinesca DOPO aver ricevuto, produce comunque la sua");
+  ok((await stato(C)).trovati.includes("fin") && nuoviC.some(n => n.id === "fin") && nuoviC.some(n => n.id === "sig" && n.prodotta), "[I5] Tesoro chiuso per C nello stesso giro, festeggiato con la produzione");
+  await A.context().close(); await B.context().close(); await C.context().close();
+}
+
+// ---- I6/I7. compatibilità QR
+{
+  const p = await telefono(browser, { possiede: false });
+  const r = await p.evaluate(() => [window.__debug.decodificaQr("gc1:d:ABCDEFGH:gift1:7:3:XY12"), window.__debug.decodificaQr("gc1:d:ABCDEFGH:sig:7:3:XY12:K7X")]);
+  ok(r[0].istanza === "" && !r[0].errore && r[1].istanza === "K7X", "[I6] QR a 6 campi (versione vecchia) e a 7 campi decodificati");
+  await p.evaluate(t => window.__debug.gestisciQrFoto(t), "gc1:d:ABCDEFGH:sig:7:3:XY12");
+  ok((await txt(p, "p-status")).includes("Aggiorna l'app") && !(await S(p)), "[I7] nodo a istanze senza istanza nel QR → 'Aggiorna l'app'");
+  await p.context().close();
 }
 
 await browser.close();

@@ -284,6 +284,8 @@
   .linkreq label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 15px; }
   .linkreq label input { width: 18px; height: 18px; accent-color: var(--smalto); margin: 0; }
   .linkreq .none { color: var(--grigio); font-size: 15px; }
+  .linkreq .linkreq-n { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--grigio); margin-left: 4px; }
+  .linkreq .linkreq-n input { width: 44px; height: 26px; padding: 2px 4px; font: 600 14px var(--testo); text-align: center; }
 
   .grafolayout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 10px; }
   #m-grafo-wrap { flex: 1 1 480px; min-width: 280px; overflow: auto; border: 1.5px solid #C9D0D7; border-radius: 8px; background: #fff; }
@@ -301,6 +303,7 @@
   .grafo-dot:hover { fill: var(--smalto); }
   #m-grafo-svg.linking .grafo-dot:hover { fill: var(--giallo); stroke: var(--giallo); }
   .edge-line { fill: none; stroke: #4A5A6A; stroke-width: 2; }
+  .edge-label { font: 700 13px var(--display); fill: #4A5A6A; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; pointer-events: none; }
   .edge-hit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; }
   .edge-preview { fill: none; stroke: var(--giallo); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
 
@@ -319,11 +322,20 @@
      resta alto una riga; il testo per intero si legge nella targa, che appare
      sceglendo la riga (diventa oggetto "attuale"). */
   .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .todo button .txtcol { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .todo button .txtcol .txt { width: 100%; }
+  .todo button .badge { flex: none; white-space: nowrap; }
+  .todo button .badge .istanza { margin-left: 0; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; align-self: center; }
   /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
      principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
      validi. Quadrato, tocco comodo, stessa altezza della riga. */
+  /* Id di un'istanza (es. "K7X"): sempre monospaziato, così I/1 e O/0 si distinguono;
+     il colore di sfondo è l'hash dell'id, per riconoscere "quella" istanza a colpo
+     d'occhio anche senza leggere. Vedi nuovaIstanza(). */
+  .istanza { display: inline-block; font: 700 13px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .12em; padding: 3px 6px 2px; border-radius: 5px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); vertical-align: middle; margin-left: 6px; }
+  .istanza-tua { font-size: 12px; opacity: .8; margin-left: 4px; }
   .todo-action { flex: none; width: 48px; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
@@ -382,7 +394,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 52)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 53)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -427,8 +439,8 @@
           </div>
 
           <div id="p-alldone" class="empty" hidden>
-            <h1 class="title">Hai trovato tutto</h1>
-            <p>Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+            <h1 class="title" id="p-alldone-titolo">Hai trovato tutto</h1>
+            <p id="p-alldone-testo">Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
           </div>
 
           <div id="p-clue-card" class="schermo-card" hidden>
@@ -1310,6 +1322,10 @@ function corpoNodoCampi(n, id, ids, notify) {
   const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
   const cbScambia = mkFlag("scambiabile", "Scambiabile (🔄 fra giocatori)");
   const cbDuplica = mkFlag("duplicabile", "Duplicabile (👥 fra giocatori)");
+  // Nodo a istanze (vedi nuovaIstanza): un sigillo diverso per ogni giocatore che lo
+  // produce, sempre condivisibile (duplicabile implicito) e mai scambiabile — una
+  // istanza che migra non aumenterebbe il conteggio di nessuno, solo confusione.
+  const cbIstanze = mkFlag("istanze", "A istanze (🎟️ un sigillo diverso per ogni giocatore, condivisibile)");
   cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
@@ -1321,7 +1337,7 @@ function corpoNodoCampi(n, id, ids, notify) {
     // reattiva dei prerequisiti, non un secondo scatto con la fotocamera — su un nodo
     // da validare basterebbe rifotografare l'oggetto reale per riprenderselo dopo
     // averlo ceduto (vedi memory.md). Riaccendere "Da validare" li spegne entrambi.
-    if (n.daValidare) { n.scambiabile = false; n.duplicabile = false; cbScambia.checked = false; cbDuplica.checked = false; aggiornaVisScambio(); }
+    if (n.daValidare) { n.scambiabile = false; n.duplicabile = false; n.istanze = false; cbScambia.checked = false; cbDuplica.checked = false; cbIstanze.checked = false; aggiornaVisScambio(); }
     salvaLocale(); notify();
   };
   cbPos.onchange = () => {
@@ -1330,11 +1346,19 @@ function corpoNodoCampi(n, id, ids, notify) {
     salvaLocale(); notify();
   };
   const aggiornaVisScambio = () => {
-    const labScambia = cbScambia.closest("label"), labDuplica = cbDuplica.closest("label");
-    labScambia.hidden = labDuplica.hidden = !!n.daValidare;
+    const labScambia = cbScambia.closest("label"), labDuplica = cbDuplica.closest("label"), labIstanze = cbIstanze.closest("label");
+    labScambia.hidden = labDuplica.hidden = labIstanze.hidden = !!n.daValidare;
+    // Con "A istanze" acceso: duplicabile è implicito (spuntato e bloccato), scambiabile sparisce.
+    if (n.istanze) { labScambia.hidden = true; cbDuplica.checked = true; cbDuplica.disabled = true; }
+    else cbDuplica.disabled = false;
   };
   cbScambia.onchange = () => { n.scambiabile = cbScambia.checked; salvaLocale(); notify(); };
   cbDuplica.onchange = () => { n.duplicabile = cbDuplica.checked; salvaLocale(); notify(); };
+  cbIstanze.onchange = () => {
+    n.istanze = cbIstanze.checked;
+    if (n.istanze) { n.duplicabile = true; n.scambiabile = false; cbScambia.checked = false; }
+    aggiornaVisScambio(); salvaLocale(); notify();
+  };
   aggiornaVisScambio();
   frag.append(flags);
 
@@ -1369,14 +1393,35 @@ function corpoNodoCampi(n, id, ids, notify) {
     const label = document.createElement("label");
     const cb = document.createElement("input"); cb.type = "checkbox";
     cb.checked = (n.richiede || []).includes(oid);
+    const txt = document.createElement("span"); txt.textContent = o.nome;
+    label.append(cb, txt);
+    // Prerequisito a istanze: "almeno N istanze diverse" (istanzeRichieste[oid], default
+    // 1). Il campo compare solo quando la spunta è accesa e l'altro nodo è a istanze.
+    let num = null;
+    if (o.istanze) {
+      const wrap = document.createElement("span"); wrap.className = "linkreq-n";
+      num = document.createElement("input"); num.type = "number"; num.min = "1"; num.max = "9"; num.inputMode = "numeric";
+      num.value = String(Math.max(1, ((n.istanzeRichieste || {})[oid] | 0) || 1));
+      num.title = "Quante istanze diverse servono";
+      num.onclick = ev => ev.stopPropagation();
+      num.onchange = () => {
+        const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
+        n.istanzeRichieste = n.istanzeRichieste || {};
+        if (v > 1) n.istanzeRichieste[oid] = v; else delete n.istanzeRichieste[oid];
+        if (!Object.keys(n.istanzeRichieste).length) delete n.istanzeRichieste;
+        salvaLocale(); notify();
+      };
+      wrap.append(document.createTextNode("almeno "), num, document.createTextNode(" 🎟️"));
+      wrap.hidden = !cb.checked;
+      label.append(wrap);
+    }
     cb.onchange = () => {
       n.richiede = n.richiede || [];
       if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
       else n.richiede = n.richiede.filter(x => x !== oid);
+      if (num) num.parentElement.hidden = !cb.checked;
       salvaLocale(); notify();
     };
-    const txt = document.createElement("span"); txt.textContent = o.nome;
-    label.append(cb, txt);
     req.append(label);
   }
   frag.append(req);
@@ -1540,6 +1585,12 @@ function disegnaGrafo() {
       const hit = document.createElementNS(SVGNS, "path"); hit.setAttribute("d", d); hit.setAttribute("class", "edge-hit");
       const vis = document.createElementNS(SVGNS, "path"); vis.setAttribute("d", d); vis.setAttribute("class", "edge-line"); vis.setAttribute("marker-end", "url(#grafo-arrow)");
       g.append(hit, vis);
+      // Prerequisito a istanze con "almeno N": etichetta ×N a metà freccia.
+      const quante = istanzeRichieste(L.nodi, L.nodi[id], rid);
+      if (quante > 1) {
+        const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", (x1 + x2) / 2); t.setAttribute("y", my); t.setAttribute("class", "edge-label"); t.textContent = "×" + quante;
+        g.append(t);
+      }
       g.onclick = (e) => {
         e.stopPropagation();
         if (!confirm(`Togliere il collegamento "${L.nodi[rid].nome}" → "${L.nodi[id].nome}"?`)) return;
@@ -1566,8 +1617,8 @@ function disegnaGrafo() {
     const info = document.createElement("div"); info.className = "grafonode-info";
     const nome = document.createElement("span"); nome.className = "grafonode-nome"; nome.textContent = n.nome;
     const icone = document.createElement("span"); icone.className = "grafonode-icone";
-    icone.textContent = n.daValidare ? ("📷" + (n.richiedePosizione ? " 📍" : "")) : "🎁";
-    icone.title = n.daValidare ? ("Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "")) : "Diventa posseduto da solo (regalo)";
+    icone.textContent = n.daValidare ? ("📷" + (n.richiedePosizione ? " 📍" : "")) : ("🎁" + (n.istanze ? " 🎟️" : ""));
+    icone.title = n.daValidare ? ("Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "")) : (n.istanze ? "Regalo a istanze: un sigillo diverso per ogni giocatore" : "Diventa posseduto da solo (regalo)");
     info.append(nome, icone);
     card.append(info);
     card.onclick = (e) => {
@@ -1894,6 +1945,35 @@ function loadGame(g) {
 // funzioni sotto, così le due non possono più disallinearsi come è successo una volta.
 const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
 
+/* ----- nodi "a istanze" (istanze: true) -----
+   Un regalo a istanze non è un oggetto solo: ogni telefono che ne soddisfa i prerequisiti
+   ne PRODUCE una istanza propria, con un id casuale (nuovaIstanza), una volta sola
+   (st.prodotti). Le istanze si condividono (sempre duplicabile, mai scambiabile): chi
+   riceve una copia la tiene accanto alla propria, e un nodo può richiedere "almeno N
+   istanze DIVERSE" di un altro (istanzeRichieste). È il modo di rendere obbligatorio
+   l'incontro fra giocatori senza identità né database: nessuno può produrre due
+   istanze, quindi la seconda deve arrivare da un altro telefono. Vedi memory.md. */
+const ISTANZA_LETTERE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", ISTANZA_CIFRE = "0123456789";
+const pesca = s => s[Math.floor(Math.random() * s.length)];
+// Lettera-cifra-lettera (26·10·26 = 6760 id): abbastanza per meno di 10 produttori
+// per nodo (~0,7% di collisione), corto per stare nel QR senza cambiarne versione.
+// Mostrato sempre in monospaziato (classe "istanza") per distinguere I/1/O/0.
+const nuovaIstanza = () => pesca(ISTANZA_LETTERE) + pesca(ISTANZA_CIFRE) + pesca(ISTANZA_LETTERE);
+
+// Quante istanze DIVERSE di ciascun nodo a istanze ha in mano questo giocatore.
+function conteggiIstanze(st) {
+  const c = {};
+  for (const r of st.bottino) if (r.istanza) (c[r.nodo] = c[r.nodo] || new Set()).add(r.istanza);
+  for (const k of Object.keys(c)) c[k] = c[k].size;
+  return c;
+}
+// Quante istanze di "r" richiede il nodo "n" (default 1; conta solo se r è a istanze).
+const istanzeRichieste = (nodi, n, r) => nodi[r] && nodi[r].istanze ? Math.max(1, ((n.istanzeRichieste || {})[r] | 0) || 1) : 1;
+// Tutti i "richiede" di n soddisfatti: posseduto, e per i nodi a istanze in numero
+// sufficiente. conteggi = conteggiIstanze(st).
+const prerequisitiSoddisfatti = (nodi, n, ok, conteggi = {}) =>
+  (n.richiede || []).every(r => !nodi[r] || (ok.has(r) && (conteggi[r] || 0) + (nodi[r].istanze ? 0 : 1) >= istanzeRichieste(nodi, n, r)));
+
 // Chiusura a punto fisso: un nodo con daValidare:true entra nell'insieme "posseduto"
 // solo dopo la validazione reale (foto/GPS), passata dal chiamante dentro "posseduti";
 // un nodo con daValidare:false vi entra da solo appena tutto ciò che richiede lo è già.
@@ -1901,7 +1981,8 @@ const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
 // Restano esclusi per sempre dalla chiusura automatica, anche se i loro prerequisiti
 // sono ancora soddisfatti — altrimenti la prossima volta che si trova QUALSIASI altro
 // oggetto, la ricompensa ceduta ricomparirebbe da sola, duplicandola.
-function chiudi(nodi, posseduti, ceduti = []) {
+// "conteggi": istanze possedute per nodo (vedi sopra), per i "richiede" a più istanze.
+function chiudi(nodi, posseduti, ceduti = [], conteggi = {}) {
   const ok = new Set(posseduti);
   const via = new Set(ceduti);
   let cambiato = true;
@@ -1909,26 +1990,72 @@ function chiudi(nodi, posseduti, ceduti = []) {
     cambiato = false;
     for (const [id, n] of Object.entries(nodi)) {
       if (ok.has(id) || n.daValidare || via.has(id)) continue;
-      if ((n.richiede || []).every(richiedeSoddisfatto(nodi, ok))) { ok.add(id); cambiato = true; }
+      if (prerequisitiSoddisfatti(nodi, n, ok, conteggi)) { ok.add(id); cambiato = true; }
     }
   }
   return ok;
+}
+
+function voceBottino(id, n, extra = {}) {
+  return { nome: n.nome, messaggio: n.messaggio, conThumb: n.conThumb, immagine: n.immagine, nodo: id, quando: new Date().toISOString(), ...extra };
 }
 
 // Chiude st.trovati e registra in st.bottino ciò che diventa posseduto per la prima
 // volta: un vero ritrovamento (id in "extra") o un "regalo" (daValidare:false, richiede
 // soddisfatto). "prima" resta il set grezzo di st.trovati, mai un chiudi() ricalcolato:
 // altrimenti un regalo a zero prerequisiti risulterebbe "già dentro" da subito e mai
-// "nuovo".
+// "nuovo". Ritorna i nodi da festeggiare (con "istanza" se ne hanno una).
+// I nodi a istanze hanno un giro in più: quando i prerequisiti sono soddisfatti, questo
+// telefono PRODUCE la propria istanza (una sola volta, st.prodotti) — anche se ne aveva
+// già ricevute da altri: chi prima riceve una copia e poi trova l'oggetto ha comunque
+// diritto alla sua. Una produzione può far scattare altre chiusure (un nodo che
+// richiede 2 istanze), quindi si ripete finché non si produce più nulla.
 function chiudiEAggiorna(st, extra = []) {
   const prima = new Set(st.trovati);
-  const dopo = chiudi(game.nodi, [...st.trovati, ...extra], st.ceduti);
-  const nuovi = [...dopo].filter(id => !prima.has(id)).map(id => ({ id, ...game.nodi[id] }));
+  const posseduti = [...st.trovati, ...extra];
+  const prodotte = [];
+  let dopo;
+  for (;;) {
+    const conteggi = conteggiIstanze(st);
+    dopo = chiudi(game.nodi, posseduti, st.ceduti, conteggi);
+    const daProdurre = Object.entries(game.nodi).filter(([id, n]) =>
+      n.istanze && !n.daValidare && !st.prodotti.includes(id) && prerequisitiSoddisfatti(game.nodi, n, dopo, conteggi));
+    if (!daProdurre.length) break;
+    for (const [id, n] of daProdurre) {
+      st.prodotti.push(id);
+      const voce = voceBottino(id, n, { istanza: nuovaIstanza(), prodotta: true });
+      st.bottino.push(voce);
+      prodotte.push({ id, ...n, istanza: voce.istanza, prodotta: true });
+      posseduti.push(id);
+    }
+  }
+  const nuovi = [...dopo].filter(id => !prima.has(id) && !prodotte.some(x => x.id === id)).map(id => ({ id, ...game.nodi[id] }));
   st.trovati = [...dopo];
   for (const n of nuovi) {
-    st.bottino.push({ nome: n.nome, messaggio: n.messaggio, conThumb: n.conThumb, immagine: n.immagine, nodo: n.id, quando: new Date().toISOString() });
+    // Un'istanza RICEVUTA è già stata messa nel bottino da chi chiama (scambioRiuscito,
+    // che conosce l'id dell'istanza): qui non va duplicata.
+    if (n.istanze && st.bottino.some(r => r.nodo === n.id)) { n.istanza = (st.bottino.find(r => r.nodo === n.id) || {}).istanza; continue; }
+    st.bottino.push(voceBottino(n.id, n));
   }
-  return nuovi;
+  return [...nuovi, ...prodotte];
+}
+
+// Regali che restano chiusi SOLO per mancanza di istanze (tutti gli altri prerequisiti
+// sono posseduti): l'unico caso in cui "non c'è più nulla da fotografare" non vuol dire
+// "hai finito" — serve un altro giocatore. Per il messaggio di fine caccia.
+function mancanoIstanze(st) {
+  const conteggi = conteggiIstanze(st);
+  const ok = chiudi(game.nodi, st.trovati, st.ceduti, conteggi);
+  const manca = {};
+  for (const [id, n] of Object.entries(game.nodi)) {
+    if (ok.has(id) || n.daValidare || st.ceduti.includes(id)) continue;
+    if (!(n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok))) continue;
+    for (const r of n.richiede || []) {
+      const mancanti = istanzeRichieste(game.nodi, n, r) - (conteggi[r] || 0);
+      if (game.nodi[r] && game.nodi[r].istanze && mancanti > 0) manca[r] = Math.max(manca[r] || 0, mancanti);
+    }
+  }
+  return Object.entries(manca).map(([id, quante]) => ({ id, nome: game.nodi[id].nome, quante }));
 }
 
 // Festeggia eventuali regali scoperti senza una foto vera (avvio, copia in cache,
@@ -1966,7 +2093,8 @@ function stato() {
     bottino: s.bottino || [],
     visti: s.visti || [],
     scelta: s.scelta || null,
-    ceduti: s.ceduti || []
+    ceduti: s.ceduti || [],
+    prodotti: s.prodotti || []
   };
 }
 const saveState = st => store.set(stateKey(), st);
@@ -1977,13 +2105,15 @@ const freshState = g => {
     bottino: [],
     visti: Object.entries(nodi).filter(([, n]) => n.daValidare).map(([id]) => id),
     scelta: null,
-    ceduti: []
+    ceduti: [],
+    prodotti: []
   };
 };
 function daTrovare(st) {
-  const ok = chiudi(game.nodi, st.trovati, st.ceduti);
+  const conteggi = conteggiIstanze(st);
+  const ok = chiudi(game.nodi, st.trovati, st.ceduti, conteggi);
   return Object.entries(game.nodi)
-    .filter(([id, n]) => n.daValidare && !ok.has(id) && (n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok)))
+    .filter(([id, n]) => n.daValidare && !ok.has(id) && prerequisitiSoddisfatti(game.nodi, n, ok, conteggi))
     .map(([id, n]) => ({ id, ...n }));
 }
 
@@ -1995,7 +2125,7 @@ function cedi(st, id) {
   st.trovati = st.trovati.filter(x => x !== id);
   st.bottino = st.bottino.filter(r => r.nodo !== id);
   if (!st.ceduti.includes(id)) st.ceduti.push(id);
-  if (memoriaScelta === id) memoriaScelta = null;
+  if (memoriaScelta === id) memoriaScelta = null; // nodi normali: chiaveVoce == id
   saveState(st);
 }
 const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
@@ -2088,6 +2218,19 @@ function medaglia(el, n) {
   if (n.immagine) { const img = document.createElement("img"); img.src = n.immagine; el.append(img); }
   else el.style.background = coloreNodo(n.nome);
 }
+// Etichetta "K7X" di un'istanza (monospaziato + colore dall'hash, vedi CSS .istanza),
+// più "★ tua" se l'ha prodotta questo telefono. null se la voce non è un'istanza.
+function badgeIstanza(r) {
+  if (!r.istanza) return null;
+  const frag = document.createDocumentFragment();
+  const b = document.createElement("span"); b.className = "istanza"; b.textContent = r.istanza; b.style.background = coloreNodo(r.istanza);
+  frag.append(b);
+  if (r.prodotta) { const t = document.createElement("span"); t.className = "istanza-tua"; t.textContent = "★ tua"; frag.append(t); }
+  return frag;
+}
+// Una voce del bottino si identifica per nodo e, se c'è, istanza: due istanze dello
+// stesso nodo sono due righe distinte in Memoria.
+const chiaveVoce = r => r.nodo + (r.istanza ? "#" + r.istanza : "");
 
 // Scheda "Memoria": stessa struttura di "Traccia" — uno schermo in cima con
 // l'oggetto trovato "attuale" (nome e messaggio di sblocco), sotto la lista di
@@ -2099,9 +2242,9 @@ function renderMemoria(st) {
   $("p-mem-card").hidden = vuoto;
   if (vuoto) return;
 
-  const scelto = st.bottino.find(r => r.nodo === memoriaScelta) || null;
+  const scelto = st.bottino.find(r => chiaveVoce(r) === memoriaScelta) || null;
   $("p-mem-nome").hidden = !scelto;
-  if (scelto) $("p-mem-nome").textContent = scelto.nome;
+  if (scelto) { $("p-mem-nome").textContent = scelto.nome; const b = badgeIstanza(scelto); if (b) $("p-mem-nome").append(b); }
   $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale… seleziona un oggetto in memoria!";
   const memImgs = $("p-mem-imgs");
   memImgs.innerHTML = "";
@@ -2126,13 +2269,14 @@ function renderMemoria(st) {
       azione.title = nodoDef.scambiabile ? "Scambia con un amico" : "Condividi con un amico";
       azione.onclick = ev => {
         ev.stopPropagation();
-        apriScambio({ ruolo: "cedente", tipo: nodoDef.scambiabile ? "scambio" : "duplica", nodo: r.nodo });
+        // Su un nodo a istanze si condivide QUESTA istanza (la riga), non il nodo.
+        apriScambio({ ruolo: "cedente", tipo: nodoDef.scambiabile ? "scambio" : "duplica", nodo: r.nodo, istanza: r.istanza || "" });
       };
     }
     rigaSelezionabile(list, {
-      prima: [thumb], testo: r.nome, dopo: azione,
-      attiva: memoriaScelta === r.nodo,
-      onClick: () => { memoriaScelta = r.nodo; renderMemoria(stato()); },
+      prima: [thumb], testo: r.nome, badge: badgeIstanza(r), dopo: azione,
+      attiva: memoriaScelta === chiaveVoce(r),
+      onClick: () => { memoriaScelta = chiaveVoce(r); renderMemoria(stato()); },
     });
   }
 }
@@ -2141,12 +2285,19 @@ function renderMemoria(st) {
 // testo (troncato a una riga via CSS), evidenziata se "attiva". Condivisa fra la
 // lista di "Traccia" (oggetti raggiungibili) e quella di "Memoria" (oggetti trovati):
 // stessa forma e stesso meccanismo di selezione, contenuto diverso.
-function rigaSelezionabile(list, { prima, testo, dopo, attiva, onClick }) {
+function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, onClick }) {
   const li = document.createElement("li");
   const b = document.createElement("button");
   for (const el of prima || []) b.append(el);
   const t = document.createElement("span"); t.className = "txt"; t.textContent = testo;
-  b.append(t);
+  // Il badge (es. l'id di un'istanza) sta FUORI da .txt, che tronca con i puntini, su
+  // una seconda riga sotto il nome: la riga è stretta (accanto c'è il bottone 👥) e
+  // l'id è ciò che distingue due righe con lo stesso nome, non può sparire.
+  if (badge) {
+    const col = document.createElement("span"); col.className = "txtcol";
+    const w = document.createElement("span"); w.className = "badge"; w.append(badge);
+    col.append(t, w); b.append(col);
+  } else b.append(t);
   if (attiva) b.setAttribute("aria-current", "true");
   b.onclick = onClick;
   li.append(b);
@@ -2215,6 +2366,13 @@ function renderPlayer() {
   if (!todo.length) {
     stopCamera();
     $("p-clue-card").hidden = true; $("p-alldone").hidden = false;
+    // Niente più da fotografare, ma non è detto che sia finita: un regalo può restare
+    // chiuso solo perché mancano istanze di un altro giocatore (vedi mancanoIstanze).
+    const manca = mancanoIstanze(st);
+    $("p-alldone-titolo").textContent = manca.length ? "Ti manca qualcosa" : "Hai trovato tutto";
+    $("p-alldone-testo").textContent = manca.length
+      ? "Non c'è altro da fotografare, ma per andare avanti ti serve: " + manca.map(m => `${m.nome} ×${m.quante}`).join(", ") + ". Te lo può passare un altro giocatore che ce l'ha (👥 nella sua Memoria)."
+      : "Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.";
     mostraSubTab(subTabAttivo); // idem: da "Hai trovato tutto" si deve poter ricominciare
     return;
   }
@@ -2248,6 +2406,7 @@ function showReward(nuovi, st) {
     medaglia(medal, n);
     const testo = document.createElement("div");
     const h3 = document.createElement("h3"); h3.textContent = n.nome;
+    const badge = badgeIstanza(n); if (badge) h3.append(badge);
     const p = document.createElement("p"); p.textContent = n.messaggio || "";
     testo.append(h3, p);
     item.append(medal, testo);
@@ -2331,8 +2490,10 @@ function nuovoSessionId() {
 function decodificaQr(testo) {
   if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
   const parti = testo.slice(QR_PREFISSO.length).split(":");
-  if (parti.length !== 6) return { errore: "illeggibile" };
-  const [codiceTipo, sessionId, nodo, seqTxt, ackTxt, mioId] = parti;
+  // 7 campi; il settimo (istanza, vedi nuovaIstanza) è vuoto per i nodi normali. Un QR a
+  // 6 campi arriva da una versione precedente dell'app: si accetta senza istanza.
+  if (parti.length !== 6 && parti.length !== 7) return { errore: "illeggibile" };
+  const [codiceTipo, sessionId, nodo, seqTxt, ackTxt, mioId, istanza = ""] = parti;
   const tipo = QR_TIPI_DA_CODICE[codiceTipo];
   // "tipo" sconosciuto: un codice che questa versione non traduce ancora, lascia la
   // porta aperta a futuri tipi di QR di gioco (vedi memory.md) invece di un errore
@@ -2341,7 +2502,7 @@ function decodificaQr(testo) {
   const seq = Number(seqTxt), ack = Number(ackTxt);
   if (!sessionId || !nodo || !mioId || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
   // fatto: il ricevente ha già scritto (codice tipo maiuscolo, vedi QR_TIPI_DA_CODICE).
-  return { tipo, sessionId, nodo, seq, ack, mioId, fatto: codiceTipo !== codiceTipo.toLowerCase() };
+  return { tipo, sessionId, nodo, seq, ack, mioId, istanza, fatto: codiceTipo !== codiceTipo.toLowerCase() };
 }
 
 // Ritaglio condiviso per leggere un QR da un elemento video (fotocamera posteriore in
@@ -2394,20 +2555,24 @@ function gestisciQrFoto(testo) {
   // La schermata verde di un ricevente, inquadrata da un terzo telefono: non è un
   // invito, è la conferma di uno scambio già concluso fra altri due.
   if (dati.fatto) { setStatus(status, "Questo scambio è già concluso.", "ko"); qrFotoUltimoStato = "errore"; return; }
-  if (stato().trovati.includes(dati.nodo)) { setStatus(status, "Hai già questo oggetto.", "ko"); qrFotoUltimoStato = "errore"; return; }
+  if (game.nodi[dati.nodo].istanze) {
+    // Nodo a istanze: se ne possono tenere tante, purché diverse.
+    if (!dati.istanza) { setStatus(status, "QR non supportato da questa versione del gioco. Aggiorna l'app.", "ko"); qrFotoUltimoStato = "errore"; return; }
+    if (stato().bottino.some(r => r.nodo === dati.nodo && r.istanza === dati.istanza)) { setStatus(status, `Hai già l'istanza ${dati.istanza} di questo oggetto.`, "ko"); qrFotoUltimoStato = "errore"; return; }
+  } else if (stato().trovati.includes(dati.nodo)) { setStatus(status, "Hai già questo oggetto.", "ko"); qrFotoUltimoStato = "errore"; return; }
   setStatus(status, ""); qrFotoUltimoStato = null;
-  apriScambio({ ruolo: "ricevente", tipo: dati.tipo, nodo: dati.nodo, sessionId: dati.sessionId });
+  apriScambio({ ruolo: "ricevente", tipo: dati.tipo, nodo: dati.nodo, sessionId: dati.sessionId, istanza: dati.istanza });
 }
 
 /* ----- interfaccia di scambio (fotocamera anteriore), condivisa fra cedente e ricevente ----- */
 let scambio = null; // sessione di scambio in corso, o null
 
-function apriScambio({ ruolo, tipo, nodo, sessionId }) {
+function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
   stopCamera();
   const nodoDef = game.nodi[nodo];
-  const nome = nodoDef ? nodoDef.nome : "questo oggetto";
+  const nome = (nodoDef ? nodoDef.nome : "questo oggetto") + (istanza ? " " + istanza : "");
   scambio = {
-    ruolo, tipo, nodo, sessionId: sessionId || nuovoSessionId(),
+    ruolo, tipo, nodo, istanza, sessionId: sessionId || nuovoSessionId(),
     // A differenza di sessionId (condiviso, uguale sui due telefoni), mioId è privato:
     // serve solo a riconoscere ed escludere un fotogramma che risultasse essere il
     // proprio invece che quello dell'altro (es. un riflesso sul vetro dell'altro
@@ -2506,7 +2671,7 @@ async function scambioTickCorpo() {
     // apriScambio(). sessionId/tipo/nodo da soli non basterebbero, sono identici
     // su entrambi i lati per costruzione.
     if (dati && !dati.errore && dati.sessionId === scambio.sessionId && dati.tipo === scambio.tipo
-        && dati.nodo === scambio.nodo && dati.mioId !== scambio.mioId) {
+        && dati.nodo === scambio.nodo && dati.istanza === scambio.istanza && dati.mioId !== scambio.mioId) {
       if (dati.fatto) {
         // La conferma finale: l'amico ha scritto. Solo il cedente può leggerla (il
         // ricevente non mostra mai un QR "fatto" prima di aver scritto lui stesso, e
@@ -2532,7 +2697,7 @@ async function scambioTickCorpo() {
   let codice = QR_TIPI_CODICE[scambio.tipo];
   if (scrivo) codice = codice.toUpperCase();
   const payload = QR_PREFISSO + [
-    codice, scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount, scambio.mioId
+    codice, scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount, scambio.mioId, scambio.istanza
   ].join(":");
   try {
     const QRCode = await getQrEncode();
@@ -2594,9 +2759,9 @@ function scambioDomanda() {
 function scambioRiuscito() {
   scambio.committed = true;
   clearInterval(scambio.timer);
-  const { ruolo, tipo, nodo } = scambio;
+  const { ruolo, tipo, nodo, istanza } = scambio;
   const nodoDef = game.nodi[nodo];
-  const nome = nodoDef ? nodoDef.nome : "l'oggetto";
+  const nome = (nodoDef ? nodoDef.nome : "l'oggetto") + (istanza ? " " + istanza : "");
   stopCamera();
   $("p-scambio-annulla").hidden = true;
   $("p-scambio-domanda").hidden = true;
@@ -2612,7 +2777,14 @@ function scambioRiuscito() {
     // prova che il cedente deve leggere — col suo telefono o coi suoi occhi — e non
     // ha scadenza. La festa di sblocco arriva dopo, alla chiusura.
     const st = stato();
+    // Un'istanza ricevuta entra nel bottino con l'id del mittente (prodotta: false):
+    // chiudiEAggiorna la vede già lì e non la duplica, ma la festeggia lo stesso.
+    if (istanza && nodoDef) st.bottino.push(voceBottino(nodo, nodoDef, { istanza, prodotta: false }));
     const nuovi = chiudiEAggiorna(st, [nodo]);
+    for (const n of nuovi) if (n.id === nodo && istanza) n.istanza = istanza;
+    // Una seconda istanza dello stesso nodo non è "nuova" per chiudiEAggiorna (il nodo
+    // era già posseduto), ma va festeggiata lo stesso: è lei l'evento.
+    if (istanza && nodoDef && !nuovi.some(n => n.id === nodo)) nuovi.unshift({ id: nodo, ...nodoDef, istanza });
     st.scelta = null; saveState(st);
     scambio.esito = { nuovi, st };
     $("p-scambio").classList.add("fatto");

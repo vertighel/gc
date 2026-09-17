@@ -1,4 +1,4 @@
-# Stato attuale (versione 52)
+# Stato attuale (versione 53)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -193,8 +193,10 @@ sempre (nessun database, vedi `memory.md`).
     mentre l'amico è già verde. Un terzo telefono che in "Foto" inquadra la schermata
     verde di un ricevente vede "Questo scambio è già concluso."
 
-  Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack:mioId`,
-  non JSON) è pensato apposta per restare piccolo: meno byte da codificare vuol dire
+  Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack:mioId:istanza`,
+  non JSON; l'ultimo campo è vuoto per i nodi normali, un QR a 6 campi di una versione
+  precedente si legge ancora) è pensato apposta per restare piccolo (44 byte nel caso
+  peggiore, versione QR 3): meno byte da codificare vuol dire
   moduli più grandi a parità di dimensione a schermo, più facili da mettere a fuoco e
   leggere al volo. L'anteprima della fotocamera anteriore (non il fotogramma vero letto
   da jsQR, solo quello che il giocatore vede) è specchiata via CSS, altrimenti allineare
@@ -209,6 +211,21 @@ sempre (nessun database, vedi `memory.md`).
   stesso meccanismo di un ritrovamento normale (`chiudiEAggiorna()`). Le due librerie
   di lettura/generazione QR (`jsqr`, `qrcode`) si caricano da CDN via `import()`
   dinamico solo aprendo questa interfaccia, stesso pattern lazy di MediaPipe.
+- **Regali "a istanze"** (`istanze: true`, solo su un regalo, implica `duplicabile`): ogni
+  telefono che ne soddisfa i prerequisiti **produce** la propria istanza — un id casuale
+  lettera-cifra-lettera (`K7X`), monospaziato e colorato dall'hash — una sola volta
+  (`stato.prodotti`, anche se aveva già ricevuto istanze di altri). Le istanze si
+  condividono con lo stesso scambio 👥 (settimo campo del QR); chi riceve rifiuta solo la
+  *stessa* istanza e può ricondividere quelle ricevute (copie di copie). In Memoria ogni
+  istanza è una riga (nome sopra, badge sotto, "★ tua" sulle proprie) col proprio 👥. Un
+  nodo può richiedere "almeno N istanze diverse" di un altro (`istanzeRichieste`, campo
+  numerico accanto alla spunta "Richiede" nel pannello master, etichetta `×N` sulla
+  freccia del Grafo, icona 🎟️ sulla scheda): è così che si rende **obbligatorio
+  l'incontro fra giocatori** senza database né identità — nessuno può produrre due
+  istanze, la seconda deve arrivare da un altro telefono. Se non c'è più nulla da
+  fotografare ma manca un'istanza, la fine caccia dice "Ti manca qualcosa … Sigillo ×1"
+  (`mancanoIstanze()`) invece di "Hai trovato tutto". Schema e regole in
+  `docs/MODELLO-DATI.md`, ragionamento in `memory.md`.
 - **Progressi separati per caccia**: bottino, stato e messaggi-visti sono
   namespaced per slug (`gioco:<slug>`, `stato:<slug>`) — la caccia di
   sempre resta sulle chiavi `gioco`/`stato` già in uso, nessuna migrazione
@@ -303,7 +320,9 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   giocatori, vedi sopra "Scambio/condivisione fra giocatori" — visibili solo
   quando "Da validare" è spenta: hanno senso solo su un regalo, mai su un
   nodo che si ottiene rifotografando un oggetto reale, altrimenti chi lo
-  cede potrebbe semplicemente rifotografarlo per riprenderselo) — poi due
+  cede potrebbe semplicemente rifotografarlo per riprenderselo), **A istanze**
+  (🎟️, vedi sopra "Regali a istanze": spunta e blocca "Duplicabile", nasconde
+  "Scambiabile") — poi due
   campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
   (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si

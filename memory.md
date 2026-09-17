@@ -115,6 +115,49 @@ che il giocatore trova qualunque altro oggetto, il regalo ceduto
 ricomparirebbe da solo (i suoi prerequisiti restano soddisfatti anche
 dopo averlo ceduto), duplicandolo silenziosamente.
 
+## Regali a istanze: interazione obbligatoria senza identità (2026-09-17)
+
+Il modello a nodi, da solo, non può **obbligare** due giocatori a
+incontrarsi: ogni nodo è ottenibile da un singolo (fotografando, o
+automaticamente dai prerequisiti), lo scambio è sempre una scorciatoia
+alternativa. La soluzione scelta è il **regalo a istanze** (`istanze:
+true`): ogni telefono che ne soddisfa i prerequisiti produce **una sola**
+istanza propria, con un id casuale — e un altro nodo può richiederne
+"almeno N *diverse*". Nessuno può produrne due, quindi la seconda deve
+arrivare da un altro telefono: l'obbligo nasce dall'unicità della
+produzione, non dal sapere chi è chi. Decisioni esplicite del committente,
+da non riaprire senza motivo:
+- **Istanza, non identità**: l'id distingue le *copie*, non le persone.
+  Nessuno sa di chi è `K7X`; il giocatore vede "★ tua" solo sulle proprie.
+  Il passo successivo — "questa copia è passata per n telefoni diversi" —
+  richiederebbe un token stabile per telefono, cioè un'identità anonima: va
+  deciso a parte, non introdotto di nascosto (vedi sezione sotto).
+- **Solo `duplicabile`, mai scambiabile**: un'istanza che migra non aumenta
+  il conteggio di nessuno, creerebbe solo confusione nel pannello.
+- **Copie di copie permesse** ("chiunque"): chi ha ricevuto un'istanza può
+  ricondividerla. "N istanze diverse" = "esistono N produttori", non "hai
+  incontrato N persone"; per obbligare a incontrare *proprio* il produttore
+  si usa la geografia o gli oggetti personali dei giocatori (v. sotto), non
+  una regola nel codice.
+- **Id a 3 caratteri lettera-cifra-lettera, alfabeto completo** (6760 id,
+  ≈0,7 % di collisione fra 10 produttori dello stesso nodo — una collisione
+  fa contare un'istanza in meno, mai di più), mostrato **sempre in
+  monospaziato** per distinguere I/1 e O/0. Se un giorno servirà più
+  margine: minuscole, o un quarto carattere (è l'ultimo byte disponibile
+  prima che il QR salga di versione, vedi `docs/STATO.md`).
+- **Reset ("Ricomincia la caccia") azzera `prodotti`** e permette di
+  riprodurre: stesso buco già accettato per `ceduti`, stesso gruppo di amici.
+
+Idee di trama emerse nella stessa discussione, non codice: la scarsità
+può venire dal **mondo fisico** invece che dal database — un oggetto che
+sparisce a una certa ora (saracinesca che si apre), o **oggetti personali
+dei giocatori** registrati dal master al ritrovo (il portachiavi di A
+produce il "sigillo di A": per averlo bisogna incontrare A). In entrambi i
+casi: `conThumb` spento sull'oggetto (altrimenti la sua foto è nell'indizio
+di tutti e si fotografa dallo schermo) e **mai rimuoverlo dal file** dopo
+(un `richiede` verso un id inesistente vale "nessun prerequisito" e
+regalerebbe il nodo a tutti).
+
 ## Perché nessuna identità dei giocatori, per ora
 
 Scelta esplicita del committente, non una dimenticanza. Stato di
