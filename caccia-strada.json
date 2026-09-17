@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T15:11:42.524Z",
+  "creato": "2026-09-17T15:36:29.318Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -283,13 +283,10 @@
         "lon": 11.8705011,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
-      "richiedePosizione": true,
-      "richiede": [
-        "nmu3p20fjxka",
-        "nmu3p0yasfqr"
-      ]
+      "richiedePosizione": false,
+      "richiede": []
     },
     "nmu3onj3x9wq": {
       "nome": "cassonetto-2",
