@@ -1,4 +1,4 @@
-# Stato attuale (versione 57)
+# Stato attuale (versione 58)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -344,7 +344,13 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   le scrive in modo esclusivo, e un file modificato a mano con più flag
   accese si legge con la precedenza istanze > scambiabile > duplicabile,
   la stessa usata dal bottone in Memoria. L'icona del modo compare accanto
-  a 🎁 sulla scheda del Grafo (`iconaNodo()`) — poi due
+  a 🎁 sulla scheda del Grafo (`iconaNodo()`). **Il markup della scheda vive in
+  HTML** (`<template id="tpl-nodo">`, una riga "Richiede" per nodo da
+  `tpl-richiede`): `creaSchedaNodo()` lo clona, riempie i valori e collega gli
+  eventi, ed è la stessa funzione usata dal riquadro laterale del Grafo. Le
+  regole di visibilità sono CSS: `data-validare` sulla radice nasconde la radio,
+  `:has()` mostra "almeno N" solo a spunta accesa su un prerequisito a istanze —
+  poi due
   campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
   (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si

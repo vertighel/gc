@@ -297,13 +297,20 @@
   .lightbox .current { margin: 0; max-width: min(92vw, 420px); cursor: auto; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   /* Stessa testata (foto, nome, flag) generata da un solo pezzo di JS
-     (costruisciTestata()) sia in "Collega gli elementi" (.linknode) sia nel
+     (creaSchedaNodo()) sia in "Collega gli elementi" (.linknode) sia nel
      riquadro laterale del grafo (.grafopanel): una sola definizione per entrambi. */
-  .linknode .head, .grafopanel .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-  .linknode .head .titlewrap, .grafopanel .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-  .linknode .head .titlewrap input, .grafopanel .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
-  .linknode .head .link, .grafopanel .head .link { color: var(--rosso); flex: none; }
-  .linknode label, .grafopanel label { margin-top: 10px; }
+  .scheda-nodo .head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .scheda-nodo .head .titlewrap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .scheda-nodo .head .titlewrap input { margin: 0; font: 600 17px/1.3 var(--testo); }
+  .scheda-nodo .head .link { color: var(--rosso); flex: none; }
+  .scheda-nodo label { margin-top: 10px; }
+  .scheda-nodo .richiede-cap { margin: 8px 0 4px; }
+  /* Il modo del regalo ha senso solo se non è da validare (vedi tpl-nodo). */
+  .scheda-nodo[data-validare="si"] .modi { display: none; }
+  /* "almeno N" solo per un prerequisito a istanze con la spunta accesa; "Nessun altro
+     elemento" solo se non c'è nessuna riga. */
+  .linkreq label:not(.istanze) .linkreq-n, .linkreq label:not(:has([name="richiede"]:checked)) .linkreq-n { display: none; }
+  .linkreq:has(label) .none { display: none; }
   .flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
   .flags label.check { margin-top: 0; }
   .modi { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -422,7 +429,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 57)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 58)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -720,12 +727,46 @@
       <p id="m-grafo-cycle" class="status ko" hidden></p>
       <div class="grafolayout">
         <div id="m-grafo-wrap"><svg id="m-grafo-svg"></svg></div>
-        <aside id="m-grafo-panel" class="grafopanel" hidden></aside>
+        <aside id="m-grafo-panel" class="grafopanel" hidden>
+          <div id="m-grafo-panel-scheda"></div>
+          <button id="m-grafo-panel-chiudi" class="btn" type="button">Chiudi</button>
+        </aside>
       </div>
     </div>
   </section>
 </main>
 
+<!-- Scheda di un nodo nel pannello master ("Collega gli elementi" e riquadro del Grafo):
+     il markup vive qui, il JS (creaSchedaNodo) lo clona, riempie i valori e collega gli
+     eventi. data-validare="si|no" sulla radice decide via CSS se la radio del modo del
+     regalo si vede; una riga "Richiede" per ogni altro nodo (tpl-richiede), col campo
+     "almeno N" mostrato dal CSS solo se la spunta è accesa e l'altro nodo è a istanze. -->
+<template id="tpl-nodo">
+  <div class="scheda-nodo">
+    <div class="head">
+      <div class="titlewrap"><span class="thumb"></span><input type="text" name="nome"></div>
+      <button class="link" name="rimuovi" type="button">Rimuovi</button>
+    </div>
+    <div class="flags">
+      <label class="check"><input type="checkbox" name="conThumb"> Thumb</label>
+      <label class="check"><input type="checkbox" name="daValidare"> Validare</label>
+      <label class="check"><input type="checkbox" name="richiedePosizione"> Posizione</label>
+    </div>
+    <div class="modi">
+      <label class="check modo"><input type="radio" name="modo" value="libero"> 🎁 Libero (resta a chi lo trova)</label>
+      <label class="check modo"><input type="radio" name="modo" value="scambiabile"> 🔄 Scambiabile (passa a un amico, tu lo perdi)</label>
+      <label class="check modo"><input type="radio" name="modo" value="duplicabile"> 👥 Duplicabile (una copia a un amico, tu lo tieni)</label>
+      <label class="check modo"><input type="radio" name="modo" value="istanze"> 🎟️ Duplicabile a istanze (un sigillo diverso per ogni giocatore)</label>
+    </div>
+    <label>Indizio (aiuta a trovare e riconoscere questo elemento, prima di possederlo)<textarea name="testo"></textarea></label>
+    <label>Messaggio (si vede quando lo trovi, e resta nel bottino)<textarea name="messaggio"></textarea></label>
+    <p class="hint richiede-cap">Richiede:</p>
+    <div class="linkreq"><span class="none">Nessun altro elemento.</span></div>
+  </div>
+</template>
+<template id="tpl-richiede">
+  <label><input type="checkbox" name="richiede"><span class="nome"></span><span class="linkreq-n">almeno <input type="number" name="almeno" min="1" max="9" inputmode="numeric" title="Quante istanze diverse servono"> 🎟️</span></label>
+</template>
 <script type="module">
 const MP    = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
 const WASM  = MP + "/wasm";
@@ -1327,32 +1368,6 @@ function renderLinkList() {
   for (const id of ids) wrap.append(schedaNodo(id, ids));
 }
 
-// Intestazione e corpo di una scheda-nodo, condivisi con il riquadro laterale del
-// grafo (vedi disegnaGrafo()): una sola definizione delle regole (es. "richiede
-// posizione" ⇒ "da validare"). notify() gira dopo ogni modifica che deve riflettersi
-// altrove (nome, flag, richiede — true se il nodo è stato rimosso), mai per
-// testo/messaggio, che non toccano il grafo.
-function costruisciTestata(n, id, ids, notify) {
-  const head = document.createElement("div"); head.className = "head";
-  const titlewrap = document.createElement("div"); titlewrap.className = "titlewrap";
-  const nome = document.createElement("input"); nome.type = "text"; nome.value = n.nome || "";
-  nome.oninput = () => { n.nome = nome.value; };
-  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; salvaLocale(); renderPanelList(); renderLinkList(); notify(); };
-  titlewrap.append(thumbEl(n.immagine), nome);
-  const del = document.createElement("button"); del.className = "link"; del.textContent = "Rimuovi";
-  del.onclick = () => {
-    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
-    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
-    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
-    delete L.nodi[id];
-    salvaLocale();
-    renderPanelList(); aggiornaContatorePanel(); renderLinkList();
-    notify(true);
-  };
-  head.append(titlewrap, del);
-  return head;
-}
-
 // Un regalo (daValidare: false) è in UNO solo di questi modi — le flag nel file restano
 // tre booleani separati (scambiabile/duplicabile/istanze, vedi docs/MODELLO-DATI.md)
 // ma non hanno senso insieme: la UI le presenta come una scelta sola. Ordine di
@@ -1383,130 +1398,96 @@ function iconaNodo(n) {
   return { icona: m.modo === "libero" ? "🎁" : "🎁 " + m.icona, titolo: "Regalo: " + m.testo };
 }
 
-function corpoNodoCampi(n, id, ids, notify) {
-  const frag = document.createDocumentFragment();
+// La scheda di un nodo, condivisa fra "Collega gli elementi" e il riquadro laterale
+// del grafo (vedi apriPannelloGrafo()): il markup è nel <template id="tpl-nodo">, qui si
+// riempiono i valori e si collegano gli eventi — una sola definizione delle regole
+// (es. "richiede posizione" ⇒ "da validare"). notify() gira dopo ogni modifica che deve
+// riflettersi altrove (nome, flag, richiede — true se il nodo è stato rimosso), mai per
+// testo/messaggio, che non toccano il grafo.
+function creaSchedaNodo(n, id, ids, notify) {
+  const el = $("tpl-nodo").content.firstElementChild.cloneNode(true);
+  const campo = nome => el.querySelector(`[name="${nome}"]`);
 
-  const flags = document.createElement("div"); flags.className = "flags";
-  const mkFlag = (campo, testo) => {
-    const lab = document.createElement("label"); lab.className = "check";
-    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!n[campo];
-    lab.append(cb, document.createTextNode(" " + testo));
-    flags.append(lab);
-    return cb;
+  // Testata: foto, nome, "Rimuovi".
+  el.querySelector(".thumb").replaceWith(thumbEl(n.immagine));
+  const nome = campo("nome"); nome.value = n.nome || "";
+  nome.oninput = () => { n.nome = nome.value; };
+  nome.onchange = () => { n.nome = nome.value.trim() || n.nome; salvaLocale(); renderPanelList(); renderLinkList(); notify(); };
+  campo("rimuovi").onclick = () => {
+    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
+    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
+    delete L.nodi[id];
+    salvaLocale();
+    renderPanelList(); aggiornaContatorePanel(); renderLinkList();
+    notify(true);
   };
-  const cbThumb = mkFlag("conThumb", "Thumb");
-  const cbValida = mkFlag("daValidare", "Validare");
-  const cbPos = mkFlag("richiedePosizione", "Posizione");
+
+  // Flag e modo del regalo (radio, vedi MODI_REGALO). La radio si vede solo con
+  // "Validare" spento (data-validare, via CSS): su un nodo che si ottiene rifotografando
+  // un oggetto reale, chi lo cede potrebbe rifotografarlo per riprenderselo (vedi
+  // memory.md) — riaccendere "Validare" riporta il modo a "libero".
+  const cbThumb = campo("conThumb"), cbValida = campo("daValidare"), cbPos = campo("richiedePosizione");
+  cbThumb.checked = !!n.conThumb; cbValida.checked = !!n.daValidare; cbPos.checked = !!n.richiedePosizione;
+  const radios = [...el.querySelectorAll('[name="modo"]')];
+  const gruppo = "modo-" + id + "-" + Math.random().toString(36).slice(2, 6); // due schede dello stesso nodo (Collega + Grafo) non devono condividere il gruppo
+  const aggiornaModo = () => { el.dataset.validare = n.daValidare ? "si" : "no"; const cur = modoRegalo(n); for (const r of radios) r.checked = r.value === cur; };
+  for (const r of radios) { r.name = gruppo; r.onchange = () => { if (r.checked) { impostaModoRegalo(n, r.value); salvaLocale(); notify(); } }; }
   cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
-  // Modo del regalo: una radio sola al posto di tre spunte (vedi MODI_REGALO). Visibile
-  // solo con "Da validare" spento: su un nodo che si ottiene rifotografando un oggetto
-  // reale, chi lo cede potrebbe rifotografarlo per riprenderselo (vedi memory.md).
-  const modi = document.createElement("div"); modi.className = "modi";
-  const radioNome = "modo-" + id + "-" + Math.random().toString(36).slice(2, 6); // due schede dello stesso nodo (Collega + Grafo) non devono condividere il gruppo
-  const radios = [];
-  for (const m of MODI_REGALO) {
-    const lab = document.createElement("label"); lab.className = "check modo";
-    const r = document.createElement("input"); r.type = "radio"; r.name = radioNome; r.value = m.modo;
-    r.onchange = () => { if (r.checked) { impostaModoRegalo(n, m.modo); salvaLocale(); notify(); } };
-    lab.append(r, document.createTextNode(" " + m.icona + " " + m.testo));
-    modi.append(lab); radios.push(r);
-  }
-  const aggiornaModo = () => { const cur = modoRegalo(n); for (const r of radios) r.checked = r.value === cur; };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
   cbValida.onchange = () => {
     if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
     n.daValidare = cbValida.checked;
-    // Scambiabile/duplicabile esistono solo per i "regali" (daValidare:false): la loro
-    // logica di sicurezza (il flag "ceduti", vedi cedi()) protegge solo la strada
-    // reattiva dei prerequisiti, non un secondo scatto con la fotocamera — su un nodo
-    // da validare basterebbe rifotografare l'oggetto reale per riprenderselo dopo
-    // averlo ceduto (vedi memory.md). Riaccendere "Da validare" li spegne entrambi.
     if (n.daValidare) impostaModoRegalo(n, "libero");
-    aggiornaVisScambio();
-    salvaLocale(); notify();
+    aggiornaModo(); salvaLocale(); notify();
   };
   cbPos.onchange = () => {
     n.richiedePosizione = cbPos.checked;
-    if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
+    if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; aggiornaModo(); }
     salvaLocale(); notify();
   };
-  const aggiornaVisScambio = () => { modi.hidden = !!n.daValidare; aggiornaModo(); };
-  aggiornaVisScambio();
-  frag.append(flags, modi);
+  aggiornaModo();
 
-  // Due campi, due momenti dello stesso nodo, entrambi auto-riferiti (mai su
-  // un prerequisito né su un dipendente): "testo" è l'indizio PRIMA del
-  // possesso (mostrato in "Da trovare" mentre lo si cerca, vedi
-  // etichettaOggetto()); "messaggio" è cosa succede DOPO (schermata di
-  // sblocco una volta, poi sempre rivedibile toccando l'oggetto nel bottino).
-  const labelTesto = document.createElement("label"); labelTesto.textContent = "Indizio (aiuta a trovare e riconoscere questo elemento, prima di possederlo)";
-  const testo = document.createElement("textarea"); testo.value = n.testo || "";
-  testo.oninput = () => { n.testo = testo.value; salvaLocale(); };
-  labelTesto.append(testo);
-  frag.append(labelTesto);
+  // Due campi, due momenti dello stesso nodo, entrambi auto-riferiti (mai su un
+  // prerequisito né su un dipendente): "testo" è l'indizio PRIMA del possesso,
+  // "messaggio" è cosa succede DOPO (schermata di sblocco, poi bottino).
+  for (const k of ["testo", "messaggio"]) { const t = campo(k); t.value = n[k] || ""; t.oninput = () => { n[k] = t.value; salvaLocale(); }; }
 
-  const labelMsg = document.createElement("label"); labelMsg.textContent = "Messaggio (si vede quando lo trovi, e resta nel bottino)";
-  const messaggio = document.createElement("textarea"); messaggio.value = n.messaggio || "";
-  messaggio.oninput = () => { n.messaggio = messaggio.value; salvaLocale(); };
-  labelMsg.append(messaggio);
-  frag.append(labelMsg);
-
-  const cap = document.createElement("p"); cap.className = "hint"; cap.style.margin = "8px 0 4px"; cap.textContent = "Richiede:";
-  frag.append(cap);
-
-  const req = document.createElement("div"); req.className = "linkreq";
-  const altri = ids.filter(x => x !== id);
-  if (!altri.length) {
-    const none = document.createElement("span"); none.className = "none"; none.textContent = "Nessun altro elemento.";
-    req.append(none);
-  }
-  for (const oid of altri) {
+  // "Richiede": una riga per ogni altro nodo (tpl-richiede). Per un prerequisito a
+  // istanze, "almeno N istanze diverse" (istanzeRichieste[oid], default 1) — il campo lo
+  // mostra il CSS solo a spunta accesa.
+  const req = el.querySelector(".linkreq");
+  for (const oid of ids.filter(x => x !== id)) {
     const o = L.nodi[oid];
-    const label = document.createElement("label");
-    const cb = document.createElement("input"); cb.type = "checkbox";
+    const riga = $("tpl-richiede").content.firstElementChild.cloneNode(true);
+    riga.classList.toggle("istanze", !!o.istanze);
+    riga.querySelector(".nome").textContent = o.nome;
+    const cb = riga.querySelector('[name="richiede"]'), num = riga.querySelector('[name="almeno"]');
     cb.checked = (n.richiede || []).includes(oid);
-    const txt = document.createElement("span"); txt.textContent = o.nome;
-    label.append(cb, txt);
-    // Prerequisito a istanze: "almeno N istanze diverse" (istanzeRichieste[oid], default
-    // 1). Il campo compare solo quando la spunta è accesa e l'altro nodo è a istanze.
-    let num = null;
-    if (o.istanze) {
-      const wrap = document.createElement("span"); wrap.className = "linkreq-n";
-      num = document.createElement("input"); num.type = "number"; num.min = "1"; num.max = "9"; num.inputMode = "numeric";
-      num.value = String(Math.max(1, ((n.istanzeRichieste || {})[oid] | 0) || 1));
-      num.title = "Quante istanze diverse servono";
-      num.onclick = ev => ev.stopPropagation();
-      num.onchange = () => {
-        const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
-        n.istanzeRichieste = n.istanzeRichieste || {};
-        if (v > 1) n.istanzeRichieste[oid] = v; else delete n.istanzeRichieste[oid];
-        if (!Object.keys(n.istanzeRichieste).length) delete n.istanzeRichieste;
-        salvaLocale(); notify();
-      };
-      wrap.append(document.createTextNode("almeno "), num, document.createTextNode(" 🎟️"));
-      wrap.hidden = !cb.checked;
-      label.append(wrap);
-    }
     cb.onchange = () => {
       n.richiede = n.richiede || [];
       if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
       else n.richiede = n.richiede.filter(x => x !== oid);
-      if (num) num.parentElement.hidden = !cb.checked;
       salvaLocale(); notify();
     };
-    req.append(label);
+    num.value = String(istanzeRichieste(L.nodi, n, oid));
+    num.onclick = ev => ev.stopPropagation();
+    num.onchange = () => {
+      const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
+      n.istanzeRichieste = n.istanzeRichieste || {};
+      if (v > 1) n.istanzeRichieste[oid] = v; else delete n.istanzeRichieste[oid];
+      if (!Object.keys(n.istanzeRichieste).length) delete n.istanzeRichieste;
+      salvaLocale(); notify();
+    };
+    req.append(riga);
   }
-  frag.append(req);
-  return frag;
+  return el;
 }
 
 function schedaNodo(id, ids) {
-  const n = L.nodi[id];
-  const card = document.createElement("div"); card.className = "linknode";
-  const noop = () => {};
-  card.append(costruisciTestata(n, id, ids, noop));
-  card.append(corpoNodoCampi(n, id, ids, noop));
+  const card = creaSchedaNodo(L.nodi[id], id, ids, () => {});
+  card.classList.add("linknode"); // il bordo della scheda in "Collega gli elementi"
   return card;
 }
 
@@ -1543,8 +1524,8 @@ function wireGhConfigPanel() {
    prima colonna, ogni altro nodo sta una colonna dopo il più profondo dei suoi
    prerequisiti. Cliccare il pallino di un nodo e poi quello di un altro crea
    "il secondo richiede il primo"; cliccare il corpo di un nodo apre il riquadro
-   laterale con gli stessi campi di schedaNodo() (vedi costruisciTestata/
-   corpoNodoCampi sopra). Cliccare una freccia la rimuove, con conferma. ---------- */
+   laterale con gli stessi campi di schedaNodo() (vedi creaSchedaNodo
+   sopra). Cliccare una freccia la rimuove, con conferma. ---------- */
 // Verticale apposta: una "trama" lunga cresce in altezza (si scrolla in giù),
 // non in larghezza fuori schermo. GLIV_GAP separa un livello di dipendenza dal
 // successivo (asse Y); GFRA_GAP separa i nodi affiancati dello stesso livello
@@ -1731,31 +1712,26 @@ function apriPannelloGrafo(id) {
   grafoPanelId = id;
   const n = L.nodi[id];
   const ids = Object.keys(L.nodi);
-  const panel = $("m-grafo-panel");
-  panel.innerHTML = "";
-  panel.hidden = false;
+  $("m-grafo-panel").hidden = false;
   const notify = (removed) => {
     if (removed) { chiudiPannelloGrafo(); return; }
     disegnaGrafo();
     if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
   };
-  panel.append(costruisciTestata(n, id, ids, notify));
-  panel.append(corpoNodoCampi(n, id, ids, notify));
-  const chiudi = document.createElement("button"); chiudi.className = "btn"; chiudi.textContent = "Chiudi";
-  chiudi.onclick = chiudiPannelloGrafo;
-  panel.append(chiudi);
+  $("m-grafo-panel-scheda").replaceChildren(creaSchedaNodo(n, id, ids, notify));
 }
 
 function chiudiPannelloGrafo() {
   grafoPanelId = null;
-  const panel = $("m-grafo-panel");
-  if (panel) { panel.hidden = true; panel.innerHTML = ""; }
+  $("m-grafo-panel").hidden = true;
+  $("m-grafo-panel-scheda").replaceChildren();
 }
 
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
   $("m-base-retry").onclick = () => caricaCopiaLavoro(L.slug);
+  $("m-grafo-panel-chiudi").onclick = chiudiPannelloGrafo;
 
   wireGhConfigPanel();
   ghConfigStatus();
@@ -2467,7 +2443,7 @@ function showReward(nuovi, st) {
 
 /* ---------- scambio fra giocatori (QR, telefono-a-telefono, niente server) ----------
    Un nodo "scambiabile" o "duplicabile" (solo fra i "regali" daValidare:false, vedi
-   corpoNodoCampi) può passare da un telefono all'altro leggendosi reciprocamente un QR
+   creaSchedaNodo) può passare da un telefono all'altro leggendosi reciprocamente un QR
    con la fotocamera anteriore per qualche secondo, finché entrambi i telefoni non si
    sono scambiati abbastanza fotogrammi crescenti da potersi fidare che la connessione
    è vera e in corso ora (non una foto vecchia o un QR stampato su un muro) — vedi
