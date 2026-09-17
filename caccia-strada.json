@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T14:53:11.354Z",
+  "creato": "2026-09-17T15:11:42.524Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -1145,7 +1145,8 @@
       "richiede": [
         "nmu3pa4lvcb1",
         "nmu3pal7lti4"
-      ]
+      ],
+      "duplicabile": true
     },
     "nmu3p7ssyz5n": {
       "nome": "specola",
@@ -1428,7 +1429,8 @@
       "richiede": [
         "nmu3p7ssyz5n"
       ],
-      "scambiabile": true
+      "scambiabile": true,
+      "duplicabile": true
     },
     "nmu3pa4lvcb1": {
       "nome": "ammesso-1",
@@ -1852,7 +1854,9 @@
       "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
-      "richiede": []
+      "richiede": [],
+      "scambiabile": false,
+      "duplicabile": true
     }
   }
 }
