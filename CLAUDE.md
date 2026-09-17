@@ -91,9 +91,21 @@ Il pattern che abbiamo usato finora, e che conviene continuare a usare:
    (`M.pos`, `M.cal`) invece di passare da `getUserMedia`.
 
 Questo pattern è già stato usato per verificare ogni funzionalità aggiunta
-finora (vedi la cronologia dei commit). Non esiste ancora un file di test
-automatico salvato nel repository: se ne crei uno, mettilo in `tests/` e
-documentalo qui.
+finora (vedi la cronologia dei commit). Se aggiungi un test automatico,
+mettilo in `tests/` e documentalo qui.
+
+Test salvati nel repository:
+
+- `tests/scambio.test.mjs` — il protocollo di scambio QR fra due telefoni
+  (cedente/ricevente) a tavolino: due pagine Playwright, lettura e
+  generazione del QR sostituite da stub, giri del ciclo pilotati uno alla
+  volta. Verifica l'asimmetria (il ricevente scrive per primo), la domanda
+  manuale del cedente e i suoi tempi, "Annulla", "duplica", i timeout.
+  Autonomo: copia `index.html` in una cartella temporanea e **solo lì**
+  inietta un `window.__debug` (mai nel file vero), serve tutto con
+  `python3 -m http.server`. Si lancia con `node tests/scambio.test.mjs` da
+  una cartella dove `playwright` (con chromium) è installato. **Non** prova
+  la convergenza ottica reale: quella si vede solo con due telefoni veri.
 
 ## Pubblicazione
 

@@ -1,4 +1,4 @@
-# Stato attuale (versione 51)
+# Stato attuale (versione 52)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -133,8 +133,11 @@ sempre (nessun database, vedi `memory.md`).
   suo `messaggio` (funzione `apriRicordo()`), la stessa scheda vista alla
   schermata di sblocco — utile per rileggerlo con calma, non più un
   contenuto usa-e-getta.
-- **Scambio/condivisione fra giocatori, telefono-a-telefono, senza server**: un nodo
-  "regalo" (`daValidare: false`) può avere le flag `scambiabile` e/o `duplicabile`
+- **Scambio/condivisione fra giocatori, telefono-a-telefono, senza server** — ⚠️
+  **protocollo corretto e testato a tavolino (`tests/scambio.test.mjs`), ma la
+  convergenza ottica reale va ancora riprovata con due telefoni** dopo la riscrittura
+  asimmetrica della versione 52 (vedi `docs/ROADMAP.md` punto 3). Un nodo "regalo"
+  (`daValidare: false`) può avere le flag `scambiabile` e/o `duplicabile`
   (impostabili solo su un regalo, vedi sotto "Collega gli elementi" — non hanno senso
   su un nodo che si trova rifotografando un oggetto reale). In "Memoria", un regalo
   posseduto con una di queste flag mostra un bottone accanto — 🔄 (scambia, il cedente
@@ -152,29 +155,45 @@ sempre (nessun database, vedi `memory.md`).
   il proprio QR sopra e l'anteprima sotto (ricalca il gesto appena fatto con la
   posteriore); il cedente il contrario, perché parte da fermo dalla scheda Memoria.
   I due telefoni si scambiano un `sessionId` casuale (condiviso, isola sessioni
-  vicine distinte), un `mioId` privato (**non** condiviso — serve solo a scartare un
-  fotogramma che risultasse il proprio invece che quello dell'altro, es. un riflesso
-  sul vetro dell'altro schermo: fisicamente già improbabile con due fotocamere
-  anteriori affacciate nella stessa direzione, ma il protocollo non si fida solo
-  della fisica) e due contatori (`seq` crescente, `ack` = quante letture valide
-  ciascuno ha fatto dell'altro). **Dentro un giro si legge sempre prima l'altro e
-  si aggiorna il proprio conteggio, solo dopo si disegna il proprio QR** — mai il
-  contrario: altrimenti nel giro che fa scattare la soglia il QR rimasto a schermo
-  (l'intervallo si ferma subito dopo) mostrerebbe il valore di un fotogramma prima,
-  bloccando l'altro telefono per sempre un numero sotto la soglia — capitato davvero
-  in prova. Solo quando **entrambi** hanno letto
-  almeno `QR_K` (5) fotogrammi crescenti e validi dell'altro, ciascuno scrive il
-  proprio stato finale — mai prima. Se l'interazione si interrompe prima, nessuno dei
-  due ha scritto nulla (si vede "Scambio non riuscito", pulsante "Riprova"). Questo è
-  deliberatamente **non** una soluzione perfetta al problema dei "Due Generali" (vedi
-  `memory.md`): è la mitigazione migliore possibile senza un arbitro esterno, con un
-  rischio residuo minimo e sempre visibile a entrambi in tempo reale. Dopo il proprio
-  commit, sia cedente sia ricevente restano ancora `QR_GRAZIA_MS` (3s) sullo schermo
-  di scambio con il proprio QR acceso, prima di proseguire (verso "Torna a Memoria" o
-  verso la festa di sblocco): dà all'altro telefono, che potrebbe essere anche solo un
-  fotogramma indietro, la possibilità di leggere l'ultima conferma prima che qualcuno
-  stacchi i telefoni pensando sia già tutto finito — capitato davvero durante le prove
-  sul campo. Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack`,
+  vicine distinte; le sue prime 4 lettere sono mostrate grandi su entrambi gli
+  schermi come **codice** da confrontare a occhio), un `mioId` privato (**non**
+  condiviso — serve solo a scartare un fotogramma che risultasse il proprio invece
+  che quello dell'altro, es. un riflesso sul vetro dell'altro schermo) e due
+  contatori (`seq` crescente, `ack` = quante letture valide ciascuno ha fatto
+  dell'altro). **Dentro un giro si legge sempre prima l'altro e si aggiorna il
+  proprio conteggio, solo dopo si disegna il proprio QR** — mai il contrario
+  (`scambioTickCorpo()`): il QR disegnato nel giro in cui si scrive deve già essere
+  quello finale.
+
+  **Il protocollo è asimmetrico** (Problema dei Due Generali, vedi `memory.md`):
+  - il **ricevente** scrive il proprio stato (`chiudiEAggiorna()`) appena ha letto
+    `QR_K` (3) fotogrammi *crescenti* del cedente **e** ha visto `ack ≥ 1` dal
+    cedente (l'ottica funziona in entrambi i versi). Nello stesso giro disegna il QR
+    "fatto" (codice tipo **maiuscolo**, `S`/`D`, zero byte in più) e passa a una
+    **schermata verde persistente** con codice grande, fotocamera spenta, QR fermo e
+    un solo bottone "Chiudi" (che porta alla festa di sblocco). Non ha scadenza: è la
+    prova che il cedente deve leggere, col telefono o con gli occhi. Se va in timeout
+    (`QR_TIMEOUT_MS`, 40 s dall'apertura) *prima* di scrivere, "Scambio non riuscito"
+    + "Riprova" — sicuro, non ha scritto nulla.
+  - il **cedente** non scrive mai per tempo: cancella (`cedi()`, solo tipo "scambio")
+    **solo** quando legge il QR "fatto" — oppure quando il giocatore, nella **domanda
+    manuale** (`scambioDomanda()`, riquadro giallo "il telefono del tuo amico mostra
+    la schermata verde con il codice ABCD?" con "No, tengo l'oggetto" / "Sì, l'ho
+    controllato"), risponde Sì. La domanda compare dopo `QR_DOMANDA_MIN_MS` (30 s)
+    dal tocco **e** `QR_DOMANDA_DOPO_K_MS` (10 s) da quando ha visto l'amico a soglia
+    (cioè da quando può aver scritto), comunque entro `QR_DOMANDA_MAX_MS` (60 s); la
+    lettura automatica **continua** sotto la domanda e, se riesce, la chiude da sola.
+    Se il cedente non ha **mai** letto l'amico (`myReadCount == 0`) l'amico non può
+    aver scritto (richiede `ack ≥ 1`): fallisce in sicurezza senza domanda ("l'oggetto
+    è rimasto qui"). "Annulla" dopo almeno una lettura passa dalla stessa domanda.
+    Per un "duplica" non c'è nulla da cancellare: al posto della domanda un messaggio
+    spiega che, se l'amico è verde, ha ricevuto la copia lo stesso.
+  - Esiti: la **perdita** (cancellato da A, mai arrivato a B) è impossibile per
+    costruzione; la **duplicazione** solo se il cedente risponde "No" (o chiude)
+    mentre l'amico è già verde. Un terzo telefono che in "Foto" inquadra la schermata
+    verde di un ricevente vede "Questo scambio è già concluso."
+
+  Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack:mioId`,
   non JSON) è pensato apposta per restare piccolo: meno byte da codificare vuol dire
   moduli più grandi a parità di dimensione a schermo, più facili da mettere a fuoco e
   leggere al volo. L'anteprima della fotocamera anteriore (non il fotogramma vero letto

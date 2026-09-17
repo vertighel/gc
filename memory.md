@@ -56,16 +56,32 @@ Bluetooth, NFC — non è una limitazione del QR). Non riproporre "aggiungi
 ancora una conferma" come se risolvesse il problema: non lo risolve mai
 del tutto, per costruzione.
 
-Quello che si può fare, e che questo gioco fa, è **minimizzare e rendere
-visibile** il rischio residuo invece di eliminarlo:
-- I due telefoni si leggono i QR **a vicenda, in continuo**, non in una
-  sequenza di passaggi separati nel tempo: nessuno dei due scrive il
-  proprio stato finale finché non vede, in tempo reale, che anche l'altro
-  ha ricevuto abbastanza (soglia `QR_K`, doppio contatore `seq`/`ack`
-  nel QR). Se si interrompe prima, non è successo nulla su nessuno dei
-  due telefoni — l'unico esito possibile in caso di fallimento è una
-  **perdita** (nessuno riceve), mai una duplicazione, ed è visibile
-  subito a entrambi, non scoperta dopo.
+Quello che si può fare, e che questo gioco fa, è **scegliere quale dei due
+esiti sbagliati resta possibile** e minimizzarlo, invece di eliminarli
+entrambi:
+- **Il protocollo è asimmetrico, di proposito (2026-09-17, seconda
+  versione)**: il ricevente scrive per primo, appena ha letto abbastanza
+  fotogrammi *crescenti* del cedente (`QR_K`, prova che dall'altra parte
+  c'è un telefono acceso adesso) e sa di essere stato letto almeno una
+  volta (`ack ≥ 1`); poi mostra una schermata verde **persistente** con il
+  QR "fatto". Il cedente cancella **solo** dopo aver letto quel QR — o,
+  se la lettura automatica non riesce, dopo che il giocatore ha guardato
+  con i propri occhi lo schermo verde dell'amico e confrontato un codice
+  a 4 lettere (domanda manuale). Così la **perdita** (cancellato da A, mai
+  arrivato a B — l'esito peggiore, deciso dal committente) è impossibile
+  per costruzione; l'unico residuo è la **duplicazione**, e solo se il
+  cedente risponde "No" mentre l'amico è già verde. L'ultimo messaggio
+  del protocollo passa dal canale più affidabile che c'è (gli occhi) e
+  non ha scadenza.
+- **La prima versione era simmetrica** (entrambi scrivevano quando
+  entrambi avevano visto l'altro a soglia) e si credeva che "in caso di
+  fallimento nessuno scrive". Era falso: fra il primo commit e il secondo
+  c'è sempre una finestra in cui uno ha scritto e l'altro deve ancora
+  leggere l'ultimo QR — e quella finestra finiva in perdita **o** in
+  duplicazione a seconda di chi era più veloce, con il lato bloccato che
+  per giunta vedeva "non riuscito, riprova". Il sintomo "bloccato a 4/5
+  mentre l'altro dice Fatto" visto sul campo era esattamente questo. Non
+  tornare al simmetrico: non è "più prudente", è solo più ambiguo.
 - Il confronto fra `Date.now()` dei due telefoni non è mai usato per
   decidere nulla (l'orologio di un telefono non è comparabile con quello
   di un altro senza sincronizzarli, cosa che qui non si fa): la

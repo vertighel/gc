@@ -41,16 +41,42 @@ browser, indipendente da dove è ospitato il sito.
 
 ## 3. Scarsità e scambio/condivisione di oggetti, indizi e ricompense
 
-**Trasferimento e condivisione senza scorta — FATTO (2026-09-17), senza
-database**: un regalo (`daValidare: false`) marcato `scambiabile` (=
-"trasferimento" sotto) o `duplicabile` (= "condivisione" sotto, ma senza
-alcun limite di `scorta`) passa da un telefono all'altro con un handshake
-dal vivo a QR reciproci (fotocamere anteriori), **non** con la doppia
-scansione + funzione atomica sul database immaginata nel disegno originale
-qui sotto — si è trovato un modo di ottenere una garanzia quasi equivalente
-senza dipendere dai punti 1 e 2, vedi `memory.md` (sezione "Scambio fra
-giocatori: niente arbitro, per scelta ragionata") e `docs/STATO.md` per il
-meccanismo. Resta **non** implementata la sola `scorta` limitata (il
+**Trasferimento e condivisione senza scorta — implementato (2026-09-17),
+senza database, riscritto in forma asimmetrica lo stesso giorno (versione
+52), da riprovare sul campo**: un regalo (`daValidare: false`) marcato
+`scambiabile` (= "trasferimento" sotto) o `duplicabile` (= "condivisione"
+sotto, ma senza alcun limite di `scorta`) passa da un telefono all'altro
+con un handshake dal vivo a QR reciproci (fotocamere anteriori), **non**
+con la doppia scansione + funzione atomica sul database immaginata nel
+disegno originale qui sotto — si è trovato un modo di ottenere una garanzia
+quasi equivalente senza dipendere dai punti 1 e 2, vedi `memory.md`
+(sezione "Scambio fra giocatori: niente arbitro, per scelta ragionata") e
+`docs/STATO.md` per il meccanismo.
+
+Storia breve, per non rifare gli stessi giri: la prima versione era
+**simmetrica** (entrambi scrivevano quando entrambi avevano visto l'altro
+a soglia) e sul campo restava spesso "bloccata a 4/5" da un lato mentre
+l'altro diceva "Fatto!" — si era diagnosticato un limite di `jsQR`
+("manca una singola lettura in più del QR fermo dell'altro"). La
+diagnosi vera è che quel sintomo *era* la finestra dei Due Generali fra
+il primo e il secondo commit: un mezzo trasferimento (perdita o
+duplicazione, a seconda di chi era più veloce), non un problema di
+convergenza. La versione 52 lo risolve **cambiando protocollo**, non
+libreria: il ricevente scrive per primo e mostra una schermata verde
+persistente, il cedente cancella solo dopo averla letta (col telefono, o
+con gli occhi tramite una domanda manuale con un codice da confrontare).
+La perdita è ora impossibile per costruzione; la duplicazione resta
+possibile solo per errore umano esplicito. `QR_K` è sceso da 5 a 3.
+
+**Da fare adesso**: provare con due telefoni veri. Se la lettura ottica
+del QR "fatto" fallisce spesso e la domanda manuale compare troppo di
+frequente, allora ha senso provare `zbar-wasm` al posto di `jsQR` (visto
+in uso in `mohankumarelec/airgapped-qr-code-transfer`) — ma è
+un'ottimizzazione dell'esperienza, non più un prerequisito di correttezza.
+Test a tavolino del protocollo: `tests/scambio.test.mjs` (vedi
+`CLAUDE.md`).
+
+Resta **non** implementata la sola `scorta` limitata (il
 contatore condiviso da tutti i giocatori, sotto): quella richiede davvero
 un'operazione atomica su un database, per il motivo spiegato sotto. Il
 resto di questa sezione descrive il disegno originale, ancora valido per la
