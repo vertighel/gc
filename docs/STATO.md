@@ -1,4 +1,4 @@
-# Stato attuale (versione 49)
+# Stato attuale (versione 51)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -148,9 +148,21 @@ sempre (nessun database, vedi `memory.md`).
   ogni fotogramma di "Foto" senza mai interferire col riconoscimento a embedding
   normale: un QR estraneo (nessun prefisso `gc1:`) mostra "QR sconosciuto" ma lascia
   "Scatta e verifica" perfettamente funzionante, utile se l'oggetto reale da
-  riconoscere porta anche un QR stampato sopra per coincidenza. I due telefoni si
-  scambiano un `sessionId` casuale più due contatori (`seq` crescente, `ack` = quante
-  letture valide ciascuno ha fatto dell'altro): solo quando **entrambi** hanno letto
+  riconoscere porta anche un QR stampato sopra per coincidenza. Il richiedente vede
+  il proprio QR sopra e l'anteprima sotto (ricalca il gesto appena fatto con la
+  posteriore); il cedente il contrario, perché parte da fermo dalla scheda Memoria.
+  I due telefoni si scambiano un `sessionId` casuale (condiviso, isola sessioni
+  vicine distinte), un `mioId` privato (**non** condiviso — serve solo a scartare un
+  fotogramma che risultasse il proprio invece che quello dell'altro, es. un riflesso
+  sul vetro dell'altro schermo: fisicamente già improbabile con due fotocamere
+  anteriori affacciate nella stessa direzione, ma il protocollo non si fida solo
+  della fisica) e due contatori (`seq` crescente, `ack` = quante letture valide
+  ciascuno ha fatto dell'altro). **Dentro un giro si legge sempre prima l'altro e
+  si aggiorna il proprio conteggio, solo dopo si disegna il proprio QR** — mai il
+  contrario: altrimenti nel giro che fa scattare la soglia il QR rimasto a schermo
+  (l'intervallo si ferma subito dopo) mostrerebbe il valore di un fotogramma prima,
+  bloccando l'altro telefono per sempre un numero sotto la soglia — capitato davvero
+  in prova. Solo quando **entrambi** hanno letto
   almeno `QR_K` (5) fotogrammi crescenti e validi dell'altro, ciascuno scrive il
   proprio stato finale — mai prima. Se l'interazione si interrompe prima, nessuno dei
   due ha scritto nulla (si vede "Scambio non riuscito", pulsante "Riprova"). Questo è

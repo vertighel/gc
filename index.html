@@ -368,7 +368,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 50)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 51)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -2287,16 +2287,16 @@ function nuovoSessionId() {
 function decodificaQr(testo) {
   if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
   const parti = testo.slice(QR_PREFISSO.length).split(":");
-  if (parti.length !== 5) return { errore: "illeggibile" };
-  const [codiceTipo, sessionId, nodo, seqTxt, ackTxt] = parti;
+  if (parti.length !== 6) return { errore: "illeggibile" };
+  const [codiceTipo, sessionId, nodo, seqTxt, ackTxt, mioId] = parti;
   const tipo = QR_TIPI_DA_CODICE[codiceTipo];
   // "tipo" sconosciuto: un codice che questa versione non traduce ancora, lascia la
   // porta aperta a futuri tipi di QR di gioco (vedi memory.md) invece di un errore
   // fatale.
   if (!tipo) return { errore: "tiposconosciuto" };
   const seq = Number(seqTxt), ack = Number(ackTxt);
-  if (!sessionId || !nodo || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
-  return { tipo, sessionId, nodo, seq, ack };
+  if (!sessionId || !nodo || !mioId || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
+  return { tipo, sessionId, nodo, seq, ack, mioId };
 }
 
 // Ritaglio condiviso per leggere un QR da un elemento video (fotocamera posteriore in
@@ -2360,6 +2360,12 @@ function apriScambio({ ruolo, tipo, nodo, sessionId }) {
   const nome = nodoDef ? nodoDef.nome : "questo oggetto";
   scambio = {
     ruolo, tipo, nodo, sessionId: sessionId || nuovoSessionId(),
+    // A differenza di sessionId (condiviso, uguale sui due telefoni), mioId è privato:
+    // serve solo a riconoscere ed escludere un fotogramma che risultasse essere il
+    // proprio invece che quello dell'altro (es. un riflesso sul vetro dell'altro
+    // schermo) — sessionId/tipo/nodo da soli non basterebbero, sono identici su
+    // entrambi i lati per costruzione. Vedi memory.md.
+    mioId: nuovoSessionId().slice(0, 4),
     mySeq: 0, myReadCount: 0, lastSeqSeen: -1, theirAck: 0,
     committed: false, inizio: Date.now(), timer: null
   };
@@ -2412,12 +2418,38 @@ async function scambioTick() {
   finally { scambioTickBusy = false; }
 }
 
+// L'ordine qui dentro conta: si legge PRIMA l'altro e si aggiorna il proprio
+// conteggio, e SOLO DOPO si disegna il proprio QR — mai il contrario. Se fosse
+// invertito (come prima), nel giro in cui il conteggio raggiunge la soglia il QR
+// rimasto a schermo mostrerebbe ancora il valore di un fotogramma prima: dato che
+// l'intervallo si ferma subito dopo un commit, quel QR resta congelato così per
+// sempre, e l'altro telefono non vede mai il valore vero — bloccato per sempre a un
+// numero in meno della soglia. Capitato davvero: il cedente incastrato a 4/5 con il
+// ricevente già passato oltre. Vedi memory.md.
 async function scambioTickCorpo() {
   if (Date.now() - scambio.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
 
+  let testo;
+  try { testo = await leggiQr($("p-scambio-video")); }
+  catch { testo = null; }
+  if (!scambio || scambio.committed) return; // può essere stato chiuso durante l'"await" sopra
+
+  if (testo) {
+    const dati = decodificaQr(testo);
+    // "mioId" scarta un fotogramma che risultasse essere il proprio invece che
+    // quello dell'altro (es. un riflesso sul vetro dell'altro schermo) — vedi
+    // apriScambio(). sessionId/tipo/nodo da soli non basterebbero, sono identici
+    // su entrambi i lati per costruzione.
+    if (dati && !dati.errore && dati.sessionId === scambio.sessionId && dati.tipo === scambio.tipo
+        && dati.nodo === scambio.nodo && dati.mioId !== scambio.mioId) {
+      if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
+      scambio.theirAck = dati.ack;
+    }
+  }
+
   scambio.mySeq++;
   const payload = QR_PREFISSO + [
-    QR_TIPI_CODICE[scambio.tipo], scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount
+    QR_TIPI_CODICE[scambio.tipo], scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount, scambio.mioId
   ].join(":");
   try {
     const QRCode = await getQrEncode();
@@ -2425,19 +2457,7 @@ async function scambioTickCorpo() {
   } catch { /* un fotogramma di QR saltato non è grave, il prossimo tick riprova */ }
   if (!scambio || scambio.committed) return; // può essere stato chiuso durante gli "await" sopra
 
-  let testo;
-  try { testo = await leggiQr($("p-scambio-video")); }
-  catch { return; }
-  if (!scambio || scambio.committed || !testo) { aggiornaStatoScambio(); return; }
-
-  const dati = decodificaQr(testo);
-  if (!dati || dati.errore || dati.sessionId !== scambio.sessionId || dati.tipo !== scambio.tipo || dati.nodo !== scambio.nodo) {
-    aggiornaStatoScambio(); return; // non è un fotogramma valido di QUESTA sessione, ignora
-  }
-  if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
-  scambio.theirAck = dati.ack;
   aggiornaStatoScambio();
-
   if (scambio.myReadCount >= QR_K && scambio.theirAck >= QR_K) scambioRiuscito();
 }
 
