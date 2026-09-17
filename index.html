@@ -130,6 +130,7 @@
   .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px; }
   .inbox h2 { font: 700 22px/1 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
   .inbox ul { list-style: none; margin: 0 0 8px; padding: 0; }
+  #m-msg-list:empty::before { content: "Nessun messaggio ancora."; }
   .inbox li { padding: 10px 0; border-top: 1px solid var(--bordo-superficie); }
   .inbox li:first-child { border-top: none; }
   .inbox .when { display: block; font-size: 13px; color: #93A9C2; margin-bottom: 2px; }
@@ -292,9 +293,10 @@
   .thumb:empty, .thumb:has(img[src=""]) { cursor: default; }
   /* Ingrandisce una thumb al tocco/clic: leggibile anche quando nel pallino si
      vede solo un dettaglio ritagliato. */
-  .lightbox { position: fixed; inset: 0; background: rgba(14,36,64,.88); display: grid; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
+  .lightbox { border: 0; max-width: none; max-height: none; width: 100%; height: 100%; background: rgba(14,36,64,.88); padding: 24px; box-sizing: border-box; cursor: zoom-out; }
+  .lightbox[open] { display: grid; place-items: center; }
+  .lightbox::backdrop { background: transparent; }
   .lightbox img { max-width: min(92vw, 480px); max-height: 80vh; border-radius: 12px; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
-  .lightbox .current { margin: 0; max-width: min(92vw, 420px); cursor: auto; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .linknode { border: 1.5px solid #C9D0D7; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
   /* Stessa testata (foto, nome, flag) generata da un solo pezzo di JS
      (creaSchedaNodo()) sia in "Collega gli elementi" (.linknode) sia nel
@@ -358,7 +360,9 @@
      resta alto una riga; il testo per intero si legge nella targa, che appare
      sceglendo la riga (diventa oggetto "attuale"). */
   .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .todo button .prima { display: contents; } /* le miniature restano figlie dirette del flex */
   .todo button .txtcol { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .todo button .badge:empty { display: none; }
   .todo button .txtcol .txt { width: 100%; }
   .todo button .badge { flex: none; white-space: nowrap; }
   .todo button .badge .istanza { margin-left: 0; }
@@ -429,7 +433,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 58)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 59)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -741,6 +745,26 @@
      eventi. data-validare="si|no" sulla radice decide via CSS se la radio del modo del
      regalo si vede; una riga "Richiede" per ogni altro nodo (tpl-richiede), col campo
      "almeno N" mostrato dal CSS solo se la spunta è accesa e l'altro nodo è a istanze. -->
+<!-- Lightbox nativa (apriAnteprima): un solo <dialog> riusato, si chiude al tocco o con Esc. -->
+<dialog id="lightbox" class="lightbox"><img alt=""></dialog>
+
+<!-- Righe e schede generate dai dati: il markup vive qui, il JS clona e riempie. -->
+<template id="tpl-riga">
+  <li><button type="button"><span class="prima"></span><span class="txtcol"><span class="txt"></span><span class="badge"></span></span></button></li>
+</template>
+<template id="tpl-festa">
+  <div class="unlocked-item"><div class="medal"></div><div><h3 class="nome"></h3><p class="msg"></p></div></div>
+</template>
+<template id="tpl-inbox">
+  <li><span class="when"></span><span class="testo"></span></li>
+</template>
+<template id="tpl-pubblicato">
+  <li><span class="thumb"></span><span class="nome"></span></li>
+</template>
+<template id="tpl-grafonode">
+  <div class="grafonode"><span class="thumb"></span><div class="grafonode-info"><span class="grafonode-nome"></span><span class="grafonode-icone"></span></div></div>
+</template>
+
 <template id="tpl-nodo">
   <div class="scheda-nodo">
     <div class="head">
@@ -834,6 +858,8 @@ async function leggiElencoCacce() {
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
 const $ = id => document.getElementById(id);
+// Il primo elemento di un <template> (vedi in fondo all'HTML), clonato per riempirlo.
+const clona = tplId => $(tplId).content.firstElementChild.cloneNode(true);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- archivio locale (resta tutto sul telefono) ---------- */
@@ -1122,12 +1148,10 @@ function erroreGitHub(e, prefisso) {
 // giocatore): un secondo clic, ovunque sull'overlay, la richiude.
 function apriAnteprima(src) {
   if (!src) return;
-  const overlay = document.createElement("div"); overlay.className = "lightbox";
-  const img = document.createElement("img"); img.src = src;
-  overlay.append(img);
-  overlay.onclick = () => overlay.remove();
-  document.body.append(overlay);
+  $("lightbox").querySelector("img").src = src;
+  $("lightbox").showModal();
 }
+$("lightbox").onclick = () => $("lightbox").close(); // Esc lo chiude da solo, è un <dialog>
 
 // Un'immagine che al tocco si apre nella lightbox (apriAnteprima): l'unico modo in
 // cui una foto compare nell'interfaccia, sia come miniatura sia come foto grande.
@@ -1148,13 +1172,11 @@ const testoConteggio = n => n === 0 ? "Nessun oggetto ancora." : n === 1 ? "1 og
    Nome, foto, flag e testi si modificano in "Collega gli elementi". ---------- */
 function renderPanelList() {
   const list = $("m-panel-list");
-  list.innerHTML = "";
-  const ids = Object.keys(L.nodi || {});
-  for (const id of ids) {
-    const n = L.nodi[id];
-    const li = document.createElement("li");
-    const nome = document.createElement("span"); nome.textContent = n.nome;
-    li.append(thumbEl(n.immagine), nome);
+  list.replaceChildren();
+  for (const n of Object.values(L.nodi || {})) {
+    const li = clona("tpl-pubblicato");
+    li.querySelector(".thumb").replaceWith(thumbEl(n.immagine));
+    li.querySelector(".nome").textContent = n.nome;
     list.append(li);
   }
 }
@@ -1405,7 +1427,7 @@ function iconaNodo(n) {
 // riflettersi altrove (nome, flag, richiede — true se il nodo è stato rimosso), mai per
 // testo/messaggio, che non toccano il grafo.
 function creaSchedaNodo(n, id, ids, notify) {
-  const el = $("tpl-nodo").content.firstElementChild.cloneNode(true);
+  const el = clona("tpl-nodo");
   const campo = nome => el.querySelector(`[name="${nome}"]`);
 
   // Testata: foto, nome, "Rimuovi".
@@ -1460,7 +1482,7 @@ function creaSchedaNodo(n, id, ids, notify) {
   const req = el.querySelector(".linkreq");
   for (const oid of ids.filter(x => x !== id)) {
     const o = L.nodi[oid];
-    const riga = $("tpl-richiede").content.firstElementChild.cloneNode(true);
+    const riga = clona("tpl-richiede");
     riga.classList.toggle("istanze", !!o.istanze);
     riga.querySelector(".nome").textContent = o.nome;
     const cb = riga.querySelector('[name="richiede"]'), num = riga.querySelector('[name="almeno"]');
@@ -1666,15 +1688,11 @@ function disegnaGrafo() {
     const { x, y } = pos[id];
     const fo = document.createElementNS(SVGNS, "foreignObject");
     fo.setAttribute("x", x); fo.setAttribute("y", y); fo.setAttribute("width", GNODE_W); fo.setAttribute("height", GNODE_H);
-    const card = document.createElement("div"); card.className = "grafonode"; card.dataset.id = id;
-    card.append(thumbEl(n.immagine));
-    const info = document.createElement("div"); info.className = "grafonode-info";
-    const nome = document.createElement("span"); nome.className = "grafonode-nome"; nome.textContent = n.nome;
-    const icone = document.createElement("span"); icone.className = "grafonode-icone";
-    const ic = iconaNodo(n);
+    const card = clona("tpl-grafonode"); card.dataset.id = id;
+    card.querySelector(".thumb").replaceWith(thumbEl(n.immagine));
+    card.querySelector(".grafonode-nome").textContent = n.nome;
+    const ic = iconaNodo(n), icone = card.querySelector(".grafonode-icone");
     icone.textContent = ic.icona; icone.title = ic.titolo;
-    info.append(nome, icone);
-    card.append(info);
     card.onclick = (e) => {
       if (e.target.closest(".thumb")) return;
       if (grafoLinkSrc) { annullaCollegamentoGrafo(); return; }
@@ -1873,18 +1891,10 @@ function initMaster() {
 /* ---------- messaggi broadcast ---------- */
 let msgList = [];
 
+const dataBreve = iso => new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 function renderMsgList() {
-  const ul = $("m-msg-list");
-  ul.innerHTML = "";
-  if (!msgList.length) { const li = document.createElement("li"); li.textContent = "Nessun messaggio ancora."; ul.append(li); return; }
-  for (const m of [...msgList].reverse()) {
-    const li = document.createElement("li");
-    const t = document.createElement("span");
-    const data = new Date(m.quando).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    t.textContent = `${data} — ${m.testo}`;
-    li.append(t);
-    ul.append(li);
-  }
+  const ul = $("m-msg-list"); // vuoto → "Nessun messaggio ancora." dal CSS
+  ul.replaceChildren(...[...msgList].reverse().map(m => { const li = document.createElement("li"); li.textContent = `${dataBreve(m.quando)} — ${m.testo}`; return li; }));
 }
 
 // messaggi.json per master e giocatore: l'elenco (vuoto se il file non esiste
@@ -2227,14 +2237,12 @@ function renderInbox() {
   $("p-inbox-badge").textContent = nonLetti > 9 ? "9+" : String(nonLetti);
 
   const ul = $("p-inbox-list");
-  ul.innerHTML = "";
+  ul.replaceChildren();
   for (const m of [...inbox].reverse()) {
-    const li = document.createElement("li");
-    if (!letti.has(m.id)) li.className = "unread";
-    const when = document.createElement("span"); when.className = "when";
-    when.textContent = new Date(m.quando).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    const testo = document.createElement("span"); testo.textContent = m.testo;
-    li.append(when, testo);
+    const li = clona("tpl-inbox");
+    li.classList.toggle("unread", !letti.has(m.id));
+    li.querySelector(".when").textContent = dataBreve(m.quando);
+    li.querySelector(".testo").textContent = m.testo;
     ul.append(li);
   }
 }
@@ -2318,22 +2326,17 @@ function renderMemoria(st) {
 // testo (troncato a una riga via CSS), evidenziata se "attiva". Condivisa fra la
 // lista di "Traccia" (oggetti raggiungibili) e quella di "Memoria" (oggetti trovati):
 // stessa forma e stesso meccanismo di selezione, contenuto diverso.
+// Markup in tpl-riga: [miniature] nome (+ badge sotto, es. l'id di un'istanza: sta FUORI
+// da .txt, che tronca con i puntini — la riga è stretta e l'id è ciò che distingue due
+// righe con lo stesso nome, non può sparire).
 function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, onClick }) {
-  const li = document.createElement("li");
-  const b = document.createElement("button");
-  for (const el of prima || []) b.append(el);
-  const t = document.createElement("span"); t.className = "txt"; t.textContent = testo;
-  // Il badge (es. l'id di un'istanza) sta FUORI da .txt, che tronca con i puntini, su
-  // una seconda riga sotto il nome: la riga è stretta (accanto c'è il bottone 👥) e
-  // l'id è ciò che distingue due righe con lo stesso nome, non può sparire.
-  if (badge) {
-    const col = document.createElement("span"); col.className = "txtcol";
-    const w = document.createElement("span"); w.className = "badge"; w.append(badge);
-    col.append(t, w); b.append(col);
-  } else b.append(t);
+  const li = clona("tpl-riga");
+  const b = li.querySelector("button");
+  b.querySelector(".prima").append(...(prima || []));
+  b.querySelector(".txt").textContent = testo;
+  if (badge) b.querySelector(".badge").append(badge);
   if (attiva) b.setAttribute("aria-current", "true");
   b.onclick = onClick;
-  li.append(b);
   // "dopo" resta fuori dal bottone principale, non annidato: in Memoria può essere un
   // bottone d'azione a sé (🔄/👥, vedi renderMemoria), e due <button> innestati non
   // sono validi né cliccabili in modo affidabile.
@@ -2424,17 +2427,13 @@ function showReward(nuovi, st) {
   $("view-player").dataset.sub = "festa"; // il CSS nasconde le altre schede e le novità
   segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni" }, "");
   const wrap = $("p-reward-list");
-  wrap.innerHTML = "";
+  wrap.replaceChildren();
   for (const n of nuovi) {
-    const item = document.createElement("div"); item.className = "unlocked-item";
-    const medal = document.createElement("div"); medal.className = "medal";
-    medaglia(medal, n);
-    const testo = document.createElement("div");
-    const h3 = document.createElement("h3"); h3.textContent = n.nome;
+    const item = clona("tpl-festa");
+    medaglia(item.querySelector(".medal"), n);
+    const h3 = item.querySelector(".nome"); h3.textContent = n.nome;
     const badge = badgeIstanza(n); if (badge) h3.append(badge);
-    const p = document.createElement("p"); p.textContent = n.messaggio || "";
-    testo.append(h3, p);
-    item.append(medal, testo);
+    item.querySelector(".msg").textContent = n.messaggio || "";
     wrap.append(item);
   }
   aggiornaProgresso(st);

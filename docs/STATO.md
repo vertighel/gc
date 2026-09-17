@@ -1,4 +1,4 @@
-# Stato attuale (versione 58)
+# Stato attuale (versione 59)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -49,6 +49,24 @@ sempre (nessun database, vedi `memory.md`).
     `#c-<slug>` o senza `#`) non lo legge mai: resta invisibile a chi gioca
     davvero finché non si preme "Pubblica" (che resta l'unico atto che
     scrive `caccia*.json`, invariato).
+
+## Convenzioni dell'interfaccia (valgono ovunque)
+
+- **Il markup vive nell'HTML, il JS lo riempie.** Ogni riga o scheda generata
+  dai dati (righe di Memoria e "Da trovare" `tpl-riga`, festa di sblocco
+  `tpl-festa`, messaggi `tpl-inbox`, elenco pubblicato `tpl-pubblicato`,
+  scheda del Grafo `tpl-grafonode`, scheda del nodo `tpl-nodo`/`tpl-richiede`)
+  è un `<template>` in fondo alla pagina, clonato con `clona(id)`. I testi
+  fissi con più varianti (titoli dello scambio, fine caccia) sono tutti
+  scritti in HTML e il CSS ne mostra una.
+- **Lo stato visibile è un attributo, non una lista di `hidden`.**
+  `body[data-view]`, `#view-player[data-tab][data-sub][data-stato]`,
+  `#p-scambio[data-ruolo][data-tipo][data-fase]`, `.scheda-nodo[data-validare]`:
+  il JS cambia l'attributo, il CSS decide cosa si vede. `hidden` resta solo per
+  singoli elementi dipendenti da un dato (es. la barra "nuovi oggetti").
+- La lightbox è un `<dialog id="lightbox">` nativo (`apriAnteprima()`), che si
+  chiude al tocco o con Esc. "Nessun messaggio ancora." è un `::before` CSS
+  sull'elenco vuoto.
 
 ## Modalità giocatore (indirizzo normale, senza `#`)
 
