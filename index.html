@@ -186,6 +186,11 @@
      di condividerne lo spazio, spingendo i bottoni in fondo fuori dallo schermo. */
   #p-scambio { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
   #p-scambio .viewfinder { max-width: 260px; aspect-ratio: 1; width: 100%; margin: 8px auto; flex: none; }
+  /* Solo l'anteprima mostrata a schermo: il fotogramma vero letto da jsQR arriva dal
+     <video> sorgente, non da questo rendering, quindi specchiarla non tocca la
+     lettura del QR — serve solo a rendere intuitivo allineare i due telefoni a mano
+     (altrimenti muoversi verso destra sposta l'immagine verso sinistra, disorientante). */
+  #p-scambio-video { transform: scaleX(-1); }
   #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; flex: none; }
   #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
   #p-scambio-sub { color: var(--grigio); margin: 0 0 4px; }
@@ -363,7 +368,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 48)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 49)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -2233,10 +2238,22 @@ function showReward(nuovi, st) {
    telefoni scrive il proprio stato finale finché la soglia non è raggiunta insieme:
    se qualcosa si interrompe prima, nessuno dei due ha cambiato nulla. */
 const QR_PREFISSO = "gc1:";
-const QR_TIPI = ["scambio", "duplica"];
+// Un carattere solo per tipo invece del nome per intero: risparmia byte nel QR (vedi
+// sotto), che restano comunque tradotti subito in "scambio"/"duplica" da
+// decodificaQr() — il resto del codice non vede mai questi codici.
+const QR_TIPI_CODICE = { scambio: "s", duplica: "d" };
+const QR_TIPI_DA_CODICE = { s: "scambio", d: "duplica" };
 const QR_K = 5;               // letture valide reciproche richieste prima del commit
-const QR_TIMEOUT_MS = 20000;  // sessione abbandonata se non converge entro questo tempo
-const QR_TICK_MS = 220;       // ritmo di rigenerazione/lettura del proprio QR
+// Il timeout parte quando SI TOCCA il bottone, non da quando i due telefoni iniziano
+// davvero a leggersi: il ricevente ci mette del suo (trovare il QR con la posteriore,
+// far aprire l'anteriore, girare il telefono) prima che la lettura reciproca possa
+// cominciare — tempo che si mangia comunque il cronometro del cedente. 20s erano
+// troppo pochi per l'intero rituale, non solo per le 5 letture. Vedi memory.md.
+const QR_TIMEOUT_MS = 40000;
+// Ogni fotogramma deve restare a schermo abbastanza a lungo perché la fotocamera
+// dell'altro riesca a metterlo a fuoco e leggerlo prima che cambi di nuovo — 220ms
+// erano troppo stretti. Aiuta anche il carico della CPU (vedi busy-guard sotto).
+const QR_TICK_MS = 300;
 // Dopo il proprio commit, il cedente vede "Fatto!" ma il ricevente potrebbe non aver
 // ancora letto l'ultima conferma (era comunque a un fotogramma di distanza, vedi
 // aggiornaStatoScambio) — capitato davvero staccando subito i telefoni. "Torna a
@@ -2262,19 +2279,24 @@ function nuovoSessionId() {
   return s;
 }
 
-// Legge il contenuto testuale di un QR e lo riconosce (o no) come "nostro". Tre esiti
-// possibili: null (QR estraneo, nessun prefisso "gc1:" — non è un QR di questo gioco),
-// un oggetto con "errore" (è nostro ma questo telefono non riesce a usarlo: JSON rotto
-// o un "tipo" che questa versione non conosce ancora — lascia la porta aperta a futuri
-// tipi di QR di gioco, vedi memory.md), o i dati validi.
+// Campi separati da ":" invece di JSON (niente parentesi/virgolette/nomi di campo
+// per intero): un QR con meno byte da codificare usa moduli più grandi a parità di
+// dimensione a schermo, più facili da mettere a fuoco e leggere al volo — un JSON
+// con nomi di campo interi arrivava a una versione di QR 6-7 (moduli piccolissimi),
+// questo formato resta tipicamente sulla 3-4. Vedi memory.md.
 function decodificaQr(testo) {
   if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
-  let dati;
-  try { dati = JSON.parse(testo.slice(QR_PREFISSO.length)); }
-  catch { return { errore: "illeggibile" }; }
-  if (!dati || !QR_TIPI.includes(dati.tipo)) return { errore: "tiposconosciuto" };
-  if (!dati.sessionId || !dati.nodo || !Number.isFinite(dati.seq) || !Number.isFinite(dati.ack)) return { errore: "illeggibile" };
-  return dati;
+  const parti = testo.slice(QR_PREFISSO.length).split(":");
+  if (parti.length !== 5) return { errore: "illeggibile" };
+  const [codiceTipo, sessionId, nodo, seqTxt, ackTxt] = parti;
+  const tipo = QR_TIPI_DA_CODICE[codiceTipo];
+  // "tipo" sconosciuto: un codice che questa versione non traduce ancora, lascia la
+  // porta aperta a futuri tipi di QR di gioco (vedi memory.md) invece di un errore
+  // fatale.
+  if (!tipo) return { errore: "tiposconosciuto" };
+  const seq = Number(seqTxt), ack = Number(ackTxt);
+  if (!sessionId || !nodo || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
+  return { tipo, sessionId, nodo, seq, ack };
 }
 
 // Ritaglio condiviso per leggere un QR da un elemento video (fotocamera posteriore in
@@ -2371,15 +2393,26 @@ async function avviaScambioFotocamera() {
   }
 }
 
+// Vera per la durata di un giro: setInterval richiama scambioTick ogni QR_TICK_MS a
+// prescindere da quanto ci mette il giro precedente (generare+leggere un QR non è
+// gratis). Senza questa guardia, su un telefono lento più chiamate si accavallano,
+// disegnano sullo stesso canvas in ordine imprevedibile e rallentano tutto — lo
+// stesso principio già usato per fotoQrTick/fotoQrBusy.
+let scambioTickBusy = false;
 async function scambioTick() {
-  if (!scambio || scambio.committed) return;
+  if (!scambio || scambio.committed || scambioTickBusy) return;
+  scambioTickBusy = true;
+  try { await scambioTickCorpo(); }
+  finally { scambioTickBusy = false; }
+}
+
+async function scambioTickCorpo() {
   if (Date.now() - scambio.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
 
   scambio.mySeq++;
-  const payload = QR_PREFISSO + JSON.stringify({
-    tipo: scambio.tipo, sessionId: scambio.sessionId, nodo: scambio.nodo,
-    seq: scambio.mySeq, ack: scambio.myReadCount
-  });
+  const payload = QR_PREFISSO + [
+    QR_TIPI_CODICE[scambio.tipo], scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount
+  ].join(":");
   try {
     const QRCode = await getQrEncode();
     await QRCode.toCanvas($("p-scambio-qr"), payload, { margin: 1, width: 220 });

@@ -1,4 +1,4 @@
-# Stato attuale (versione 46)
+# Stato attuale (versione 49)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -156,7 +156,19 @@ sempre (nessun database, vedi `memory.md`).
   due ha scritto nulla (si vede "Scambio non riuscito", pulsante "Riprova"). Questo è
   deliberatamente **non** una soluzione perfetta al problema dei "Due Generali" (vedi
   `memory.md`): è la mitigazione migliore possibile senza un arbitro esterno, con un
-  rischio residuo minimo e sempre visibile a entrambi in tempo reale. Chi cede un nodo
+  rischio residuo minimo e sempre visibile a entrambi in tempo reale. Dopo il proprio
+  commit, sia cedente sia ricevente restano ancora `QR_GRAZIA_MS` (3s) sullo schermo
+  di scambio con il proprio QR acceso, prima di proseguire (verso "Torna a Memoria" o
+  verso la festa di sblocco): dà all'altro telefono, che potrebbe essere anche solo un
+  fotogramma indietro, la possibilità di leggere l'ultima conferma prima che qualcuno
+  stacchi i telefoni pensando sia già tutto finito — capitato davvero durante le prove
+  sul campo. Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack`,
+  non JSON) è pensato apposta per restare piccolo: meno byte da codificare vuol dire
+  moduli più grandi a parità di dimensione a schermo, più facili da mettere a fuoco e
+  leggere al volo. L'anteprima della fotocamera anteriore (non il fotogramma vero letto
+  da jsQR, solo quello che il giocatore vede) è specchiata via CSS, altrimenti allineare
+  a mano due telefoni è disorientante (muoversi verso destra sposterebbe l'immagine
+  verso sinistra). Chi cede un nodo
   tipo "scambio" viene tolto da `trovati`/bottino e aggiunto per sempre a un nuovo
   elenco `ceduti` nello stato del giocatore: `chiudi()` lo esclude per sempre dalla
   chiusura automatica dei "regali", altrimenti alla prima sincronizzazione successiva
