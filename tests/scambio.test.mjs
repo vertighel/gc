@@ -291,7 +291,9 @@ const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato();
   b = await bottino(A, "sig");
   ok(b.length === 1 && !nuovi.length && (await stato(A)).prodotti.includes("sig"), "[I1] una seconda chiusura non produce nulla (prodotti)");
   await A.evaluate(() => window.__debug.renderPlayer());
-  ok((await txt(A, "p-alldone-titolo")) === "Ti manca qualcosa" && (await txt(A, "p-alldone-testo")).includes("Sigillo ×1"), "[I1] fine caccia: 'Ti manca qualcosa … Sigillo ×1'");
+  await A.click("#p-tab-cerca"); // la fine caccia vive in "Cerca": innerText applica il CSS solo se è visibile
+  const fine = await txt(A, "p-alldone"); // innerText: solo la variante mostrata dal CSS (data-fine)
+  ok(fine.includes("Ti manca qualcosa") && fine.includes("Sigillo ×1") && !fine.includes("Hai trovato tutto") && await vis(A, "p-alldone"), "[I1] fine caccia: 'Ti manca qualcosa … Sigillo ×1' (variante scelta dal CSS)");
   const m = await A.evaluate(() => window.__debug.mancanoIstanze(window.__debug.stato()));
   ok(m.length === 1 && m[0].id === "sig" && m[0].quante === 1, "[I1] mancanoIstanze = sig ×1");
   await A.context().close();

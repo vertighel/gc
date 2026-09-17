@@ -1,4 +1,4 @@
-# Stato attuale (versione 56)
+# Stato attuale (versione 57)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -54,9 +54,22 @@ sempre (nessun database, vedi `memory.md`).
 
 - **Schermo pieno, come un'app**: barra in alto fissa, contenuto che scorre
   solo al proprio interno, barra di due schede fissa in basso — "🔍 Cerca"
-  e "💽 Memoria". Attivo solo mentre si gioca (classe `playing` sul
-  `<body>`): il pannello master e la schermata di scelta restano pagine
-  normali che scorrono. **Si apre sempre su "Memoria"**, non su "Cerca"
+  e "💽 Memoria". Attivo solo mentre si gioca: il pannello master e la
+  schermata di scelta restano pagine normali che scorrono. **Quale vista è
+  aperta lo dice un solo attributo, `body[data-view]`** (`player`,
+  `chooser`, `master`, `master-collega`, `master-grafo`, impostato da
+  `route()`/`mostraGiocatore()`/`mostraSceltaCaccia()`): il CSS ne deriva
+  la sezione visibile, il tema scuro (tutto ciò che vede il giocatore, mai
+  il master), la larghezza "wide" delle pagine Collega/Grafo e la modalità
+  a schermo pieno — non esistono più classi `dark`/`wide`/`playing` da
+  tenere allineate a mano. Dentro il giocatore, allo stesso modo,
+  `#view-player[data-tab][data-sub][data-stato]` (+ `data-prova`,
+  `data-fine`) decide quale scheda, sotto-scheda (compresa la festa di
+  sblocco, `data-sub="festa"`) e stato (`vuoto`/`fine`/`gioco`) si vede:
+  `mostraTab()`/`mostraSubTab()`/`renderPlayer()` cambiano solo gli
+  attributi, mai `hidden` sui singoli pannelli. I due testi di fine caccia
+  ("Hai trovato tutto" / "Ti manca qualcosa") sono entrambi in HTML,
+  scelti da `data-fine`. **Si apre sempre su "Memoria"**, non su "Cerca"
   (`mostraTab("oggetti")` in `initPlayer()`): chi non ha ancora nulla lo
   capisce dal testo lì (`#p-mem-empty`), che suggerisce di passare a
   "Cerca" — eccetto quando c'è una festa/sblocco da mostrare (vedi sotto

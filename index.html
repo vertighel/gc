@@ -23,12 +23,12 @@
     --testo: "Barlow", system-ui, sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
     /* Tema del giocatore (schermata di scelta + gioco, MAI il pannello master, che
-       resta lo strumento di lavoro chiaro di sempre — vedi body.dark più sotto):
+       resta lo strumento di lavoro chiaro di sempre — vedi body[data-view]:not([data-view^="master"]) più sotto):
        stessa tavolozza smalto/cemento, ma con i ruoli di chiaro e scuro invertiti —
        sfondo e non selezionato scuri, selezionato "acceso". Non è --cemento riusato
        tale e quale come colore acceso: era pensato per restare un grigio neutro di
        sfondo, non per "illuminarsi", quindi --acceso è un bianco freddo a parte.
-       Sempre definiti (non solo dentro body.dark): le classi che li usano vivono
+       Sempre definiti (non solo dentro body[data-view]:not([data-view^="master"])): le classi che li usano vivono
        solo nella parte giocatore, sempre scura, senza bisogno di condizionarli. */
     --sfondo-pagina: var(--smalto-scuro);
     --superficie: var(--smalto);
@@ -47,9 +47,9 @@
     font: 400 17px/1.5 var(--testo);
     -webkit-font-smoothing: antialiased;
   }
-  /* Unica riga ancora condizionata da body.dark: tutto il resto del tema scuro vive
+  /* Unica riga ancora condizionata da body[data-view]:not([data-view^="master"]): tutto il resto del tema scuro vive
      direttamente nelle classi della parte giocatore (vedi sopra il perché). */
-  body.dark { background: var(--sfondo-pagina); color: var(--testo-chiaro); }
+  body[data-view]:not([data-view^="master"]) { background: var(--sfondo-pagina); color: var(--testo-chiaro); }
   main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(28px + env(safe-area-inset-bottom)); }
   [hidden] { display: none !important; }
 
@@ -58,17 +58,17 @@
      possono affiancarsi in una griglia invece di stare tutte impilate. */
   @media (min-width: 700px) {
     main { max-width: 640px; }
-    body.wide main { max-width: 1180px; }
+    body:is([data-view$="collega"], [data-view$="grafo"]) main { max-width: 1180px; }
   }
 
   /* Modalità giocatore: schermo pieno e fisso come una app (barra in alto, contenuto
      che scorre solo al suo interno, schede "Cerca"/"Oggetti" fisse in basso), invece
      della normale pagina che scorre usata da master/scelta della caccia. Attiva solo
-     su body.playing (vedi mostraGiocatore()/route()), per non toccare le altre. */
-  body.playing { height: 100vh; height: 100dvh; overflow: hidden; }
-  body.playing main { height: 100%; padding: 0; max-width: none; margin: 0; display: flex; justify-content: center; }
-  body.playing #view-player { width: 100%; max-width: 480px; height: 100%; display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
-  @media (min-width: 700px) { body.playing #view-player { max-width: 640px; } }
+     su body[data-view="player"] (vedi mostraGiocatore()/route()), per non toccare le altre. */
+  body[data-view="player"] { height: 100vh; height: 100dvh; overflow: hidden; }
+  body[data-view="player"] main { height: 100%; padding: 0; max-width: none; margin: 0; display: flex; justify-content: center; }
+  body[data-view="player"] #view-player { width: 100%; max-width: 480px; height: 100%; display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 16px 0; }
+  @media (min-width: 700px) { body[data-view="player"] #view-player { max-width: 640px; } }
 
   #p-content { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
   /* Entrambe le schede (Cerca/Traccia, Oggetti/Memoria) riempiono tutto lo spazio
@@ -76,6 +76,21 @@
      in fondo, invece che essere la lista a spostarsi quando lo schermo cambia
      altezza. Stessa struttura per "Traccia" (indizio + oggetti raggiungibili) e
      "Memoria" (ricordo + oggetti trovati) — condivisa, non due copie. */
+  /* Viste: una sola alla volta, scelta da body[data-view] (vedi route()). */
+  body:not([data-view="player"]) #view-player, body:not([data-view="chooser"]) #view-chooser,
+  body:not([data-view="master"]) #view-master, body:not([data-view="master-collega"]) #view-collega,
+  body:not([data-view="master-grafo"]) #view-grafo { display: none; }
+  /* Schede del giocatore: data-tab / data-sub su #view-player (mostraTab/mostraSubTab). */
+  #view-player:not([data-tab="cerca"]) #tab-cerca, #view-player:not([data-tab="oggetti"]) #tab-oggetti,
+  #view-player:not([data-sub="indizio"]) #sub-indizio, #view-player:not([data-sub="foto"]) #sub-foto,
+  #view-player:not([data-sub="messaggi"]) #p-inbox, #view-player:not([data-sub="impostazioni"]) #p-settings,
+  #view-player:not([data-sub="festa"]) #p-reward, #view-player[data-sub="festa"] #p-news { display: none; }
+  /* Stato della caccia: data-stato = vuoto (nessuna caccia) / fine (niente da fotografare) /
+     gioco; data-prova (modalità di prova o bozza); data-fine = tutto / manca. */
+  #view-player:not([data-stato="vuoto"]) #p-empty, #view-player[data-stato="vuoto"] :is(#p-reset, #p-news),
+  #view-player:not([data-stato="fine"]) #p-alldone, #view-player:not([data-stato="gioco"]) #p-clue-card,
+  #view-player:not([data-prova]) #p-test,
+  #view-player:not([data-fine="manca"]) .se-manca, #view-player[data-fine="manca"] .se-tutto { display: none; }
   .playertab { height: 100%; display: flex; flex-direction: column; }
   .schermo-scheda { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .schermo-card { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -212,9 +227,9 @@
   #p-scambio-domanda p { margin: 0; }
   #p-scambio-domanda .codice { letter-spacing: .15em; }
   /* Riquadro chiaro dentro la parte giocatore (scura): i bottoni riprendono i colori
-     "chiari" di .btn, non quelli di body.dark. */
-  body.dark #p-scambio-domanda .btn { border-color: var(--smalto); color: var(--smalto); }
-  body.dark #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
+     "chiari" di .btn, non quelli di body[data-view]:not([data-view^="master"]). */
+  body[data-view]:not([data-view^="master"]) #p-scambio-domanda .btn { border-color: var(--smalto); color: var(--smalto); }
+  body[data-view]:not([data-view^="master"]) #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
   /* Schermata VERDE del ricevente dopo aver scritto: persistente (si chiude solo a
      mano), è la "prova" che il cedente legge — col QR o a occhio (vedi memory.md). */
   #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] { background: var(--verde); color: #fff; }
@@ -369,13 +384,13 @@
   /* ===== Tema scuro del pannello master (unico contesto dove chiaro/scuro convivono
      davvero: .brand, .current, .status, .link, .hint, .btn compaiono anche lì). Tutto
      il resto (parte giocatore, sempre scura) ha una sola definizione, vedi sopra. */
-  body.dark .brand, body.dark .current h2 { color: var(--testo-chiaro); }
-  body.dark .link, body.dark .hint { color: #93A9C2; }
-  body.dark .current { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
-  body.dark .btn { border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
-  body.dark .btn.primary { background: var(--acceso); color: var(--testo-su-acceso); }
-  body.dark .status.ok { color: #6FE39A; }
-  body.dark .status.ko { color: #FF9A8D; }
+  body[data-view]:not([data-view^="master"]) .brand, body[data-view]:not([data-view^="master"]) .current h2 { color: var(--testo-chiaro); }
+  body[data-view]:not([data-view^="master"]) .link, body[data-view]:not([data-view^="master"]) .hint { color: #93A9C2; }
+  body[data-view]:not([data-view^="master"]) .current { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); }
+  body[data-view]:not([data-view^="master"]) .btn { border-color: var(--bordo-superficie); color: var(--testo-chiaro); }
+  body[data-view]:not([data-view^="master"]) .btn.primary { background: var(--acceso); color: var(--testo-su-acceso); }
+  body[data-view]:not([data-view^="master"]) .status.ok { color: #6FE39A; }
+  body[data-view]:not([data-view^="master"]) .status.ko { color: #FF9A8D; }
 
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -407,11 +422,16 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 56)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 57)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
-  <section id="view-player" hidden>
+  <!-- Quale vista è aperta lo dice body[data-view] (route()): player, chooser, master,
+       master-collega, master-grafo. Da lì il CSS deriva anche tema scuro, larghezza
+       "wide" e modalità a schermo pieno "playing" — nessuna classe da tenere allineata.
+       Dentro il giocatore: data-tab (cerca/oggetti), data-sub (indizio/foto/messaggi/
+       impostazioni/festa), data-stato (vuoto/fine/gioco), data-prova, data-fine. -->
+  <section id="view-player" data-tab="oggetti" data-sub="indizio" data-stato="vuoto">
     <header class="bar">
       <span class="brand" id="p-brand">Caccia</span>
       <span class="bar-right">
@@ -422,7 +442,7 @@
     <div id="p-content">
       <!-- ===== scheda "Cerca" ===== -->
       <div id="tab-cerca" class="playertab">
-        <p id="p-test" class="testbar" hidden>Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
+        <p id="p-test" class="testbar">Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
         <p id="p-news" class="newsbar" role="status" hidden></p>
 
         <!-- Le quattro schede restano SEMPRE raggiungibili, anche senza una caccia in
@@ -437,7 +457,7 @@
           <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni">⚙️</button>
         </div>
 
-        <div id="p-reward" class="reward" hidden>
+        <div id="p-reward" class="reward">
           <p class="done">Sbloccato!</p>
           <div id="p-reward-list" class="unlocked"></div>
           <button id="p-continue" class="btn primary">Continua</button>
@@ -450,12 +470,16 @@
             <button id="p-retry" class="btn primary" hidden>Riprova</button>
           </div>
 
-          <div id="p-alldone" class="empty" hidden>
-            <h1 class="title" id="p-alldone-titolo">Hai trovato tutto</h1>
-            <p id="p-alldone-testo">Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+          <div id="p-alldone" class="empty">
+            <!-- Due varianti, scelte dal CSS con data-fine su #view-player: "tutto" o
+                 "manca" (un regalo resta chiuso solo per istanze di altri giocatori). -->
+            <h1 class="title se-tutto">Hai trovato tutto</h1>
+            <p class="se-tutto">Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.</p>
+            <h1 class="title se-manca">Ti manca qualcosa</h1>
+            <p class="se-manca">Non c'è altro da fotografare, ma per andare avanti ti serve: <span id="p-manca-lista"></span>. Te lo può passare un altro giocatore che ce l'ha (👥 nella sua Memoria).</p>
           </div>
 
-          <div id="p-clue-card" class="schermo-card" hidden>
+          <div id="p-clue-card" class="schermo-card">
             <div class="plate">
               <div id="p-clue-imgs" class="clue-imgs"></div>
               <p id="p-clue"></p>
@@ -464,7 +488,7 @@
           </div>
         </div>
 
-        <div id="sub-foto" hidden>
+        <div id="sub-foto">
           <div class="viewfinder" id="p-vf">
             <video id="p-video" playsinline muted autoplay></video>
             <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
@@ -475,22 +499,22 @@
           <p id="p-score" class="score"></p>
         </div>
 
-        <div id="p-inbox" class="inbox" hidden>
+        <div id="p-inbox" class="inbox">
           <h2>Messaggi</h2>
           <ul id="p-inbox-list"></ul>
           <button id="p-inbox-close" class="link">Chiudi</button>
         </div>
 
-        <div id="p-settings" class="inbox" hidden>
+        <div id="p-settings" class="inbox">
           <h2>Impostazioni</h2>
           <button id="p-change-hunt" class="link">Cambia caccia</button>
-          <button id="p-reset" class="link" hidden>Ricomincia la caccia</button>
+          <button id="p-reset" class="link">Ricomincia la caccia</button>
           <button id="p-settings-close" class="link">Chiudi</button>
         </div>
       </div>
 
       <!-- ===== scheda "Memoria" ===== -->
-      <div id="tab-oggetti" class="playertab" hidden>
+      <div id="tab-oggetti" class="playertab">
         <div class="schermo-scheda">
           <div id="p-mem-empty" class="empty">
             <h1 class="title">Nessun ricordo ancora</h1>
@@ -558,7 +582,7 @@
   </section>
 
   <!-- ================= SCELTA DELLA CACCIA ================= -->
-  <section id="view-chooser" hidden>
+  <section id="view-chooser">
     <header class="bar">
       <span class="brand">Caccia</span>
     </header>
@@ -570,7 +594,7 @@
   </section>
 
   <!-- ================= MASTER ================= -->
-  <section id="view-master" hidden>
+  <section id="view-master">
     <header class="bar">
       <span class="brand">Caccia</span>
       <span class="tag">Master</span>
@@ -660,7 +684,7 @@
   </section>
 
   <!-- ================= COLLEGA GLI ELEMENTI ================= -->
-  <section id="view-collega" hidden>
+  <section id="view-collega">
     <header class="bar">
       <span class="brand">Caccia</span>
       <span class="tag">Collega</span>
@@ -683,7 +707,7 @@
     </div>
   </section>
 
-  <section id="view-grafo" hidden>
+  <section id="view-grafo">
     <header class="bar">
       <span class="brand">Caccia</span>
       <span class="tag">Grafo</span>
@@ -1926,10 +1950,8 @@ function mostraTab(tab) {
                                  // già il tabbar, ma non deve mai restare "appesa"
   tabAttivo = tab;
   if (tab !== "cerca") stopCamera();
-  $("tab-cerca").hidden = tab !== "cerca";
-  $("tab-oggetti").hidden = tab !== "oggetti";
-  $("p-tab-cerca").setAttribute("aria-current", String(tab === "cerca"));
-  $("p-tab-oggetti").setAttribute("aria-current", String(tab === "oggetti"));
+  $("view-player").dataset.tab = tab; // cosa si vede lo decide il CSS
+  segnaCorrente({ "p-tab-cerca": "cerca", "p-tab-oggetti": "oggetti" }, tab);
   renderPlayer(); // sempre, non solo su "Cerca": anche "Memoria" deve riflettere subito lo stato attuale
 }
 
@@ -1938,18 +1960,15 @@ function mostraTab(tab) {
 // lasciando "Foto" (così tornandoci si riparte sempre da "Attiva la fotocamera", mai da
 // un fotogramma fermo di quando si era usciti); entrando in "Messaggi" segna tutto come
 // letto, come faceva prima il pulsante che apriva il pannello.
+// aria-current="true" sul bottone della scheda scelta (è anche ciò che il CSS colora).
+function segnaCorrente(bottoni, scelta) {
+  for (const [id, valore] of Object.entries(bottoni)) $(id).setAttribute("aria-current", String(valore === scelta));
+}
 function mostraSubTab(sub) {
   subTabAttivo = sub;
   if (sub !== "foto") stopCamera();
-  $("p-reward").hidden = true; // scelta esplicita di scheda: la festa è finita
-  $("sub-indizio").hidden = sub !== "indizio";
-  $("sub-foto").hidden = sub !== "foto";
-  $("p-inbox").hidden = sub !== "messaggi";
-  $("p-settings").hidden = sub !== "impostazioni";
-  $("sub-indizio-btn").setAttribute("aria-current", String(sub === "indizio"));
-  $("sub-foto-btn").setAttribute("aria-current", String(sub === "foto"));
-  $("sub-msg-btn").setAttribute("aria-current", String(sub === "messaggi"));
-  $("sub-settings-btn").setAttribute("aria-current", String(sub === "impostazioni"));
+  $("view-player").dataset.sub = sub; // scelta esplicita di scheda: anche la festa (sub "festa") finisce qui
+  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni" }, sub);
   if (sub === "foto") {
     // .disabled non si azzera da solo lasciando "Foto" (cameraButton() lo rimette a
     // true solo sull'errore): senza questa riga, tornando qui il bottone "Attiva la
@@ -2208,7 +2227,7 @@ async function syncGame() {
     loadGame(g);
     if (!prev || prev.formato !== g.formato) store.set(stateKey(), freshState(game));
     store.set(gameKey(), g);
-    if ($("p-reward").hidden) {
+    if ($("view-player").dataset.sub !== "festa") {
       if (!festeggiaAutomatici()) renderPlayer();
     }
   } catch {
@@ -2381,12 +2400,10 @@ function aggiornaProgresso(st) {
 }
 
 function renderPlayer() {
-  $("p-reward").hidden = true;
-  $("p-test").hidden = !(inProva() || inBozza());
-  $("p-reset").hidden = !game;
-  $("p-empty").hidden = !!game;
+  const vista = $("view-player");
+  vista.toggleAttribute("data-prova", inProva() || inBozza());
   if (!game) {
-    $("p-alldone").hidden = true; $("p-clue-card").hidden = true; $("p-news").hidden = true;
+    vista.dataset.stato = "vuoto";
     $("p-progress").textContent = "";
     renderMemoria(stato());
     mostraSubTab(subTabAttivo); // Messaggi/Impostazioni restano raggiungibili anche qui
@@ -2403,20 +2420,17 @@ function renderPlayer() {
 
   if (!todo.length) {
     stopCamera();
-    $("p-clue-card").hidden = true; $("p-alldone").hidden = false;
+    vista.dataset.stato = "fine";
     // Niente più da fotografare, ma non è detto che sia finita: un regalo può restare
     // chiuso solo perché mancano istanze di un altro giocatore (vedi mancanoIstanze).
     const manca = mancanoIstanze(st);
-    $("p-alldone-titolo").textContent = manca.length ? "Ti manca qualcosa" : "Hai trovato tutto";
-    $("p-alldone-testo").textContent = manca.length
-      ? "Non c'è altro da fotografare, ma per andare avanti ti serve: " + manca.map(m => `${m.nome} ×${m.quante}`).join(", ") + ". Te lo può passare un altro giocatore che ce l'ha (👥 nella sua Memoria)."
-      : "Per ora non ci sono altri oggetti da cercare. Torna a controllare: il master può aggiungerne di nuovi.";
+    vista.dataset.fine = manca.length ? "manca" : "tutto";
+    $("p-manca-lista").textContent = manca.map(m => `${m.nome} ×${m.quante}`).join(", ");
     mostraSubTab(subTabAttivo); // idem: da "Hai trovato tutto" si deve poter ricominciare
     return;
   }
-  $("p-alldone").hidden = true;
+  vista.dataset.stato = "gioco";
   const cur = attuale(st, todo);
-  $("p-clue-card").hidden = false;
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
@@ -2431,8 +2445,8 @@ function showReward(nuovi, st) {
   // Dopo aver trovato qualcosa si riparte da "Indizio", non si resta su "Foto": lo si
   // sceglie di nuovo solo quando si è pronti per il prossimo oggetto.
   subTabAttivo = "indizio";
-  for (const id of ["sub-indizio", "sub-foto", "p-inbox", "p-settings", "p-news"]) $(id).hidden = true;
-  $("p-reward").hidden = false;
+  $("view-player").dataset.sub = "festa"; // il CSS nasconde le altre schede e le novità
+  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni" }, "");
   const wrap = $("p-reward-list");
   wrap.innerHTML = "";
   for (const n of nuovi) {
@@ -2923,7 +2937,7 @@ function initPlayer() {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
     if (game) saveState(freshState(game)); else store.del(stateKey());
     stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
-    $("p-settings").hidden = true;
+    subTabAttivo = "indizio";
     renderPlayer();
   };
   $("p-change-hunt").onclick = () => {
@@ -2939,8 +2953,7 @@ function initPlayer() {
     // stato letto): riscrive l'indirizzo senza sparare l'evento, poi mostra la
     // schermata di scelta direttamente, stesso tema scuro che le darebbe route().
     if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-    document.body.classList.add("dark");
-    mostraSceltaCaccia();
+    mostraSceltaCaccia(); // imposta da sé body[data-view="chooser"], quindi il tema scuro
   };
   $("sub-msg-btn").onclick = () => mostraSubTab("messaggi");
   $("p-inbox-close").onclick = () => mostraSubTab("indizio");
@@ -2967,7 +2980,7 @@ function initPlayer() {
 // guardando davvero una caccia: se è ferma sulla schermata di scelta non c'è nulla
 // da sincronizzare).
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && !location.hash.startsWith("#master") && $("view-chooser").hidden) { syncGame(); syncMessages(); }
+  if (!document.hidden && document.body.dataset.view === "player") { syncGame(); syncMessages(); }
 });
 
 // Ricordata in locale: quale caccia il giocatore ha visto per ultima (scelta dalla
@@ -2980,18 +2993,14 @@ const CHOOSER_KEY = "caccia-scelta";
 const CONTINUITA_KEY = "caccia-scelta-continuita-vista";
 
 function mostraGiocatore() {
-  $("view-chooser").hidden = true;
-  $("view-player").hidden = false;
-  document.body.classList.add("playing"); // schermo pieno stile app, vedi CSS
+  document.body.dataset.view = "player"; // schermo pieno stile app e tema scuro, vedi CSS
   initPlayer();
 }
 
 // Elenco delle cacce mostrato al giocatore: stessa leggiElencoCacce() che alimenta il
 // menu del pannello master, così le due liste non possono più disallinearsi.
 async function mostraSceltaCaccia() {
-  $("view-player").hidden = true;
-  $("view-chooser").hidden = false;
-  document.body.classList.remove("playing"); // questa schermata scorre normalmente
+  document.body.dataset.view = "chooser"; // scorre normalmente, tema scuro (vedi CSS)
   const cacce = await leggiElencoCacce();
   const wrap = $("chooser-list");
   wrap.innerHTML = "";
@@ -3033,19 +3042,12 @@ async function avvioGiocatore() {
    (la bozza della caccia di sempre), non un link rotto. ---------- */
 function route() {
   stopCamera();
-  const master = location.hash === "#master";
-  const collega = location.hash === "#master-collega";
-  const grafo = location.hash === "#master-grafo";
-  $("view-master").hidden = !master;
-  $("view-collega").hidden = !collega;
-  $("view-grafo").hidden = !grafo;
-  document.body.classList.toggle("wide", collega || grafo);
-  // Tema scuro per tutto ciò che vede il giocatore (scelta della caccia inclusa),
-  // mai per il pannello master: resta lo strumento di lavoro chiaro di sempre.
-  document.body.classList.toggle("dark", !(master || collega || grafo));
-  if (master || collega || grafo) {
-    $("view-player").hidden = true; $("view-chooser").hidden = true;
-    document.body.classList.remove("playing");
+  const h = location.hash;
+  if (h === "#master" || h === "#master-collega" || h === "#master-grafo") {
+    // body[data-view] = "master" | "master-collega" | "master-grafo": il CSS ne deriva
+    // vista, larghezza "wide" e tema chiaro (il tema scuro è per tutto ciò che vede il
+    // giocatore, scelta della caccia inclusa — mai per lo strumento di lavoro del master).
+    document.body.dataset.view = h.slice(1);
     initMaster();
   } else if (inBozza()) {
     mostraGiocatore();
