@@ -368,7 +368,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 49)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 50)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -2368,6 +2368,12 @@ function apriScambio({ ruolo, tipo, nodo, sessionId }) {
   $("p-scambio-annulla").hidden = false;
   $("p-scambio-riprova").hidden = true;
   $("p-scambio-chiudi").hidden = true;
+  // Il richiedente arriva già con la posteriore in mano puntata verso il cedente (è
+  // così che ha trovato il QR in "Foto"): mettere QUI il proprio QR in basso, sotto
+  // l'anteprima, ricalca esattamente il gesto appena fatto. Il cedente invece parte
+  // da fermo dalla scheda Memoria, senza un'inquadratura precedente da ricalcare.
+  const vf = $("p-scambio").querySelector(".viewfinder"), qr = $("p-scambio-qr");
+  $("p-scambio").insertBefore(ruolo === "ricevente" ? qr : vf, ruolo === "ricevente" ? vf : qr);
   if (ruolo === "cedente") {
     $("p-scambio-titolo").textContent = (tipo === "duplica" ? "Condividi: " : "Scambia: ") + nome;
     $("p-scambio-sub").textContent = tipo === "duplica"
