@@ -57,8 +57,13 @@ writeFileSync(join(dir, "cacce.json"), "[]");
 
 const port = await new Promise(r => { const s = createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 const server = spawn("python3", ["-m", "http.server", String(port)], { cwd: dir, stdio: "ignore" });
-await new Promise(r => setTimeout(r, 800));
 const URL = `http://localhost:${port}/index.html`;
+// Aspetta che il server risponda davvero (un'attesa fissa a volte non bastava).
+for (let i = 0; ; i++) {
+  try { if ((await fetch(URL)).ok) break; } catch {}
+  if (i > 50) throw new Error("il server di prova non risponde");
+  await new Promise(r => setTimeout(r, 100));
+}
 
 let fails = 0;
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
