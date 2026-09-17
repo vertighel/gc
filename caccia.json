@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T21:29:47.687Z",
+  "creato": "2026-09-17T22:35:49.626Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -287,7 +287,7 @@
       "testo": "usami",
       "duplicabile": true,
       "scambiabile": false,
-      "istanze": false
+      "istanze": true
     },
     "nmu16mnkqmr3": {
       "nome": "gomma",
@@ -431,7 +431,7 @@
       ],
       "testo": "sono una gomma piccola e tonda",
       "duplicabile": true,
-      "istanze": true,
+      "istanze": false,
       "scambiabile": false
     },
     "nmu16n76mr74": {
@@ -575,7 +575,9 @@
         "nmu16lpb4h0p"
       ],
       "testo": "usami con testo largo per vedere se fa wrap",
-      "scambiabile": true
+      "scambiabile": false,
+      "duplicabile": false,
+      "istanze": false
     },
     "nmu19yc3er0q": {
       "nome": "Scotch",
@@ -715,11 +717,17 @@
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
-        "nmu16lpb4h0p"
+        "nmu16mnkqmr3",
+        "nmu16m6zhncv",
+        "nmu16n76mr74"
       ],
       "duplicabile": false,
       "scambiabile": false,
-      "istanze": false
+      "istanze": false,
+      "istanzeRichieste": {
+        "nmu16mnkqmr3": 2,
+        "nmu16m6zhncv": 2
+      }
     }
   }
 }
