@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T15:39:03.152Z",
+  "creato": "2026-09-17T15:40:42.644Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -278,13 +278,14 @@
         "lon": 11.8687153,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
         "nmu16lpb4h0p"
       ],
-      "testo": "usami"
+      "testo": "usami",
+      "duplicabile": true
     },
     "nmu16mnkqmr3": {
       "nome": "gomma",
@@ -420,13 +421,14 @@
         "lon": 11.8687877,
         "raggio": 100
       },
-      "daValidare": true,
-      "conThumb": false,
+      "daValidare": false,
+      "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
         "nmu16lpb4h0p"
       ],
-      "testo": "sono una gomma piccola e tonda"
+      "testo": "sono una gomma piccola e tonda",
+      "duplicabile": true
     },
     "nmu16n76mr74": {
       "nome": "evidenziatore giallo",
@@ -562,13 +564,14 @@
         "lon": 11.8687283,
         "raggio": 100
       },
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
         "nmu16lpb4h0p"
       ],
-      "testo": "usami con testo largo per vedere se fa wrap"
+      "testo": "usami con testo largo per vedere se fa wrap",
+      "scambiabile": true
     },
     "nmu19yc3er0q": {
       "nome": "Scotch",
@@ -708,11 +711,10 @@
       "conThumb": true,
       "richiedePosizione": false,
       "richiede": [
-        "nmu16m6zhncv",
-        "nmu16mnkqmr3",
-        "nmu16n76mr74"
+        "nmu16lpb4h0p"
       ],
-      "duplicabile": true
+      "duplicabile": false,
+      "scambiabile": true
     }
   }
 }
