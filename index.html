@@ -280,6 +280,9 @@
   .linknode label, .grafopanel label { margin-top: 10px; }
   .flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
   .flags label.check { margin-top: 0; }
+  .modi { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .modi label.check { margin-top: 0; font-size: 15px; }
+  .modi label.check input { width: 18px; height: 18px; margin-top: 2px; }
   .linkreq { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
   .linkreq label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; font-size: 15px; }
   .linkreq label input { width: 18px; height: 18px; accent-color: var(--smalto); margin: 0; }
@@ -394,7 +397,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 53)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 54)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -1306,6 +1309,36 @@ function costruisciTestata(n, id, ids, notify) {
   return head;
 }
 
+// Un regalo (daValidare: false) è in UNO solo di questi modi — le flag nel file restano
+// tre booleani separati (scambiabile/duplicabile/istanze, vedi docs/MODELLO-DATI.md)
+// ma non hanno senso insieme: la UI le presenta come una scelta sola. Ordine di
+// precedenza per un file modificato a mano con più flag accese: istanze, poi
+// scambiabile, poi duplicabile (lo stesso che usa il bottone in Memoria).
+const MODI_REGALO = [
+  { modo: "libero",     icona: "🎁", testo: "Libero (resta a chi lo trova)" },
+  { modo: "scambiabile", icona: "🔄", testo: "Scambiabile (passa a un amico, tu lo perdi)" },
+  { modo: "duplicabile", icona: "👥", testo: "Duplicabile (una copia a un amico, tu lo tieni)" },
+  { modo: "istanze",    icona: "🎟️", testo: "Duplicabile a istanze (un sigillo diverso per ogni giocatore)" },
+];
+function modoRegalo(n) {
+  if (n.daValidare) return null;
+  if (n.istanze) return "istanze";
+  if (n.scambiabile) return "scambiabile";
+  if (n.duplicabile) return "duplicabile";
+  return "libero";
+}
+function impostaModoRegalo(n, modo) {
+  n.scambiabile = modo === "scambiabile";
+  n.duplicabile = modo === "duplicabile" || modo === "istanze";
+  n.istanze = modo === "istanze";
+}
+// Icona (e titolo) di un nodo: 📷 [📍] se da validare, altrimenti 🎁 + il modo.
+function iconaNodo(n) {
+  if (n.daValidare) return { icona: "📷" + (n.richiedePosizione ? " 📍" : ""), titolo: "Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "") };
+  const m = MODI_REGALO.find(x => x.modo === modoRegalo(n));
+  return { icona: m.modo === "libero" ? "🎁" : "🎁 " + m.icona, titolo: "Regalo: " + m.testo };
+}
+
 function corpoNodoCampi(n, id, ids, notify) {
   const frag = document.createDocumentFragment();
 
@@ -1317,16 +1350,24 @@ function corpoNodoCampi(n, id, ids, notify) {
     flags.append(lab);
     return cb;
   };
-  const cbThumb = mkFlag("conThumb", "Con thumb");
-  const cbValida = mkFlag("daValidare", "Da validare");
-  const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
-  const cbScambia = mkFlag("scambiabile", "Scambiabile (🔄 fra giocatori)");
-  const cbDuplica = mkFlag("duplicabile", "Duplicabile (👥 fra giocatori)");
-  // Nodo a istanze (vedi nuovaIstanza): un sigillo diverso per ogni giocatore che lo
-  // produce, sempre condivisibile (duplicabile implicito) e mai scambiabile — una
-  // istanza che migra non aumenterebbe il conteggio di nessuno, solo confusione.
-  const cbIstanze = mkFlag("istanze", "A istanze (🎟️ un sigillo diverso per ogni giocatore, condivisibile)");
+  const cbThumb = mkFlag("conThumb", "Thumb");
+  const cbValida = mkFlag("daValidare", "Validare");
+  const cbPos = mkFlag("richiedePosizione", "Posizione");
   cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
+  // Modo del regalo: una radio sola al posto di tre spunte (vedi MODI_REGALO). Visibile
+  // solo con "Da validare" spento: su un nodo che si ottiene rifotografando un oggetto
+  // reale, chi lo cede potrebbe rifotografarlo per riprenderselo (vedi memory.md).
+  const modi = document.createElement("div"); modi.className = "modi";
+  const radioNome = "modo-" + id + "-" + Math.random().toString(36).slice(2, 6); // due schede dello stesso nodo (Collega + Grafo) non devono condividere il gruppo
+  const radios = [];
+  for (const m of MODI_REGALO) {
+    const lab = document.createElement("label"); lab.className = "check modo";
+    const r = document.createElement("input"); r.type = "radio"; r.name = radioNome; r.value = m.modo;
+    r.onchange = () => { if (r.checked) { impostaModoRegalo(n, m.modo); salvaLocale(); notify(); } };
+    lab.append(r, document.createTextNode(" " + m.icona + " " + m.testo));
+    modi.append(lab); radios.push(r);
+  }
+  const aggiornaModo = () => { const cur = modoRegalo(n); for (const r of radios) r.checked = r.value === cur; };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
   cbValida.onchange = () => {
@@ -1337,7 +1378,8 @@ function corpoNodoCampi(n, id, ids, notify) {
     // reattiva dei prerequisiti, non un secondo scatto con la fotocamera — su un nodo
     // da validare basterebbe rifotografare l'oggetto reale per riprenderselo dopo
     // averlo ceduto (vedi memory.md). Riaccendere "Da validare" li spegne entrambi.
-    if (n.daValidare) { n.scambiabile = false; n.duplicabile = false; n.istanze = false; cbScambia.checked = false; cbDuplica.checked = false; cbIstanze.checked = false; aggiornaVisScambio(); }
+    if (n.daValidare) impostaModoRegalo(n, "libero");
+    aggiornaVisScambio();
     salvaLocale(); notify();
   };
   cbPos.onchange = () => {
@@ -1345,22 +1387,9 @@ function corpoNodoCampi(n, id, ids, notify) {
     if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
     salvaLocale(); notify();
   };
-  const aggiornaVisScambio = () => {
-    const labScambia = cbScambia.closest("label"), labDuplica = cbDuplica.closest("label"), labIstanze = cbIstanze.closest("label");
-    labScambia.hidden = labDuplica.hidden = labIstanze.hidden = !!n.daValidare;
-    // Con "A istanze" acceso: duplicabile è implicito (spuntato e bloccato), scambiabile sparisce.
-    if (n.istanze) { labScambia.hidden = true; cbDuplica.checked = true; cbDuplica.disabled = true; }
-    else cbDuplica.disabled = false;
-  };
-  cbScambia.onchange = () => { n.scambiabile = cbScambia.checked; salvaLocale(); notify(); };
-  cbDuplica.onchange = () => { n.duplicabile = cbDuplica.checked; salvaLocale(); notify(); };
-  cbIstanze.onchange = () => {
-    n.istanze = cbIstanze.checked;
-    if (n.istanze) { n.duplicabile = true; n.scambiabile = false; cbScambia.checked = false; }
-    aggiornaVisScambio(); salvaLocale(); notify();
-  };
+  const aggiornaVisScambio = () => { modi.hidden = !!n.daValidare; aggiornaModo(); };
   aggiornaVisScambio();
-  frag.append(flags);
+  frag.append(flags, modi);
 
   // Due campi, due momenti dello stesso nodo, entrambi auto-riferiti (mai su
   // un prerequisito né su un dipendente): "testo" è l'indizio PRIMA del
@@ -1617,8 +1646,8 @@ function disegnaGrafo() {
     const info = document.createElement("div"); info.className = "grafonode-info";
     const nome = document.createElement("span"); nome.className = "grafonode-nome"; nome.textContent = n.nome;
     const icone = document.createElement("span"); icone.className = "grafonode-icone";
-    icone.textContent = n.daValidare ? ("📷" + (n.richiedePosizione ? " 📍" : "")) : ("🎁" + (n.istanze ? " 🎟️" : ""));
-    icone.title = n.daValidare ? ("Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "")) : (n.istanze ? "Regalo a istanze: un sigillo diverso per ogni giocatore" : "Diventa posseduto da solo (regalo)");
+    const ic = iconaNodo(n);
+    icone.textContent = ic.icona; icone.title = ic.titolo;
     info.append(nome, icone);
     card.append(info);
     card.onclick = (e) => {
@@ -2260,17 +2289,18 @@ function renderMemoria(st) {
     // Il bottone di scambio dipende dal nodo VIVO nella caccia attuale (i flag possono
     // cambiare o il nodo può sparire), mai dal record salvato nel bottino.
     const nodoDef = game && game.nodi[r.nodo];
+    const modo = nodoDef ? modoRegalo(nodoDef) : null; // stessa precedenza del pannello master
     let azione = null;
-    if (nodoDef && (nodoDef.scambiabile || nodoDef.duplicabile)) {
+    if (modo && modo !== "libero") {
       azione = document.createElement("button");
       azione.className = "todo-action";
       azione.type = "button";
-      azione.textContent = nodoDef.scambiabile ? "🔄" : "👥";
-      azione.title = nodoDef.scambiabile ? "Scambia con un amico" : "Condividi con un amico";
+      azione.textContent = modo === "scambiabile" ? "🔄" : "👥";
+      azione.title = modo === "scambiabile" ? "Scambia con un amico" : "Condividi con un amico";
       azione.onclick = ev => {
         ev.stopPropagation();
         // Su un nodo a istanze si condivide QUESTA istanza (la riga), non il nodo.
-        apriScambio({ ruolo: "cedente", tipo: nodoDef.scambiabile ? "scambio" : "duplica", nodo: r.nodo, istanza: r.istanza || "" });
+        apriScambio({ ruolo: "cedente", tipo: modo === "scambiabile" ? "scambio" : "duplica", nodo: r.nodo, istanza: r.istanza || "" });
       };
     }
     rigaSelezionabile(list, {

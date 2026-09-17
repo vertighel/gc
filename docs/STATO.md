@@ -1,4 +1,4 @@
-# Stato attuale (versione 53)
+# Stato attuale (versione 54)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -308,21 +308,25 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   `wide` su `<body>`) e le schede si affiancano in una griglia; sul
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
-  (editabile), subito seguiti dalle flag — **Con thumb** (la foto fa
+  (editabile), subito seguiti dalle flag — **Thumb** (la foto fa
   da indizio mentre il nodo è ancora *da trovare*, per lui stesso — vedi
   `immaginiIndizio()`; non c'entra con la foto nel bottino/sblocco, che si
-  vede sempre una volta posseduto), **Da validare** (richiede foto+match
+  vede sempre una volta posseduto), **Validare** (richiede foto+match
   del giocatore per essere posseduto, altrimenti lo diventa da solo appena
-  "richiede" è soddisfatto), **Richiede posizione** (in più al match
+  "richiede" è soddisfatto), **Posizione** (in più al match
   fotografico, il giocatore deve essere entro 100 m dal punto registrato —
-  spuntarla spunta anche "Da validare" in automatico, e non si può togliere
-  l'una senza l'altra), **Scambiabile** e **Duplicabile** (🔄/👥 fra
-  giocatori, vedi sopra "Scambio/condivisione fra giocatori" — visibili solo
-  quando "Da validare" è spenta: hanno senso solo su un regalo, mai su un
-  nodo che si ottiene rifotografando un oggetto reale, altrimenti chi lo
-  cede potrebbe semplicemente rifotografarlo per riprenderselo), **A istanze**
-  (🎟️, vedi sopra "Regali a istanze": spunta e blocca "Duplicabile", nasconde
-  "Scambiabile") — poi due
+  spuntarla spunta anche "Validare" in automatico, e non si può togliere
+  l'una senza l'altra), e, sotto, il **modo del regalo** come scelta unica (radio, visibile solo
+  quando "Validare" è spenta — ha senso solo su un regalo, mai su un nodo
+  che si ottiene rifotografando un oggetto reale, altrimenti chi lo cede
+  potrebbe rifotografarlo per riprenderselo): 🎁 **Libero**, 🔄
+  **Scambiabile**, 👥 **Duplicabile**, 🎟️ **Duplicabile a istanze** (vedi
+  sopra). Nel file restano le tre flag booleane `scambiabile`/`duplicabile`/
+  `istanze` (`MODI_REGALO`, `modoRegalo()`, `impostaModoRegalo()`): la radio
+  le scrive in modo esclusivo, e un file modificato a mano con più flag
+  accese si legge con la precedenza istanze > scambiabile > duplicabile,
+  la stessa usata dal bottone in Memoria. L'icona del modo compare accanto
+  a 🎁 sulla scheda del Grafo (`iconaNodo()`) — poi due
   campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
   (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si
