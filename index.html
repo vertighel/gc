@@ -181,9 +181,12 @@
   .title { font: 700 34px/1.05 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
 
   .reward { text-align: center; padding: 8px 0 20px; }
-  #p-scambio { display: flex; flex-direction: column; height: 100%; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
-  #p-scambio .viewfinder { flex: 1; min-height: 0; margin: 8px 0; }
-  #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; }
+  /* "flex: 1; min-height: 0" come #p-content, non "height: 100%": dentro la colonna
+     flessibile di #view-player, un figlio a "height: 100%" si somma all'header invece
+     di condividerne lo spazio, spingendo i bottoni in fondo fuori dallo schermo. */
+  #p-scambio { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
+  #p-scambio .viewfinder { max-width: 260px; aspect-ratio: 1; width: 100%; margin: 8px auto; flex: none; }
+  #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; flex: none; }
   #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
   #p-scambio-sub { color: var(--grigio); margin: 0 0 4px; }
   #p-scambio .btnrow { margin-top: 10px; }
@@ -360,7 +363,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 46)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 48)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -507,7 +510,7 @@
     </header>
 
     <div class="current">
-      <h2>Caccia</h2>
+      <h2>Avventura</h2>
       <p class="hint">Ogni caccia è un file a sé. Scegline una da modificare, o creane una nuova: il nome scelto è anche il link da dare ai giocatori di quella caccia.</p>
       <select id="m-hunt-select"></select>
       <p id="m-link-hint" class="hint"></p>
@@ -2234,6 +2237,11 @@ const QR_TIPI = ["scambio", "duplica"];
 const QR_K = 5;               // letture valide reciproche richieste prima del commit
 const QR_TIMEOUT_MS = 20000;  // sessione abbandonata se non converge entro questo tempo
 const QR_TICK_MS = 220;       // ritmo di rigenerazione/lettura del proprio QR
+// Dopo il proprio commit, il cedente vede "Fatto!" ma il ricevente potrebbe non aver
+// ancora letto l'ultima conferma (era comunque a un fotogramma di distanza, vedi
+// aggiornaStatoScambio) — capitato davvero staccando subito i telefoni. "Torna a
+// Memoria" resta disabilitato per questo tempo, per scoraggiare l'addio immediato.
+const QR_GRAZIA_MS = 3000;
 
 let jsQRPromise = null;
 function getJsQR() {
@@ -2396,7 +2404,12 @@ async function scambioTick() {
 
 function aggiornaStatoScambio() {
   if (!scambio || scambio.committed) return;
-  const n = Math.min(scambio.myReadCount, QR_K);
+  // Il minimo fra le due letture, non solo la mia: mostrare "5/5" quando ho letto
+  // abbastanza di te ma tu non hai ancora confermato di aver letto abbastanza di me
+  // dà un falso senso di "fatto" — capitato davvero: un giocatore ha visto il proprio
+  // contatore pieno e ha staccato i telefoni un istante prima che l'altro potesse
+  // leggere l'ultima conferma (vedi memory.md).
+  const n = Math.min(scambio.myReadCount, scambio.theirAck, QR_K);
   setStatus($("p-scambio-status"), n === 0 ? "Avvicina gli schermi, faccia a faccia." : `Verifica in corso… (${n}/${QR_K})`);
 }
 
@@ -2409,17 +2422,28 @@ function scambioRiuscito() {
   if (ruolo === "cedente") {
     if (tipo === "scambio") cedi(stato(), nodo);
     stopCamera();
-    setStatus($("p-scambio-status"), (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".", "ok");
+    const fatto = (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".";
+    setStatus($("p-scambio-status"), fatto + " Tieni ancora un attimo gli schermi vicini, finché anche il tuo amico non vede \"Fatto!\".", "ok");
     $("p-scambio-annulla").hidden = true;
-    $("p-scambio-chiudi").hidden = false;
+    setTimeout(() => { if (scambio) $("p-scambio-chiudi").hidden = false; }, QR_GRAZIA_MS);
   } else {
+    // Lo stato si scrive subito (è già sicuro: per arrivare qui il mio stesso contatore
+    // era già a soglia), ma la schermata resta com'è ancora un attimo — stesso motivo
+    // del cedente sopra: il mio QR (sul canvas, non legato alla fotocamera) deve
+    // restare visibile perché l'amico possa leggere l'ultima conferma anche se il suo
+    // contatore era un fotogramma indietro rispetto al mio. Passare subito a "Sbloccato!"
+    // nasconderebbe #p-scambio, cioè il mio QR, troppo presto — capitato davvero.
     const st = stato();
     const nuovi = chiudiEAggiorna(st, [nodo]);
     st.scelta = null; saveState(st);
-    stopCamera();
-    chiudiScambio();
-    mostraTab("cerca");
-    showReward(nuovi, st);
+    setStatus($("p-scambio-status"), "Ricevuto! Tieni ancora un attimo gli schermi vicini, finché anche il tuo amico non vede \"Fatto!\".", "ok");
+    $("p-scambio-annulla").hidden = true;
+    setTimeout(() => {
+      stopCamera();
+      chiudiScambio();
+      mostraTab("cerca");
+      showReward(nuovi, st);
+    }, QR_GRAZIA_MS);
   }
 }
 
