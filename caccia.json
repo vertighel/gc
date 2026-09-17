@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-15T17:08:47.812Z",
+  "creato": "2026-09-17T15:39:03.152Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -711,7 +711,8 @@
         "nmu16m6zhncv",
         "nmu16mnkqmr3",
         "nmu16n76mr74"
-      ]
+      ],
+      "duplicabile": true
     }
   }
 }
