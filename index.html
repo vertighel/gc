@@ -112,11 +112,6 @@
 
   .bar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 18px; }
   .bar-right { display: flex; align-items: center; gap: 10px; }
-  .inbox-btn { position: relative; border: 0; background: none; font-size: 22px; line-height: 1; padding: 6px; cursor: pointer; }
-  .inbox-btn .badge {
-    position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px;
-    border-radius: 9px; background: var(--rosso); color: #fff; font: 700 12px/18px var(--display); text-align: center;
-  }
   .inbox { background: var(--superficie); box-shadow: 0 0 0 1px var(--bordo-superficie); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px; }
   .inbox h2 { font: 700 22px/1 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
   .inbox ul { list-style: none; margin: 0 0 8px; padding: 0; }
@@ -227,7 +222,6 @@
   .unlocked-item h3 { font: 700 20px/1.15 var(--display); color: var(--testo-chiaro); margin: 0 0 4px; }
   .unlocked-item p { margin: 0; color: var(--testo-chiaro); }
 
-  .foot { text-align: center; margin-top: 18px; }
   /* Thumb quadrata (foto vera o colore calcolato da medaglia()) per le righe della
      lista "Memoria": stessa forma di .todo-thumb (Traccia), ma è un contenitore —
      medaglia() a volte mette solo un colore di sfondo, senza <img>. */
@@ -354,7 +348,6 @@
   .testbar { background: var(--giallo); color: var(--smalto-scuro); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
   .testbar .link { color: var(--smalto-scuro); padding: 0; }
   .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
-  .diag { white-space: pre-wrap; word-break: break-word; background: #fff; border: 2px solid var(--rosso); color: var(--rosso); border-radius: 8px; padding: 12px; font: 14px/1.4 ui-monospace, monospace; }
 
   /* ===== Tema scuro del pannello master (unico contesto dove chiaro/scuro convivono
      davvero: .brand, .current, .status, .link, .hint, .btn compaiono anche lì). Tutto
@@ -397,9 +390,8 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 54)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 55)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
-  <pre id="diag" class="diag" hidden></pre>
 
   <!-- ================= GIOCATORE ================= -->
   <section id="view-player" hidden>
@@ -721,12 +713,22 @@ const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
 
 // Array grezzo di slug da cacce.json (mai un fetch fallito o un contenuto malformato:
 // sempre almeno []), condiviso da leggiElencoCacce() e registraCaccia().
-async function leggiCacceGrezzo() {
+// L'unico modo di leggere un file JSON pubblicato accanto a index.html (caccia*.json,
+// lavoro*.json, messaggi.json, cacce.json): sempre senza cache, con i tre esiti che
+// contano distinti — "ok" (dati), "404" (il file non esiste ancora: normale prima
+// della prima pubblicazione), "errore" (rete, HTTP ≠ 2xx, JSON rotto).
+async function leggiJson(file) {
   try {
-    const r = await fetch("cacce.json", { cache: "no-store" });
-    const elenco = r.ok ? await r.json() : [];
-    return Array.isArray(elenco) ? elenco : [];
-  } catch { return []; }
+    const r = await fetch(file, { cache: "no-store" });
+    if (r.status === 404) return { stato: "404" };
+    if (!r.ok) return { stato: "errore" };
+    return { stato: "ok", dati: await r.json() };
+  } catch { return { stato: "errore" }; }
+}
+
+async function leggiCacceGrezzo() {
+  const r = await leggiJson("cacce.json");
+  return r.stato === "ok" && Array.isArray(r.dati) ? r.dati : [];
 }
 
 // Elenco di TUTTE le cacce, "caccia" (slug vuoto, sempre presente) compresa e sempre
@@ -935,7 +937,6 @@ function hslToRgb(h, s, l) {
 // base = la caccia già pubblicata sul sito; L.nodi è la copia di lavoro (modificabile,
 // condivisa fra il pannello "Caccia pubblicata" e la pagina "Collega gli elementi")
 const M = { base: null, baseLoaded: false, loading: false, pos: [], neg: [], cal: null, luogo: null, immagine: null, busy: false };
-window.__test = { M, refresh: () => masterRefresh() }; // aggancio per i test (vedi CLAUDE.md): inietta un embedding finto in M.pos/M.neg/M.cal senza usare la fotocamera
 const clone = o => JSON.parse(JSON.stringify(o));
 const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const inCaccia3 = g => !!(g && g.formato === "caccia-3" && g.nodi);
@@ -943,7 +944,6 @@ const inCaccia3 = g => !!(g && g.formato === "caccia-3" && g.nodi);
 // cima), indipendente da quale il giocatore stia guardando (quella è activeSlug()).
 // "" = la caccia di sempre.
 const L = { nodi: null, slug: "" };
-Object.assign(window.__test, { L, disegnaGrafo: () => disegnaGrafo() }); // idem, per i test della pagina del grafo
 
 function masterRefresh() {
   const esportabile = M.baseLoaded && !M.busy;
@@ -1038,10 +1038,16 @@ function apriAnteprima(src) {
   document.body.append(overlay);
 }
 
+// Un'immagine che al tocco si apre nella lightbox (apriAnteprima): l'unico modo in
+// cui una foto compare nell'interfaccia, sia come miniatura sia come foto grande.
+function imgAnteprima(src, classe = "") {
+  const img = document.createElement("img"); img.src = src || ""; if (classe) img.className = classe;
+  img.onclick = () => apriAnteprima(src);
+  return img;
+}
 function thumbEl(immagine) {
   const wrap = document.createElement("span"); wrap.className = "thumb";
-  const img = document.createElement("img"); img.src = immagine || ""; wrap.append(img);
-  wrap.onclick = () => apriAnteprima(immagine);
+  wrap.append(imgAnteprima(immagine));
   return wrap;
 }
 
@@ -1089,12 +1095,9 @@ function caricaBozzaLocale(slug) {
 // semplice, come caccia.json/messaggi.json, non con l'API di GitHub (serve il token
 // solo per scrivere, non per leggere un file pubblico).
 async function loadDraftServer(slug) {
-  try {
-    const r = await fetch(draftFile(slug), { cache: "no-store" });
-    if (!r.ok) return null;
-    const g = await r.json();
-    return (g && g.formato === FORMATO && g.nodi) ? g : null;
-  } catch { return null; }
+  const r = await leggiJson(draftFile(slug));
+  const g = r.stato === "ok" ? r.dati : null;
+  return (g && g.formato === FORMATO && g.nodi) ? g : null;
 }
 
 // Cache in memoria di leggiElencoCacce(), per ridisegnare il menu senza rileggere
@@ -1136,27 +1139,18 @@ async function caricaCopiaLavoro(slug) {
   $("m-base-retry").hidden = true;
   setStatus($("m-draft-status"), "");
   setStatus($("m-base-status"), "Leggo la caccia pubblicata…");
-  try {
-    const r = await fetch(gameFile(slug), { cache: "no-store" });
-    if (r.status === 404) {
-      M.base = null;
-      setStatus($("m-base-status"), "Questa caccia non è ancora stata pubblicata: il primo oggetto che aggiungi la crea.");
-    } else {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const g = await r.json();
-      if (inCaccia3(g)) {
-        M.base = g;
-        setStatus($("m-base-status"), testoConteggio(Object.keys(g.nodi).length));
-      } else {
-        M.base = null;
-        setStatus($("m-base-status"), "La caccia pubblicata è in un formato precedente, non compatibile: pubblicando da qui la sostituirai (i progressi dei giocatori ripartiranno da zero).", "ko");
-      }
-    }
-    M.baseLoaded = true;
-  } catch {
-    M.baseLoaded = false;
+  const r = await leggiJson(gameFile(slug));
+  M.baseLoaded = r.stato !== "errore";
+  M.base = r.stato === "ok" && inCaccia3(r.dati) ? r.dati : null;
+  if (r.stato === "errore") {
     setStatus($("m-base-status"), "Non riesco a leggere la caccia pubblicata. Per non perdere gli oggetti esistenti, l'esportazione resta bloccata finché non riprovi con successo.", "ko");
     $("m-base-retry").hidden = false;
+  } else if (r.stato === "404") {
+    setStatus($("m-base-status"), "Questa caccia non è ancora stata pubblicata: il primo oggetto che aggiungi la crea.");
+  } else if (M.base) {
+    setStatus($("m-base-status"), testoConteggio(Object.keys(M.base.nodi).length));
+  } else {
+    setStatus($("m-base-status"), "La caccia pubblicata è in un formato precedente, non compatibile: pubblicando da qui la sostituirai (i progressi dei giocatori ripartiranno da zero).", "ko");
   }
   M.loading = false;
 
@@ -1471,23 +1465,23 @@ function schedaNodo(id, ids) {
 // nel pannello master (serve sia ai messaggi sia, da "Collega gli elementi",
 // a pubblicare la caccia — vedi ghPutFile()). Presa come oggetto di id
 // invece che pensata solo per questo, nel caso serva ancora una copia altrove.
-function wireGhConfigPanel(p) {
+function wireGhConfigPanel() {
   const cfg = ghConfig();
-  if (cfg) { $(p.owner).value = cfg.owner || ""; $(p.repo).value = cfg.repo || ""; $(p.branch).value = cfg.branch || ""; }
-  $(p.save).onclick = () => {
-    const owner = $(p.owner).value.trim(), repo = $(p.repo).value.trim();
-    const branch = $(p.branch).value.trim() || "main";
-    const token = $(p.token).value.trim() || (ghConfig() || {}).token;
-    if (!owner || !repo || !token) { setStatus($(p.status), "Compila almeno utente, repository e token.", "ko"); return; }
+  if (cfg) { $("cfg-owner").value = cfg.owner || ""; $("cfg-repo").value = cfg.repo || ""; $("cfg-branch").value = cfg.branch || ""; }
+  $("cfg-save").onclick = () => {
+    const owner = $("cfg-owner").value.trim(), repo = $("cfg-repo").value.trim();
+    const branch = $("cfg-branch").value.trim() || "main";
+    const token = $("cfg-token").value.trim() || (ghConfig() || {}).token;
+    if (!owner || !repo || !token) { setStatus($("cfg-status"), "Compila almeno utente, repository e token.", "ko"); return; }
     store.set("gh-config", { owner, repo, branch, path: "caccia.json", token });
-    $(p.token).value = "";
-    setStatus($(p.status), "Configurazione salvata su questo telefono.", "ok");
+    $("cfg-token").value = "";
+    setStatus($("cfg-status"), "Configurazione salvata su questo telefono.", "ok");
     ghConfigStatus();
   };
-  $(p.clear).onclick = () => {
+  $("cfg-clear").onclick = () => {
     store.del("gh-config");
-    $(p.owner).value = ""; $(p.repo).value = ""; $(p.branch).value = ""; $(p.token).value = "";
-    setStatus($(p.status), "Token dimenticato.", "");
+    for (const id of ["cfg-owner", "cfg-repo", "cfg-branch", "cfg-token"]) $(id).value = "";
+    setStatus($("cfg-status"), "Token dimenticato.", "");
     ghConfigStatus();
   };
 }
@@ -1713,7 +1707,7 @@ function initMaster() {
   $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
   $("m-base-retry").onclick = () => caricaCopiaLavoro(L.slug);
 
-  wireGhConfigPanel({ owner: "cfg-owner", repo: "cfg-repo", branch: "cfg-branch", token: "cfg-token", save: "cfg-save", clear: "cfg-clear", status: "cfg-status" });
+  wireGhConfigPanel();
   ghConfigStatus();
 
   $("m-rec-pos").onclick = async () => {
@@ -1867,12 +1861,17 @@ function renderMsgList() {
   }
 }
 
+// messaggi.json per master e giocatore: l'elenco (vuoto se il file non esiste
+// ancora), o null se non si è riusciti a leggerlo — in quel caso chi chiama tiene la
+// copia che aveva già.
+async function scaricaMessaggi() {
+  const r = await leggiJson(MSG_URL);
+  if (r.stato === "errore") return null;
+  return Array.isArray(r.dati) ? r.dati : [];
+}
 async function loadMessages() {
-  try {
-    const r = await fetch(MSG_URL, { cache: "no-store" });
-    msgList = r.status === 404 ? [] : (r.ok ? await r.json() : msgList);
-  } catch { /* resta la copia già in memoria, se c'era */ }
-  if (!Array.isArray(msgList)) msgList = [];
+  const lista = await scaricaMessaggi();
+  if (lista) msgList = lista;
   renderMsgList();
 }
 
@@ -1934,14 +1933,6 @@ function mostraSubTab(sub) {
   }
   if (sub === "messaggi") { markRead(inbox.map(m => m.id)); renderInbox(); }
 }
-// Aggancio per i test (vedi CLAUDE.md): stato altrimenti privato al modulo.
-Object.assign(window.__test, {
-  tabAttivo: () => tabAttivo, subTabAttivo: () => subTabAttivo, hasStream: () => !!stream,
-  // Simula "ho appena trovato un oggetto" senza passare da fotocamera/riconoscimento
-  // vero: showReward() si aspetta un elenco di nodi e lo stato corrente, entrambi
-  // ricavabili da qui.
-  simulaTrovato: () => showReward([{ nome: "Test", messaggio: "" }], stato()),
-});
 
 const inProva  = () => !!store.get("prova");
 // Chiavi separate per caccia (slug), così bottino e progressi di una non si mescolano
@@ -2175,15 +2166,15 @@ async function syncGame() {
   syncing = true;
   try {
     const file = inBozza() ? draftFile(activeSlug()) : gameFile(activeSlug());
-    const r = await fetch(file, { cache: "no-store" });
-    if (r.status === 404) {
+    const r = await leggiJson(file);
+    if (r.stato === "404") {
       if (!game) showEmpty(inBozza()
         ? "Nessuna bozza salvata per questa caccia. Dal pannello master, premi \"Salva bozza sul server\"."
         : "Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
       return;
     }
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const g = await r.json();
+    if (r.stato === "errore") throw new Error("lettura fallita");
+    const g = r.dati;
     // "creato" (caccia*.json) o "salvato" (lavoro*.json): vedi loadGame().
     if (game && game.formato === g.formato && (game.creato || game.salvato) === (g.creato || g.salvato)) return;
     if (!inCaccia3(g)) { if (!game) showEmpty("La caccia pubblicata non è in un formato compatibile con questa versione del gioco.", true); return; }
@@ -2229,14 +2220,8 @@ function renderInbox() {
 
 async function syncMessages() {
   if (inProva()) return;
-  try {
-    const r = await fetch(MSG_URL, { cache: "no-store" });
-    if (r.status === 404) { inbox = []; renderInbox(); return; }
-    if (!r.ok) return;
-    const list = await r.json();
-    inbox = Array.isArray(list) ? list : [];
-    renderInbox();
-  } catch { /* i messaggi già scaricati restano visibili */ }
+  const lista = await scaricaMessaggi();
+  if (lista) { inbox = lista; renderInbox(); }
 }
 
 // Un cerchietto per ogni nodo, una volta posseduto (schermata di sblocco, bottino):
@@ -2277,10 +2262,7 @@ function renderMemoria(st) {
   $("p-mem-msg").textContent = scelto ? (scelto.messaggio || "") : "Connessione all'impianto neurale… seleziona un oggetto in memoria!";
   const memImgs = $("p-mem-imgs");
   memImgs.innerHTML = "";
-  if (scelto && scelto.immagine) {
-    const img = document.createElement("img"); img.src = scelto.immagine; img.onclick = () => apriAnteprima(scelto.immagine);
-    memImgs.append(img);
-  }
+  if (scelto && scelto.immagine) memImgs.append(imgAnteprima(scelto.immagine));
 
   const list = $("p-inv-list");
   list.innerHTML = "";
@@ -2412,10 +2394,7 @@ function renderPlayer() {
   $("p-clue").textContent = etichettaOggetto(cur.id);
   const imgs = $("p-clue-imgs");
   imgs.innerHTML = "";
-  for (const src of immaginiIndizio(cur)) {
-    const img = document.createElement("img"); img.src = src; img.onclick = () => apriAnteprima(src);
-    imgs.append(img);
-  }
+  for (const src of immaginiIndizio(cur)) imgs.append(imgAnteprima(src));
   renderTodo(st, todo, cur);
   mostraSubTab(subTabAttivo);
 }

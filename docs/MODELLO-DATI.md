@@ -148,7 +148,7 @@ Regole:
   leggono il nodo stesso, non chi richiede o chi è richiesto). `messaggio` è
   cosa succede **dopo**: una volta nella schermata di sblocco cumulativa
   appena il nodo diventa posseduto, e da lì in poi sempre rivedibile
-  toccando l'oggetto nel bottino (`apriRicordo()`) — il bottino funziona
+  toccando l'oggetto nel bottino (`renderMemoria()`) — il bottino funziona
   quindi anche da promemoria di cosa si stava cercando. `richiede` decide
   **solo quando** un nodo compare in "Da trovare" (raggiungibilità): non
   trasporta più alcun contenuto da un nodo all'altro. Conseguenza pratica:

@@ -88,7 +88,12 @@ Il pattern che abbiamo usato finora, e che conviene continuare a usare:
    prova nella cartella servita, prima di aprire la pagina.
 5. Per simulare "l'oggetto riconosciuto" senza usare la fotocamera vera,
    inietta direttamente un vettore embedding finto nello stato del master
-   (`M.pos`, `M.cal`) invece di passare da `getUserMedia`.
+   (`M.pos`, `M.cal`) invece di passare da `getUserMedia`. Lo stato del
+   modulo non è raggiungibile da `page.evaluate`: **copia `index.html` in
+   una cartella di prova e solo lì** aggiungi in fondo un `window.__debug`
+   con ciò che serve (è quello che fa `tests/scambio.test.mjs`). Nel file
+   vero non devono esserci ganci di test — quelli vecchi (`window.__test`)
+   sono stati tolti.
 
 Questo pattern è già stato usato per verificare ogni funzionalità aggiunta
 finora (vedi la cronologia dei commit). Se aggiungi un test automatico,

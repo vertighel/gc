@@ -129,10 +129,10 @@ sempre (nessun database, vedi `memory.md`).
   un `formato` diverso azzera tutto (bottino, progressi, nodi visti).
 - **Bottino** (ogni nodo diventato posseduto, non solo i vecchi "premi")
   nella scheda "Memoria", con lo stesso criterio foto/colore della
-  schermata di sblocco — ed **è cliccabile**: toccare un oggetto riapre il
-  suo `messaggio` (funzione `apriRicordo()`), la stessa scheda vista alla
-  schermata di sblocco — utile per rileggerlo con calma, non più un
-  contenuto usa-e-getta.
+  schermata di sblocco — ed **è cliccabile**: toccare un oggetto lo rende
+  "attuale" (`memoriaScelta`, `renderMemoria()`) e mostra nello schermo in
+  cima nome e `messaggio`, gli stessi visti alla schermata di sblocco —
+  utile per rileggerlo con calma, non più un contenuto usa-e-getta.
 - **Scambio/condivisione fra giocatori, telefono-a-telefono, senza server** — ⚠️
   **protocollo corretto e testato a tavolino (`tests/scambio.test.mjs`), ma la
   convergenza ottica reale va ancora riprovata con due telefoni** dopo la riscrittura
