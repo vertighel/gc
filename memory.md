@@ -158,6 +158,41 @@ di tutti e si fotografa dallo schermo) e **mai rimuoverlo dal file** dopo
 (un `richiede` verso un id inesistente vale "nessun prerequisito" e
 regalerebbe il nodo a tutti).
 
+## Convenzioni dell'interfaccia: HTML nativo e CSS prima del JS (2026-09-18)
+
+Richiesta esplicita del committente, applicata a tutto `index.html` in un
+ciclo di refactoring (versioni 55-60) e da rispettare in ogni modifica
+futura — non è una preferenza estetica, è ciò che rende il file leggibile
+senza seguire il JS:
+- **Il markup vive nell'HTML, il JS lo riempie.** Nessun pezzo di
+  interfaccia nasce da `createElement` se può stare in un `<template>`
+  (righe, schede, festa, messaggi: vedi `docs/STATO.md`, "Convenzioni
+  dell'interfaccia") o direttamente nella pagina. I testi con più
+  varianti (titoli e messaggi di stato dello scambio, fine caccia) sono
+  **tutti** scritti in HTML e il CSS ne mostra uno: il JS non deve
+  contenere prosa italiana se non per messaggi con dati dentro.
+- **Lo stato visibile è un attributo `data-*` sul contenitore, mai una
+  lista di `hidden` accesi e spenti a mano** da più funzioni:
+  `body[data-view]`, `#view-player[data-tab][data-sub][data-stato]`,
+  `#p-scambio[data-ruolo][data-tipo][data-fase][data-n]`,
+  `.scheda-nodo[data-validare]`. Da `data-view` il CSS deriva anche tema
+  scuro, larghezza "wide" e schermo pieno: le classi `dark`/`wide`/
+  `playing` sul body **non esistono più**, non reintrodurle. `hidden`
+  resta legittimo solo per un singolo elemento che dipende da un dato
+  (un badge, un "Riprova").
+- Elementi nativi dove esistono: `<dialog>` per la lightbox, `<template>`
+  per i cloni, `::before` CSS per "elenco vuoto", `:has()` per le
+  dipendenze fra campi (il master usa un computer recente, `:has()` è
+  accettato).
+- **Nessun gancio di test nel file vero** (`window.__test` è stato tolto):
+  i test copiano `index.html` e iniettano `window.__debug` solo nella
+  copia — vedi `CLAUDE.md` e `tests/scambio.test.mjs`.
+
+Rimasto fuori di proposito, da non "sistemare" senza motivo: le tredici
+`stopCamera()` (alcune difendono dalla "fotocamera incantata", si
+sfoltiscono solo con un test a fake camera) e i `onclick =` singoli (un
+listener delegato sarebbe stile, non sostanza).
+
 ## Perché nessuna identità dei giocatori, per ora
 
 Scelta esplicita del committente, non una dimenticanza. Stato di
