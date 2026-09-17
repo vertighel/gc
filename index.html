@@ -193,8 +193,22 @@
   #p-scambio-video { transform: scaleX(-1); }
   #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; flex: none; }
   #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
+  #p-scambio-codice { font: 700 26px/1.1 var(--display); letter-spacing: .18em; margin: 0 0 6px; }
   #p-scambio-sub { color: var(--grigio); margin: 0 0 4px; }
   #p-scambio .btnrow { margin-top: 10px; }
+  #p-scambio-domanda { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #fff; color: var(--smalto); border: 2px solid var(--giallo); }
+  #p-scambio-domanda p { margin: 0; }
+  #p-scambio-domanda .codice { letter-spacing: .15em; }
+  /* Riquadro chiaro dentro la parte giocatore (scura): i bottoni riprendono i colori
+     "chiari" di .btn, non quelli di body.dark. */
+  body.dark #p-scambio-domanda .btn { border-color: var(--smalto); color: var(--smalto); }
+  body.dark #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
+  /* Schermata VERDE del ricevente dopo aver scritto: persistente (si chiude solo a
+     mano), è la "prova" che il cedente legge — col QR o a occhio (vedi memory.md). */
+  #p-scambio.fatto { background: var(--verde); color: #fff; }
+  #p-scambio.fatto .hint, #p-scambio.fatto .status.ok { color: #fff; }
+  #p-scambio.fatto #p-scambio-codice { font-size: 40px; }
+  #p-scambio.fatto .viewfinder { display: none; } /* fotocamera già spenta: resta solo il QR */
   .medal {
     width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%; overflow: hidden;
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
@@ -368,7 +382,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 51)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 52)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -476,12 +490,27 @@
          Memoria" qui sotto, mai la navigazione normale. -->
     <div id="p-scambio" hidden>
       <p id="p-scambio-titolo"></p>
+      <!-- Le prime lettere del sessionId, uguali sui due telefoni: è ciò che il cedente
+           confronta a occhio con lo schermo dell'amico nella domanda manuale qui sotto. -->
+      <p id="p-scambio-codice"></p>
       <p id="p-scambio-sub" class="hint"></p>
       <div class="viewfinder">
         <video id="p-scambio-video" playsinline muted autoplay></video>
       </div>
       <canvas id="p-scambio-qr" width="220" height="220"></canvas>
       <p id="p-scambio-status" class="status" role="status"></p>
+      <!-- Fallback umano per l'ultimo messaggio (vedi scambioDomanda()): compare solo sul
+           cedente di uno "scambio", quando la lettura automatica non ha ancora visto la
+           conferma finale ma il ricevente potrebbe già aver scritto. La fotocamera resta
+           accesa sotto: se la lettura riesce nel frattempo, la domanda sparisce da sola. -->
+      <div id="p-scambio-domanda" hidden>
+        <p>Non ho ancora letto la conferma. Guarda il telefono del tuo amico: mostra la
+          schermata <b>verde</b> «Ricevuto» con il codice <b class="codice"></b>?</p>
+        <div class="btnrow">
+          <button id="p-scambio-no" class="btn">No, tengo l'oggetto</button>
+          <button id="p-scambio-si" class="btn primary">Sì, l'ho controllato</button>
+        </div>
+      </div>
       <div class="btnrow">
         <button id="p-scambio-annulla" class="btn">Annulla</button>
         <button id="p-scambio-riprova" class="btn primary" hidden>Riprova</button>
@@ -2234,31 +2263,46 @@ function showReward(nuovi, st) {
    con la fotocamera anteriore per qualche secondo, finché entrambi i telefoni non si
    sono scambiati abbastanza fotogrammi crescenti da potersi fidare che la connessione
    è vera e in corso ora (non una foto vecchia o un QR stampato su un muro) — vedi
-   memory.md per il ragionamento completo dietro questo disegno. Nessuno dei due
-   telefoni scrive il proprio stato finale finché la soglia non è raggiunta insieme:
-   se qualcosa si interrompe prima, nessuno dei due ha cambiato nulla. */
+   memory.md per il ragionamento completo dietro questo disegno.
+
+   Il protocollo è deliberatamente ASIMMETRICO (Problema dei Due Generali, vedi
+   memory.md): il RICEVENTE scrive per primo, appena ha letto abbastanza fotogrammi
+   crescenti del cedente (QR_K) e sa che il cedente lo ha visto almeno una volta;
+   poi mostra una schermata verde persistente col QR "fatto" (codice tipo maiuscolo).
+   Il CEDENTE cancella SOLO dopo aver letto quel QR "fatto" — oppure, se la lettura
+   automatica non riesce, dopo che il giocatore ha guardato con i propri occhi lo
+   schermo verde dell'amico (scambioDomanda()). Così la perdita (cancellato da A,
+   mai arrivato a B) è impossibile per costruzione; l'unico residuo è la duplicazione,
+   e solo se il cedente risponde "No" mentre l'amico è già verde. */
 const QR_PREFISSO = "gc1:";
 // Un carattere solo per tipo invece del nome per intero: risparmia byte nel QR (vedi
 // sotto), che restano comunque tradotti subito in "scambio"/"duplica" da
-// decodificaQr() — il resto del codice non vede mai questi codici.
+// decodificaQr() — il resto del codice non vede mai questi codici. La MAIUSCOLA è lo
+// stesso tipo con il flag "fatto" (il ricevente ha già scritto): zero byte in più.
 const QR_TIPI_CODICE = { scambio: "s", duplica: "d" };
-const QR_TIPI_DA_CODICE = { s: "scambio", d: "duplica" };
-const QR_K = 5;               // letture valide reciproche richieste prima del commit
-// Il timeout parte quando SI TOCCA il bottone, non da quando i due telefoni iniziano
-// davvero a leggersi: il ricevente ci mette del suo (trovare il QR con la posteriore,
-// far aprire l'anteriore, girare il telefono) prima che la lettura reciproca possa
-// cominciare — tempo che si mangia comunque il cronometro del cedente. 20s erano
-// troppo pochi per l'intero rituale, non solo per le 5 letture. Vedi memory.md.
+const QR_TIPI_DA_CODICE = { s: "scambio", d: "duplica", S: "scambio", D: "duplica" };
+// Letture crescenti del cedente richieste al ricevente prima di scrivere: serve solo
+// a scartare letture sporadiche sbagliate e un QR statico/stampato (anche 1-2
+// basterebbero per quello), non è una soglia di sicurezza — era 5, abbassato perché
+// ogni lettura in più è un'occasione in più per restare incastrati senza motivo.
+const QR_K = 3;
+// Il ricevente ha un timeout vero (prima di scrivere non è successo nulla, quindi
+// fallire è sicuro). Parte quando SI APRE l'interfaccia, non da quando i due telefoni
+// iniziano davvero a leggersi: girare il telefono e allineare gli schermi si mangia
+// comunque il cronometro. Vedi memory.md.
 const QR_TIMEOUT_MS = 40000;
+// Il cedente invece non "fallisce" mai per tempo: l'amico potrebbe aver già scritto.
+// Dopo QR_DOMANDA_MIN_MS dal tocco, E almeno QR_DOMANDA_DOPO_K_MS da quando ha visto
+// il ricevente arrivare a soglia (il momento in cui quello scrive), gli si mostra la
+// domanda manuale (scambioDomanda()); comunque non oltre QR_DOMANDA_MAX_MS. La
+// lettura automatica continua sotto la domanda.
+const QR_DOMANDA_MIN_MS = 30000;
+const QR_DOMANDA_DOPO_K_MS = 10000;
+const QR_DOMANDA_MAX_MS = 60000;
 // Ogni fotogramma deve restare a schermo abbastanza a lungo perché la fotocamera
 // dell'altro riesca a metterlo a fuoco e leggerlo prima che cambi di nuovo — 220ms
 // erano troppo stretti. Aiuta anche il carico della CPU (vedi busy-guard sotto).
 const QR_TICK_MS = 300;
-// Dopo il proprio commit, il cedente vede "Fatto!" ma il ricevente potrebbe non aver
-// ancora letto l'ultima conferma (era comunque a un fotogramma di distanza, vedi
-// aggiornaStatoScambio) — capitato davvero staccando subito i telefoni. "Torna a
-// Memoria" resta disabilitato per questo tempo, per scoraggiare l'addio immediato.
-const QR_GRAZIA_MS = 3000;
 
 let jsQRPromise = null;
 function getJsQR() {
@@ -2296,7 +2340,8 @@ function decodificaQr(testo) {
   if (!tipo) return { errore: "tiposconosciuto" };
   const seq = Number(seqTxt), ack = Number(ackTxt);
   if (!sessionId || !nodo || !mioId || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
-  return { tipo, sessionId, nodo, seq, ack, mioId };
+  // fatto: il ricevente ha già scritto (codice tipo maiuscolo, vedi QR_TIPI_DA_CODICE).
+  return { tipo, sessionId, nodo, seq, ack, mioId, fatto: codiceTipo !== codiceTipo.toLowerCase() };
 }
 
 // Ritaglio condiviso per leggere un QR da un elemento video (fotocamera posteriore in
@@ -2346,6 +2391,9 @@ function gestisciQrFoto(testo) {
   if (dati.errore === "illeggibile") { setStatus(status, "QR non leggibile, riprova.", "ko"); qrFotoUltimoStato = "errore"; return; }
   if (dati.errore === "tiposconosciuto") { setStatus(status, "QR non supportato da questa versione del gioco. Aggiorna l'app.", "ko"); qrFotoUltimoStato = "errore"; return; }
   if (!game || !game.nodi[dati.nodo]) { setStatus(status, "QR sconosciuto."); qrFotoUltimoStato = "sconosciuto"; return; }
+  // La schermata verde di un ricevente, inquadrata da un terzo telefono: non è un
+  // invito, è la conferma di uno scambio già concluso fra altri due.
+  if (dati.fatto) { setStatus(status, "Questo scambio è già concluso.", "ko"); qrFotoUltimoStato = "errore"; return; }
   if (stato().trovati.includes(dati.nodo)) { setStatus(status, "Hai già questo oggetto.", "ko"); qrFotoUltimoStato = "errore"; return; }
   setStatus(status, ""); qrFotoUltimoStato = null;
   apriScambio({ ruolo: "ricevente", tipo: dati.tipo, nodo: dati.nodo, sessionId: dati.sessionId });
@@ -2367,13 +2415,23 @@ function apriScambio({ ruolo, tipo, nodo, sessionId }) {
     // entrambi i lati per costruzione. Vedi memory.md.
     mioId: nuovoSessionId().slice(0, 4),
     mySeq: 0, myReadCount: 0, lastSeqSeen: -1, theirAck: 0,
+    // Solo cedente: quando ha visto per la prima volta il ricevente a soglia (= il
+    // momento in cui quello scrive) e se la domanda manuale è già a schermo.
+    theirAckKAt: null, domanda: false,
+    // Solo ricevente, dopo aver scritto: cosa festeggiare quando si preme "Chiudi".
+    esito: null,
     committed: false, inizio: Date.now(), timer: null
   };
   $("p-content").hidden = true; $("p-tabbar").hidden = true;
   $("p-scambio").hidden = false;
+  $("p-scambio").classList.remove("fatto");
   $("p-scambio-annulla").hidden = false;
   $("p-scambio-riprova").hidden = true;
   $("p-scambio-chiudi").hidden = true;
+  $("p-scambio-chiudi").textContent = "Torna a Memoria";
+  $("p-scambio-domanda").hidden = true;
+  $("p-scambio-codice").textContent = codiceScambio();
+  $("p-scambio-domanda").querySelector(".codice").textContent = codiceScambio();
   // Il richiedente arriva già con la posteriore in mano puntata verso il cedente (è
   // così che ha trovato il QR in "Foto"): mettere QUI il proprio QR in basso, sotto
   // l'anteprima, ricalca esattamente il gesto appena fatto. Il cedente invece parte
@@ -2392,6 +2450,11 @@ function apriScambio({ ruolo, tipo, nodo, sessionId }) {
   setStatus($("p-scambio-status"), "Avvicina gli schermi, faccia a faccia.");
   avviaScambioFotocamera();
 }
+
+// Le prime lettere del sessionId (condiviso, quindi uguale sui due telefoni), grandi
+// a schermo su entrambi: nella domanda manuale il cedente non deve fidarsi di "mi
+// sembra verde", ma confrontare un codice — vedi scambioDomanda().
+function codiceScambio() { return scambio ? scambio.sessionId.slice(0, 4) : ""; }
 
 async function avviaScambioFotocamera() {
   try {
@@ -2419,15 +2482,17 @@ async function scambioTick() {
 }
 
 // L'ordine qui dentro conta: si legge PRIMA l'altro e si aggiorna il proprio
-// conteggio, e SOLO DOPO si disegna il proprio QR — mai il contrario. Se fosse
-// invertito (come prima), nel giro in cui il conteggio raggiunge la soglia il QR
-// rimasto a schermo mostrerebbe ancora il valore di un fotogramma prima: dato che
-// l'intervallo si ferma subito dopo un commit, quel QR resta congelato così per
-// sempre, e l'altro telefono non vede mai il valore vero — bloccato per sempre a un
-// numero in meno della soglia. Capitato davvero: il cedente incastrato a 4/5 con il
-// ricevente già passato oltre. Vedi memory.md.
+// conteggio, e SOLO DOPO si disegna il proprio QR — mai il contrario. Nel giro in
+// cui il ricevente scrive, il QR disegnato deve già essere quello "fatto" (codice
+// maiuscolo): l'intervallo si ferma subito dopo e quel QR resta a schermo finché il
+// giocatore non chiude, è la prova che il cedente legge. Con l'ordine invertito
+// resterebbe congelato il valore del fotogramma prima — capitato davvero, vedi
+// memory.md.
 async function scambioTickCorpo() {
-  if (Date.now() - scambio.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
+  const ora = Date.now();
+  // Solo il ricevente fallisce per tempo: prima di scrivere non è successo nulla,
+  // quindi è sicuro. Il cedente no: l'amico potrebbe aver già scritto (vedi sotto).
+  if (scambio.ruolo === "ricevente" && ora - scambio.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
 
   let testo;
   try { testo = await leggiQr($("p-scambio-video")); }
@@ -2442,14 +2507,32 @@ async function scambioTickCorpo() {
     // su entrambi i lati per costruzione.
     if (dati && !dati.errore && dati.sessionId === scambio.sessionId && dati.tipo === scambio.tipo
         && dati.nodo === scambio.nodo && dati.mioId !== scambio.mioId) {
-      if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
-      scambio.theirAck = dati.ack;
+      if (dati.fatto) {
+        // La conferma finale: l'amico ha scritto. Solo il cedente può leggerla (il
+        // ricevente non mostra mai un QR "fatto" prima di aver scritto lui stesso, e
+        // a quel punto non legge più) — ed è l'unica cosa che lo fa cancellare.
+        if (scambio.ruolo === "cedente") { scambioRiuscito(); return; }
+      } else {
+        if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
+        scambio.theirAck = dati.ack;
+        if (scambio.ruolo === "cedente" && dati.ack >= QR_K && !scambio.theirAckKAt) scambio.theirAckKAt = ora;
+      }
     }
   }
 
+  // Il ricevente scrive quando ha letto QR_K fotogrammi crescenti del cedente (è
+  // vivo, non è una foto) E il cedente lo ha letto almeno una volta (theirAck ≥ 1:
+  // l'ottica funziona anche nell'altro verso, quindi il cedente ha davvero la
+  // possibilità di leggere la conferma; e un cedente con zero letture sa per certo
+  // che qui non è stato scritto nulla — vedi scambioDomanda). Il QR disegnato in
+  // questo stesso giro è già quello "fatto".
+  const scrivo = scambio.ruolo === "ricevente" && scambio.myReadCount >= QR_K && scambio.theirAck >= 1;
+
   scambio.mySeq++;
+  let codice = QR_TIPI_CODICE[scambio.tipo];
+  if (scrivo) codice = codice.toUpperCase();
   const payload = QR_PREFISSO + [
-    QR_TIPI_CODICE[scambio.tipo], scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount, scambio.mioId
+    codice, scambio.sessionId, scambio.nodo, scambio.mySeq, scambio.myReadCount, scambio.mioId
   ].join(":");
   try {
     const QRCode = await getQrEncode();
@@ -2457,19 +2540,55 @@ async function scambioTickCorpo() {
   } catch { /* un fotogramma di QR saltato non è grave, il prossimo tick riprova */ }
   if (!scambio || scambio.committed) return; // può essere stato chiuso durante gli "await" sopra
 
+  if (scrivo) { scambioRiuscito(); return; }
   aggiornaStatoScambio();
-  if (scambio.myReadCount >= QR_K && scambio.theirAck >= QR_K) scambioRiuscito();
+
+  if (scambio.ruolo === "cedente" && !scambio.domanda) {
+    // Il fallback umano non compare mai prima di QR_DOMANDA_MIN_MS dal tocco, e mai
+    // prima di QR_DOMANDA_DOPO_K_MS da quando ho visto l'amico a soglia (cioè da
+    // quando può aver scritto): se a quel punto ancora non ho letto la conferma, la
+    // lettura automatica probabilmente non ce la fa. Tetto QR_DOMANDA_MAX_MS
+    // comunque, per non restare qui in eterno se l'amico non è mai arrivato a soglia.
+    const daTocco = ora - scambio.inizio;
+    const daK = scambio.theirAckKAt ? ora - scambio.theirAckKAt : -1;
+    if ((daTocco >= QR_DOMANDA_MIN_MS && daK >= QR_DOMANDA_DOPO_K_MS) || daTocco >= QR_DOMANDA_MAX_MS) scambioDomanda();
+  }
 }
 
 function aggiornaStatoScambio() {
-  if (!scambio || scambio.committed) return;
-  // Il minimo fra le due letture, non solo la mia: mostrare "5/5" quando ho letto
-  // abbastanza di te ma tu non hai ancora confermato di aver letto abbastanza di me
-  // dà un falso senso di "fatto" — capitato davvero: un giocatore ha visto il proprio
-  // contatore pieno e ha staccato i telefoni un istante prima che l'altro potesse
-  // leggere l'ultima conferma (vedi memory.md).
-  const n = Math.min(scambio.myReadCount, scambio.theirAck, QR_K);
+  if (!scambio || scambio.committed || scambio.domanda) return;
+  // Il ricevente conta le proprie letture (è lui che deve arrivare a soglia); il
+  // cedente mostra quante ne ha viste fare all'amico (theirAck), perché è quel
+  // contatore, non il suo, a decidere quando l'amico scrive.
+  const n = Math.min(scambio.ruolo === "ricevente" ? scambio.myReadCount : scambio.theirAck, QR_K);
   setStatus($("p-scambio-status"), n === 0 ? "Avvicina gli schermi, faccia a faccia." : `Verifica in corso… (${n}/${QR_K})`);
+}
+
+// Cedente, quando la lettura automatica della conferma finale non è (ancora) riuscita
+// ma l'amico potrebbe aver già scritto. Se non ho MAI letto l'amico (myReadCount = 0)
+// lui non può aver scritto (richiede theirAck ≥ 1, vedi scambioTickCorpo): fallire è
+// sicuro e non serve chiedere nulla. Altrimenti si chiede al giocatore di guardare lo
+// schermo dell'amico — l'ultimo messaggio passa dal canale più affidabile che c'è, gli
+// occhi — confrontando il codice, non solo il colore. La fotocamera resta accesa: se
+// la lettura riesce nel frattempo, scambioRiuscito() chiude tutto da sola.
+// Per un "duplica" non c'è nulla da cancellare, quindi nessuna domanda: si spiega
+// solo che se l'amico è verde è andata bene lo stesso.
+function scambioDomanda() {
+  if (!scambio || scambio.committed || scambio.domanda) return;
+  if (scambio.myReadCount === 0) { scambioFallito(); return; }
+  scambio.domanda = true;
+  $("p-scambio-annulla").hidden = true;
+  if (scambio.tipo === "duplica") {
+    clearInterval(scambio.timer);
+    stopCamera();
+    setStatus($("p-scambio-status"), `Non ho letto la conferma, ma se il tuo amico vede la schermata verde con il codice ${codiceScambio()} ha ricevuto la copia lo stesso.`);
+    $("p-scambio-chiudi").hidden = false;
+    return;
+  }
+  setStatus($("p-scambio-status"), "");
+  $("p-scambio-domanda").hidden = false;
+  // Sta in fondo, sotto anteprima e QR: su un telefono può finire fuori dallo schermo.
+  $("p-scambio-domanda").scrollIntoView({ block: "end", behavior: "smooth" });
 }
 
 function scambioRiuscito() {
@@ -2478,31 +2597,28 @@ function scambioRiuscito() {
   const { ruolo, tipo, nodo } = scambio;
   const nodoDef = game.nodi[nodo];
   const nome = nodoDef ? nodoDef.nome : "l'oggetto";
+  stopCamera();
+  $("p-scambio-annulla").hidden = true;
+  $("p-scambio-domanda").hidden = true;
   if (ruolo === "cedente") {
+    // Ultimo a scrivere per costruzione: nessun periodo di grazia, non c'è più nessuno
+    // che debba leggere qualcosa da questo schermo.
     if (tipo === "scambio") cedi(stato(), nodo);
-    stopCamera();
-    const fatto = (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".";
-    setStatus($("p-scambio-status"), fatto + " Tieni ancora un attimo gli schermi vicini, finché anche il tuo amico non vede \"Fatto!\".", "ok");
-    $("p-scambio-annulla").hidden = true;
-    setTimeout(() => { if (scambio) $("p-scambio-chiudi").hidden = false; }, QR_GRAZIA_MS);
+    setStatus($("p-scambio-status"), (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".", "ok");
+    $("p-scambio-chiudi").hidden = false;
   } else {
-    // Lo stato si scrive subito (è già sicuro: per arrivare qui il mio stesso contatore
-    // era già a soglia), ma la schermata resta com'è ancora un attimo — stesso motivo
-    // del cedente sopra: il mio QR (sul canvas, non legato alla fotocamera) deve
-    // restare visibile perché l'amico possa leggere l'ultima conferma anche se il suo
-    // contatore era un fotogramma indietro rispetto al mio. Passare subito a "Sbloccato!"
-    // nasconderebbe #p-scambio, cioè il mio QR, troppo presto — capitato davvero.
+    // Scrivo subito, poi resto sulla schermata VERDE con il QR "fatto" (già sul
+    // canvas, vedi scambioTickCorpo) finché il giocatore non preme "Chiudi": è la
+    // prova che il cedente deve leggere — col suo telefono o coi suoi occhi — e non
+    // ha scadenza. La festa di sblocco arriva dopo, alla chiusura.
     const st = stato();
     const nuovi = chiudiEAggiorna(st, [nodo]);
     st.scelta = null; saveState(st);
-    setStatus($("p-scambio-status"), "Ricevuto! Tieni ancora un attimo gli schermi vicini, finché anche il tuo amico non vede \"Fatto!\".", "ok");
-    $("p-scambio-annulla").hidden = true;
-    setTimeout(() => {
-      stopCamera();
-      chiudiScambio();
-      mostraTab("cerca");
-      showReward(nuovi, st);
-    }, QR_GRAZIA_MS);
+    scambio.esito = { nuovi, st };
+    $("p-scambio").classList.add("fatto");
+    setStatus($("p-scambio-status"), "Ricevuto! Mostra questa schermata al tuo amico finché il suo telefono non dice \"Fatto!\".", "ok");
+    $("p-scambio-chiudi").textContent = "Chiudi";
+    $("p-scambio-chiudi").hidden = false;
   }
 }
 
@@ -2510,7 +2626,10 @@ function scambioFallito() {
   if (!scambio || scambio.committed) return;
   clearInterval(scambio.timer);
   stopCamera();
-  setStatus($("p-scambio-status"), "Scambio non riuscito. Riavvicinate gli schermi e riprovate.", "ko");
+  $("p-scambio-domanda").hidden = true;
+  setStatus($("p-scambio-status"), scambio.ruolo === "cedente"
+    ? "Scambio non riuscito: l'oggetto è rimasto qui. Riavvicinate gli schermi e riprovate."
+    : "Scambio non riuscito. Riavvicinate gli schermi e riprovate.", "ko");
   $("p-scambio-riprova").hidden = false;
 }
 
@@ -2597,16 +2716,27 @@ function initPlayer() {
   $("p-shoot").onclick = shoot;
   $("p-scambio-annulla").onclick = () => {
     const ruolo = scambio ? scambio.ruolo : "cedente";
+    // Un cedente che ha già letto l'amico almeno una volta non può più annullare alla
+    // cieca: l'amico potrebbe aver scritto un istante fa. Passa dalla stessa domanda
+    // del timeout (che chiude da sola, in sicurezza, se non l'ha mai letto).
+    if (scambio && ruolo === "cedente" && scambio.tipo === "scambio" && !scambio.committed && scambio.myReadCount > 0) { scambioDomanda(); return; }
     chiudiScambio();
     if (ruolo === "cedente") mostraTab("oggetti"); else { mostraTab("cerca"); mostraSubTab("foto"); }
   };
+  $("p-scambio-no").onclick = () => { chiudiScambio(); mostraTab("oggetti"); };
+  $("p-scambio-si").onclick = () => { if (scambio && !scambio.committed) scambioRiuscito(); };
   $("p-scambio-riprova").onclick = () => {
     if (!scambio) return;
     const { ruolo, tipo, nodo } = scambio;
     if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo });
     else { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
   };
-  $("p-scambio-chiudi").onclick = () => { chiudiScambio(); mostraTab("oggetti"); };
+  $("p-scambio-chiudi").onclick = () => {
+    const esito = scambio && scambio.esito;
+    chiudiScambio();
+    if (esito) { mostraTab("cerca"); showReward(esito.nuovi, esito.st); }
+    else mostraTab("oggetti");
+  };
   $("p-reset").onclick = () => {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
     if (game) saveState(freshState(game)); else store.del(stateKey());
