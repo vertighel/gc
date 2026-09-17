@@ -349,7 +349,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 44)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 45)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -2141,17 +2141,6 @@ async function shoot() {
   $("p-score").textContent = "";
   try {
     if (!obj) { setStatus(status, "Questo oggetto non è più nella caccia. Riapri l'app per aggiornarla.", "ko"); return; }
-    if (obj.richiedePosizione && obj.luogo) {
-      setStatus(status, "Controllo la posizione…");
-      let p;
-      try { p = await getPosition(); }
-      catch { setStatus(status, "Non riesco a leggere la posizione. Attiva il GPS e riprova.", "ko"); return; }
-      const d = distance(p, obj.luogo);
-      if (d > obj.luogo.raggio + Math.min(p.acc, 150)) {
-        setStatus(status, `Sei a circa ${fmtDist(d)} dal punto giusto: l'oggetto non è qui.`, "ko");
-        return;
-      }
-    }
     setStatus(status, "Guardo l'immagine…");
     flash($("p-vf"));
     const r = await verify($("p-video"), obj);
@@ -2159,6 +2148,17 @@ async function shoot() {
     if (!r.valido) {
       setStatus(status, "Oggetto non valido. Avvicinati, inquadralo per intero ed evita il controluce.", "ko");
       return;
+    }
+    if (obj.richiedePosizione && obj.luogo) {
+      setStatus(status, "Oggetto valido. Controllo la posizione…");
+      let p;
+      try { p = await getPosition(); }
+      catch { setStatus(status, "Oggetto valido, ma non riesco a leggere la posizione. Attiva il GPS e riprova.", "ko"); return; }
+      const d = distance(p, obj.luogo);
+      if (d > obj.luogo.raggio + Math.min(p.acc, 150)) {
+        setStatus(status, `Oggetto valido, ma sei a circa ${fmtDist(d)} dal punto giusto: avvicinati e riprova.`, "ko");
+        return;
+      }
     }
     const nuovi = chiudiEAggiorna(st, [m.id]);
     st.scelta = null;

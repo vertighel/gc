@@ -90,9 +90,12 @@ sempre (nessun database, vedi `memory.md`).
     fotogrammi ravvicinati, vince il migliore. Il nodo è validato se quel
     fotogramma supera la soglia calcolata dal master ed è più simile
     all'oggetto che ai suoi dintorni. Se il nodo ha `richiedePosizione`, il
-    GPS viene controllato *prima* di accendere il confronto immagine
-    (vincolo implicito: non esiste senza `daValidare`). La fotocamera si
-    ferma sempre lasciando questa scheda.
+    GPS viene controllato *dopo* il confronto immagine, solo se la foto è
+    già valida (vincolo implicito: non esiste senza `daValidare`): così chi
+    inquadra l'oggetto giusto nel posto sbagliato vede "Oggetto valido, ma
+    sei a circa X dal punto giusto" invece di un generico rifiuto che non
+    distingue le due cause. La fotocamera si ferma sempre lasciando questa
+    scheda.
   - **✉️ Messaggi**: badge col numero di non letti sull'icona. Scarica
     `messaggi.json` con lo stesso meccanismo di `caccia.json`. Lo stato
     "letto" è locale al telefono, non tracciato dal master.
