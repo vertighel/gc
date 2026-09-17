@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T15:43:10.221Z",
+  "creato": "2026-09-17T21:29:47.687Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -285,7 +285,9 @@
         "nmu16lpb4h0p"
       ],
       "testo": "usami",
-      "duplicabile": true
+      "duplicabile": true,
+      "scambiabile": false,
+      "istanze": false
     },
     "nmu16mnkqmr3": {
       "nome": "gomma",
@@ -428,7 +430,9 @@
         "nmu16lpb4h0p"
       ],
       "testo": "sono una gomma piccola e tonda",
-      "duplicabile": true
+      "duplicabile": true,
+      "istanze": true,
+      "scambiabile": false
     },
     "nmu16n76mr74": {
       "nome": "evidenziatore giallo",
@@ -714,7 +718,8 @@
         "nmu16lpb4h0p"
       ],
       "duplicabile": false,
-      "scambiabile": true
+      "scambiabile": false,
+      "istanze": false
     }
   }
 }
