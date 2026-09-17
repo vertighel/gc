@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-16T07:59:44.517Z",
+  "creato": "2026-09-17T14:53:11.354Z",
   "nodi": {
     "nmu3oipuqboy": {
       "nome": "catai",
@@ -1427,7 +1427,8 @@
       "richiedePosizione": false,
       "richiede": [
         "nmu3p7ssyz5n"
-      ]
+      ],
+      "scambiabile": true
     },
     "nmu3pa4lvcb1": {
       "nome": "ammesso-1",
