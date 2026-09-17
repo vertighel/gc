@@ -116,12 +116,15 @@ In ordine di dipendenza, non di importanza:
    tutto il resto.
 2. **Un database vero** (Supabase, quasi certamente) per possessi, scambi e
    log — necessario appena serve una scrittura da più telefoni.
-3. **Scambio/condivisione di ricompense fra giocatori vicini** (QR + verifica
-   di prossimità GPS) — progettato a parole, zero codice.
+3. **Scarsità (`scorta` limitata) su un regalo scambiabile/duplicabile** —
+   lo scambio/la condivisione senza limiti sono già implementati senza
+   database (QR fra fotocamere anteriori, vedi `docs/STATO.md`); solo un
+   tetto condiviso al numero di copie richiede ancora un database vero.
 4. **Log delle attività dei giocatori visibile al master** — idem.
-5. **Missioni composte** (flusso B: oggetti in ordine libero che sbloccano
-   insieme una ricompensa; flusso C: ricompense che ne sbloccano un'altra) —
-   il modello dati attuale gestisce solo missioni con un oggetto ciascuna.
+5. **Missioni composte** — fatto, vedi `docs/ROADMAP.md` punto 5: il
+   modello a nodi di `caccia-3` le gestisce già tutte (indizio unico verso
+   più oggetti, più oggetti che convergono su una ricompensa, catene
+   miste).
 6. Narrazione, scarsità delle ricompense, coinvolgimento social — solo
    discussi, nessuna decisione tecnica presa.
 

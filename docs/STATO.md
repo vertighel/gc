@@ -1,4 +1,4 @@
-# Stato attuale (versione 32)
+# Stato attuale (versione 46)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -133,6 +133,39 @@ sempre (nessun database, vedi `memory.md`).
   suo `messaggio` (funzione `apriRicordo()`), la stessa scheda vista alla
   schermata di sblocco — utile per rileggerlo con calma, non più un
   contenuto usa-e-getta.
+- **Scambio/condivisione fra giocatori, telefono-a-telefono, senza server**: un nodo
+  "regalo" (`daValidare: false`) può avere le flag `scambiabile` e/o `duplicabile`
+  (impostabili solo su un regalo, vedi sotto "Collega gli elementi" — non hanno senso
+  su un nodo che si trova rifotografando un oggetto reale). In "Memoria", un regalo
+  posseduto con una di queste flag mostra un bottone accanto — 🔄 (scambia, il cedente
+  lo perde) o 👥 (condividi, il cedente lo mantiene) — che apre un'interfaccia di
+  scambio a schermo intero (`apriScambio()`): fotocamera **anteriore** in alto, il
+  proprio QR generato in basso, che si aggiorna alcune volte al secondo. Chi riceve
+  non ha un bottone dedicato: usa "Foto" come sempre (fotocamera **posteriore**), e se
+  invece di un oggetto reale inquadra il QR di un amico, l'app riconosce il prefisso
+  `gc1:` e passa da sola all'interfaccia di scambio, spegnendo la posteriore e
+  accendendo l'anteriore (`gestisciQrFoto()`). Il controllo QR gira in sottofondo su
+  ogni fotogramma di "Foto" senza mai interferire col riconoscimento a embedding
+  normale: un QR estraneo (nessun prefisso `gc1:`) mostra "QR sconosciuto" ma lascia
+  "Scatta e verifica" perfettamente funzionante, utile se l'oggetto reale da
+  riconoscere porta anche un QR stampato sopra per coincidenza. I due telefoni si
+  scambiano un `sessionId` casuale più due contatori (`seq` crescente, `ack` = quante
+  letture valide ciascuno ha fatto dell'altro): solo quando **entrambi** hanno letto
+  almeno `QR_K` (5) fotogrammi crescenti e validi dell'altro, ciascuno scrive il
+  proprio stato finale — mai prima. Se l'interazione si interrompe prima, nessuno dei
+  due ha scritto nulla (si vede "Scambio non riuscito", pulsante "Riprova"). Questo è
+  deliberatamente **non** una soluzione perfetta al problema dei "Due Generali" (vedi
+  `memory.md`): è la mitigazione migliore possibile senza un arbitro esterno, con un
+  rischio residuo minimo e sempre visibile a entrambi in tempo reale. Chi cede un nodo
+  tipo "scambio" viene tolto da `trovati`/bottino e aggiunto per sempre a un nuovo
+  elenco `ceduti` nello stato del giocatore: `chiudi()` lo esclude per sempre dalla
+  chiusura automatica dei "regali", altrimenti alla prima sincronizzazione successiva
+  (bastano i suoi prerequisiti ancora soddisfatti) la logica reattiva lo riassegnerebbe
+  da sola, duplicandolo — vedi `memory.md`, sezione sullo scambio. Chi condivide un
+  nodo tipo "duplica" non tocca il proprio stato: il ricevente lo aggiunge con lo
+  stesso meccanismo di un ritrovamento normale (`chiudiEAggiorna()`). Le due librerie
+  di lettura/generazione QR (`jsqr`, `qrcode`) si caricano da CDN via `import()`
+  dinamico solo aprendo questa interfaccia, stesso pattern lazy di MediaPipe.
 - **Progressi separati per caccia**: bottino, stato e messaggi-visti sono
   namespaced per slug (`gioco:<slug>`, `stato:<slug>`) — la caccia di
   sempre resta sulle chiavi `gioco`/`stato` già in uso, nessuna migrazione
@@ -215,7 +248,7 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   `wide` su `<body>`) e le schede si affiancano in una griglia; sul
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
-  (editabile), subito seguiti dalle tre flag — **Con thumb** (la foto fa
+  (editabile), subito seguiti dalle flag — **Con thumb** (la foto fa
   da indizio mentre il nodo è ancora *da trovare*, per lui stesso — vedi
   `immaginiIndizio()`; non c'entra con la foto nel bottino/sblocco, che si
   vede sempre una volta posseduto), **Da validare** (richiede foto+match
@@ -223,7 +256,12 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   "richiede" è soddisfatto), **Richiede posizione** (in più al match
   fotografico, il giocatore deve essere entro 100 m dal punto registrato —
   spuntarla spunta anche "Da validare" in automatico, e non si può togliere
-  l'una senza l'altra) — poi due campi separati, entrambi auto-riferiti a
+  l'una senza l'altra), **Scambiabile** e **Duplicabile** (🔄/👥 fra
+  giocatori, vedi sopra "Scambio/condivisione fra giocatori" — visibili solo
+  quando "Da validare" è spenta: hanno senso solo su un regalo, mai su un
+  nodo che si ottiene rifotografando un oggetto reale, altrimenti chi lo
+  cede potrebbe semplicemente rifotografarlo per riprenderselo) — poi due
+  campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
   (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si
   cerca) e il **messaggio**
@@ -291,9 +329,11 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
 - Non distingue un giocatore dall'altro (nessuna identità/login).
 - Non registra da nessuna parte "chi ha trovato cosa e quando", se non nel
   `localStorage` del singolo telefono del giocatore, invisibile al master.
-- Non permette scambi o condivisioni fra giocatori (il formato a nodi lo
-  prevede in futuro, vedi `docs/ROADMAP.md` punto 3, ma non è ancora
-  implementato).
+- Permette scambio/condivisione di un regalo fra due telefoni vicini (vedi sopra),
+  ma **non** la "condivisione a scorta limitata" progettata in `docs/ROADMAP.md`
+  punto 3 (un contatore condiviso fra tutti i giocatori richiede un'operazione
+  atomica su un database, che non esiste ancora — vedi `memory.md`): oggi un nodo
+  "duplicabile" si può condividere un numero illimitato di volte.
 - Non ha ancora contenuto audio, né scarsità delle istanze.
 - Non ha nessun meccanismo di narrazione o integrazione social.
 - L'editor dei collegamenti ("Collega gli elementi") e la pagina "Grafo" non

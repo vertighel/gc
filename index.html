@@ -181,6 +181,12 @@
   .title { font: 700 34px/1.05 var(--display); color: var(--testo-chiaro); margin: 0 0 10px; }
 
   .reward { text-align: center; padding: 8px 0 20px; }
+  #p-scambio { display: flex; flex-direction: column; height: 100%; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
+  #p-scambio .viewfinder { flex: 1; min-height: 0; margin: 8px 0; }
+  #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; }
+  #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
+  #p-scambio-sub { color: var(--grigio); margin: 0 0 4px; }
+  #p-scambio .btnrow { margin-top: 10px; }
   .medal {
     width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%; overflow: hidden;
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
@@ -281,17 +287,22 @@
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
   .todo { list-style: none; margin: 0; padding: 0; }
+  .todo li { display: flex; align-items: stretch; gap: 8px; margin-bottom: 8px; }
   .todo button {
-    display: flex; width: 100%; align-items: center; gap: 10px;
+    display: flex; flex: 1; min-width: 0; width: auto; align-items: center; gap: 10px;
     text-align: left; font: inherit; color: var(--testo-chiaro); background: var(--superficie); cursor: pointer;
-    border: 1.5px solid var(--bordo-superficie); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+    border: 1.5px solid var(--bordo-superficie); border-radius: 8px; padding: 12px 14px;
   }
   /* Testo troncato su una riga sola nel pulsante: con un indizio lungo il bottone
      resta alto una riga; il testo per intero si legge nella targa, che appare
      sceglendo la riga (diventa oggetto "attuale"). */
   .todo button .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
-  .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; }
+  .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; align-self: center; }
+  /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
+     principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
+     validi. Quadrato, tocco comodo, stessa altezza della riga. */
+  .todo-action { flex: none; width: 48px; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
   #m-cfg-summary { cursor: pointer; color: var(--grigio); text-decoration: underline; padding: 8px 0; }
@@ -349,7 +360,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 45)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 46)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
   <pre id="diag" class="diag" hidden></pre>
 
@@ -449,6 +460,24 @@
             <ul id="p-inv-list" class="todo schermo-lista"></ul>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Interfaccia di scambio: schermo intero, tabbar nascosta finché è aperta (vedi
+         apriScambio()/chiudiScambio()) — l'unica uscita è "Annulla"/"Riprova"/"Torna a
+         Memoria" qui sotto, mai la navigazione normale. -->
+    <div id="p-scambio" hidden>
+      <p id="p-scambio-titolo"></p>
+      <p id="p-scambio-sub" class="hint"></p>
+      <div class="viewfinder">
+        <video id="p-scambio-video" playsinline muted autoplay></video>
+      </div>
+      <canvas id="p-scambio-qr" width="220" height="220"></canvas>
+      <p id="p-scambio-status" class="status" role="status"></p>
+      <div class="btnrow">
+        <button id="p-scambio-annulla" class="btn">Annulla</button>
+        <button id="p-scambio-riprova" class="btn primary" hidden>Riprova</button>
+        <button id="p-scambio-chiudi" class="btn primary" hidden>Torna a Memoria</button>
       </div>
     </div>
 
@@ -671,23 +700,28 @@ const store = {
 
 /* ---------- fotocamera ---------- */
 let stream = null;
-async function startCamera(video) {
+// "facingMode": "environment" (posteriore, di default, per riconoscere oggetti reali)
+// o "user" (anteriore, per l'interfaccia di scambio: inquadra lo schermo dell'altro
+// telefono mentre mostra il proprio QR, vedi apriScambio()).
+async function startCamera(video, facingMode = "environment") {
   stopCamera();
   stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+    video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 1280 } },
     audio: false
   });
   video.srcObject = stream;
   await video.play();
 }
 function stopCamera() {
+  stopFotoQrWatch();
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   // Scollega anche l'elemento video dallo stream fermato: altrimenti resta agganciato
   // a uno stream morto e mostra un fotogramma congelato quando lo si riattiva (visto
   // passando Foto → Indizio → Foto: la fotocamera sembrava "incantata").
-  const pv = $("p-video"), mv = $("m-video");
+  const pv = $("p-video"), mv = $("m-video"), sv = $("p-scambio-video");
   if (pv) pv.srcObject = null;
   if (mv) mv.srcObject = null;
+  if (sv) sv.srcObject = null;
 }
 function flash(vf) { vf.classList.remove("flash"); void vf.offsetWidth; vf.classList.add("flash"); }
 
@@ -1237,18 +1271,34 @@ function corpoNodoCampi(n, id, ids, notify) {
   const cbThumb = mkFlag("conThumb", "Con thumb");
   const cbValida = mkFlag("daValidare", "Da validare");
   const cbPos = mkFlag("richiedePosizione", "Richiede posizione");
+  const cbScambia = mkFlag("scambiabile", "Scambiabile (🔄 fra giocatori)");
+  const cbDuplica = mkFlag("duplicabile", "Duplicabile (👥 fra giocatori)");
   cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
   cbValida.onchange = () => {
     if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
-    n.daValidare = cbValida.checked; salvaLocale(); notify();
+    n.daValidare = cbValida.checked;
+    // Scambiabile/duplicabile esistono solo per i "regali" (daValidare:false): la loro
+    // logica di sicurezza (il flag "ceduti", vedi cedi()) protegge solo la strada
+    // reattiva dei prerequisiti, non un secondo scatto con la fotocamera — su un nodo
+    // da validare basterebbe rifotografare l'oggetto reale per riprenderselo dopo
+    // averlo ceduto (vedi memory.md). Riaccendere "Da validare" li spegne entrambi.
+    if (n.daValidare) { n.scambiabile = false; n.duplicabile = false; cbScambia.checked = false; cbDuplica.checked = false; aggiornaVisScambio(); }
+    salvaLocale(); notify();
   };
   cbPos.onchange = () => {
     n.richiedePosizione = cbPos.checked;
     if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; }
     salvaLocale(); notify();
   };
+  const aggiornaVisScambio = () => {
+    const labScambia = cbScambia.closest("label"), labDuplica = cbDuplica.closest("label");
+    labScambia.hidden = labDuplica.hidden = !!n.daValidare;
+  };
+  cbScambia.onchange = () => { n.scambiabile = cbScambia.checked; salvaLocale(); notify(); };
+  cbDuplica.onchange = () => { n.duplicabile = cbDuplica.checked; salvaLocale(); notify(); };
+  aggiornaVisScambio();
   frag.append(flags);
 
   // Due campi, due momenti dello stesso nodo, entrambi auto-riferiti (mai su
@@ -1590,6 +1640,7 @@ function initMaster() {
       pos: M.pos, neg: M.neg, soglia: +M.cal.soglia.toFixed(4),
       luogo: M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null,
       daValidare: true, conThumb: true, richiedePosizione: false,
+      scambiabile: false, duplicabile: false,
       richiede: []
     };
     M.pos = []; M.neg = []; M.cal = null; M.luogo = null; M.immagine = null;
@@ -1729,6 +1780,8 @@ let memoriaScelta = null;
 // già succede cambiando schermata altrove) — nessun motivo di tenerla accesa mentre
 // si guarda il bottino.
 function mostraTab(tab) {
+  if (scambio) chiudiScambio(); // rete di sicurezza: l'interfaccia di scambio nasconde
+                                 // già il tabbar, ma non deve mai restare "appesa"
   tabAttivo = tab;
   if (tab !== "cerca") stopCamera();
   $("tab-cerca").hidden = tab !== "cerca";
@@ -1807,13 +1860,18 @@ const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
 // Chiusura a punto fisso: un nodo con daValidare:true entra nell'insieme "posseduto"
 // solo dopo la validazione reale (foto/GPS), passata dal chiamante dentro "posseduti";
 // un nodo con daValidare:false vi entra da solo appena tutto ciò che richiede lo è già.
-function chiudi(nodi, posseduti) {
+// "ceduti": nodi che questo giocatore ha ceduto tramite uno scambio (vedi cedi()).
+// Restano esclusi per sempre dalla chiusura automatica, anche se i loro prerequisiti
+// sono ancora soddisfatti — altrimenti la prossima volta che si trova QUALSIASI altro
+// oggetto, la ricompensa ceduta ricomparirebbe da sola, duplicandola.
+function chiudi(nodi, posseduti, ceduti = []) {
   const ok = new Set(posseduti);
+  const via = new Set(ceduti);
   let cambiato = true;
   while (cambiato) {
     cambiato = false;
     for (const [id, n] of Object.entries(nodi)) {
-      if (ok.has(id) || n.daValidare) continue;
+      if (ok.has(id) || n.daValidare || via.has(id)) continue;
       if ((n.richiede || []).every(richiedeSoddisfatto(nodi, ok))) { ok.add(id); cambiato = true; }
     }
   }
@@ -1827,7 +1885,7 @@ function chiudi(nodi, posseduti) {
 // "nuovo".
 function chiudiEAggiorna(st, extra = []) {
   const prima = new Set(st.trovati);
-  const dopo = chiudi(game.nodi, [...st.trovati, ...extra]);
+  const dopo = chiudi(game.nodi, [...st.trovati, ...extra], st.ceduti);
   const nuovi = [...dopo].filter(id => !prima.has(id)).map(id => ({ id, ...game.nodi[id] }));
   st.trovati = [...dopo];
   for (const n of nuovi) {
@@ -1870,7 +1928,8 @@ function stato() {
     trovati: s.trovati || [],
     bottino: s.bottino || [],
     visti: s.visti || [],
-    scelta: s.scelta || null
+    scelta: s.scelta || null,
+    ceduti: s.ceduti || []
   };
 }
 const saveState = st => store.set(stateKey(), st);
@@ -1880,14 +1939,27 @@ const freshState = g => {
     trovati: [],
     bottino: [],
     visti: Object.entries(nodi).filter(([, n]) => n.daValidare).map(([id]) => id),
-    scelta: null
+    scelta: null,
+    ceduti: []
   };
 };
 function daTrovare(st) {
-  const ok = chiudi(game.nodi, st.trovati);
+  const ok = chiudi(game.nodi, st.trovati, st.ceduti);
   return Object.entries(game.nodi)
     .filter(([id, n]) => n.daValidare && !ok.has(id) && (n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok)))
     .map(([id, n]) => ({ id, ...n }));
+}
+
+// Cede un nodo posseduto tramite scambio (tipo "scambio"): lo toglie da trovati/bottino
+// e lo segna per sempre in "ceduti", cosicché chiudi() non lo riassegni da solo in
+// futuro. Un nodo "duplicabile" (tipo "duplica") non passa mai di qui: chi condivide
+// non perde nulla, vedi scambioRiuscito().
+function cedi(st, id) {
+  st.trovati = st.trovati.filter(x => x !== id);
+  st.bottino = st.bottino.filter(r => r.nodo !== id);
+  if (!st.ceduti.includes(id)) st.ceduti.push(id);
+  if (memoriaScelta === id) memoriaScelta = null;
+  saveState(st);
 }
 const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
 
@@ -2005,8 +2077,23 @@ function renderMemoria(st) {
   list.innerHTML = "";
   for (const r of st.bottino) {
     const thumb = document.createElement("span"); thumb.className = "todo-thumb-wrap"; medaglia(thumb, r);
+    // Il bottone di scambio dipende dal nodo VIVO nella caccia attuale (i flag possono
+    // cambiare o il nodo può sparire), mai dal record salvato nel bottino.
+    const nodoDef = game && game.nodi[r.nodo];
+    let azione = null;
+    if (nodoDef && (nodoDef.scambiabile || nodoDef.duplicabile)) {
+      azione = document.createElement("button");
+      azione.className = "todo-action";
+      azione.type = "button";
+      azione.textContent = nodoDef.scambiabile ? "🔄" : "👥";
+      azione.title = nodoDef.scambiabile ? "Scambia con un amico" : "Condividi con un amico";
+      azione.onclick = ev => {
+        ev.stopPropagation();
+        apriScambio({ ruolo: "cedente", tipo: nodoDef.scambiabile ? "scambio" : "duplica", nodo: r.nodo });
+      };
+    }
     rigaSelezionabile(list, {
-      prima: [thumb], testo: r.nome, dopo: null,
+      prima: [thumb], testo: r.nome, dopo: azione,
       attiva: memoriaScelta === r.nodo,
       onClick: () => { memoriaScelta = r.nodo; renderMemoria(stato()); },
     });
@@ -2023,10 +2110,13 @@ function rigaSelezionabile(list, { prima, testo, dopo, attiva, onClick }) {
   for (const el of prima || []) b.append(el);
   const t = document.createElement("span"); t.className = "txt"; t.textContent = testo;
   b.append(t);
-  if (dopo) b.append(dopo);
   if (attiva) b.setAttribute("aria-current", "true");
   b.onclick = onClick;
   li.append(b);
+  // "dopo" resta fuori dal bottone principale, non annidato: in Memoria può essere un
+  // bottone d'azione a sé (🔄/👥, vedi renderMemoria), e due <button> innestati non
+  // sono validi né cliccabili in modo affidabile.
+  if (dopo) li.append(dopo);
   list.append(li);
 }
 
@@ -2130,6 +2220,227 @@ function showReward(nuovi, st) {
   renderMemoria(st);
 }
 
+/* ---------- scambio fra giocatori (QR, telefono-a-telefono, niente server) ----------
+   Un nodo "scambiabile" o "duplicabile" (solo fra i "regali" daValidare:false, vedi
+   corpoNodoCampi) può passare da un telefono all'altro leggendosi reciprocamente un QR
+   con la fotocamera anteriore per qualche secondo, finché entrambi i telefoni non si
+   sono scambiati abbastanza fotogrammi crescenti da potersi fidare che la connessione
+   è vera e in corso ora (non una foto vecchia o un QR stampato su un muro) — vedi
+   memory.md per il ragionamento completo dietro questo disegno. Nessuno dei due
+   telefoni scrive il proprio stato finale finché la soglia non è raggiunta insieme:
+   se qualcosa si interrompe prima, nessuno dei due ha cambiato nulla. */
+const QR_PREFISSO = "gc1:";
+const QR_TIPI = ["scambio", "duplica"];
+const QR_K = 5;               // letture valide reciproche richieste prima del commit
+const QR_TIMEOUT_MS = 20000;  // sessione abbandonata se non converge entro questo tempo
+const QR_TICK_MS = 220;       // ritmo di rigenerazione/lettura del proprio QR
+
+let jsQRPromise = null;
+function getJsQR() {
+  if (!jsQRPromise) jsQRPromise = import("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/+esm").then(m => m.default || m);
+  jsQRPromise.catch(() => { jsQRPromise = null; });
+  return jsQRPromise;
+}
+let qrEncodePromise = null;
+function getQrEncode() {
+  if (!qrEncodePromise) qrEncodePromise = import("https://cdn.jsdelivr.net/npm/qrcode@1.5.4/+esm").then(m => m.default || m);
+  qrEncodePromise.catch(() => { qrEncodePromise = null; });
+  return qrEncodePromise;
+}
+
+function nuovoSessionId() {
+  const alf = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = ""; for (let i = 0; i < 8; i++) s += alf[Math.floor(Math.random() * alf.length)];
+  return s;
+}
+
+// Legge il contenuto testuale di un QR e lo riconosce (o no) come "nostro". Tre esiti
+// possibili: null (QR estraneo, nessun prefisso "gc1:" — non è un QR di questo gioco),
+// un oggetto con "errore" (è nostro ma questo telefono non riesce a usarlo: JSON rotto
+// o un "tipo" che questa versione non conosce ancora — lascia la porta aperta a futuri
+// tipi di QR di gioco, vedi memory.md), o i dati validi.
+function decodificaQr(testo) {
+  if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
+  let dati;
+  try { dati = JSON.parse(testo.slice(QR_PREFISSO.length)); }
+  catch { return { errore: "illeggibile" }; }
+  if (!dati || !QR_TIPI.includes(dati.tipo)) return { errore: "tiposconosciuto" };
+  if (!dati.sessionId || !dati.nodo || !Number.isFinite(dati.seq) || !Number.isFinite(dati.ack)) return { errore: "illeggibile" };
+  return dati;
+}
+
+// Ritaglio condiviso per leggere un QR da un elemento video (fotocamera posteriore in
+// "Foto", o anteriore nell'interfaccia di scambio): stessa idea di frameVector(), ma
+// per jsQR invece che per l'embedder.
+const qrCanvas = document.createElement("canvas");
+const qrCtx = qrCanvas.getContext("2d", { willReadFrequently: true });
+async function leggiQr(video) {
+  const w = video.videoWidth, h = video.videoHeight;
+  if (!w || !h) return null;
+  const scale = Math.min(1, 480 / Math.max(w, h));
+  qrCanvas.width = Math.round(w * scale); qrCanvas.height = Math.round(h * scale);
+  qrCtx.drawImage(video, 0, 0, qrCanvas.width, qrCanvas.height);
+  const img = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+  const jsQR = await getJsQR();
+  const code = jsQR(img.data, img.width, img.height);
+  return code ? code.data : null;
+}
+
+/* ----- "Foto": controllo QR in sottofondo, mai bloccante per il riconoscimento normale ----- */
+let fotoQrTimer = null, fotoQrBusy = false, qrFotoUltimoStato = null;
+function startFotoQrWatch() {
+  stopFotoQrWatch();
+  fotoQrTimer = setInterval(fotoQrTick, QR_TICK_MS);
+}
+function stopFotoQrWatch() {
+  if (fotoQrTimer) { clearInterval(fotoQrTimer); fotoQrTimer = null; }
+  qrFotoUltimoStato = null;
+}
+async function fotoQrTick() {
+  // In pausa durante uno scatto vero (bottone disabilitato): mai due riconoscimenti
+  // sullo stesso fotogramma, e mai un messaggio QR che sovrascrive quello dello scatto.
+  if (fotoQrBusy || $("p-shoot").disabled) return;
+  fotoQrBusy = true;
+  try { gestisciQrFoto(await leggiQr($("p-video"))); }
+  catch { /* un fotogramma saltato non è un problema, il prossimo tick riprova */ }
+  finally { fotoQrBusy = false; }
+}
+function gestisciQrFoto(testo) {
+  const status = $("p-status");
+  if (!testo) {
+    if (qrFotoUltimoStato) { setStatus(status, ""); qrFotoUltimoStato = null; }
+    return;
+  }
+  const dati = decodificaQr(testo);
+  if (!dati) { setStatus(status, "QR sconosciuto."); qrFotoUltimoStato = "sconosciuto"; return; }
+  if (dati.errore === "illeggibile") { setStatus(status, "QR non leggibile, riprova.", "ko"); qrFotoUltimoStato = "errore"; return; }
+  if (dati.errore === "tiposconosciuto") { setStatus(status, "QR non supportato da questa versione del gioco. Aggiorna l'app.", "ko"); qrFotoUltimoStato = "errore"; return; }
+  if (!game || !game.nodi[dati.nodo]) { setStatus(status, "QR sconosciuto."); qrFotoUltimoStato = "sconosciuto"; return; }
+  if (stato().trovati.includes(dati.nodo)) { setStatus(status, "Hai già questo oggetto.", "ko"); qrFotoUltimoStato = "errore"; return; }
+  setStatus(status, ""); qrFotoUltimoStato = null;
+  apriScambio({ ruolo: "ricevente", tipo: dati.tipo, nodo: dati.nodo, sessionId: dati.sessionId });
+}
+
+/* ----- interfaccia di scambio (fotocamera anteriore), condivisa fra cedente e ricevente ----- */
+let scambio = null; // sessione di scambio in corso, o null
+
+function apriScambio({ ruolo, tipo, nodo, sessionId }) {
+  stopCamera();
+  const nodoDef = game.nodi[nodo];
+  const nome = nodoDef ? nodoDef.nome : "questo oggetto";
+  scambio = {
+    ruolo, tipo, nodo, sessionId: sessionId || nuovoSessionId(),
+    mySeq: 0, myReadCount: 0, lastSeqSeen: -1, theirAck: 0,
+    committed: false, inizio: Date.now(), timer: null
+  };
+  $("p-content").hidden = true; $("p-tabbar").hidden = true;
+  $("p-scambio").hidden = false;
+  $("p-scambio-annulla").hidden = false;
+  $("p-scambio-riprova").hidden = true;
+  $("p-scambio-chiudi").hidden = true;
+  if (ruolo === "cedente") {
+    $("p-scambio-titolo").textContent = (tipo === "duplica" ? "Condividi: " : "Scambia: ") + nome;
+    $("p-scambio-sub").textContent = tipo === "duplica"
+      ? "Il tuo amico riceverà una copia, tu mantieni la tua."
+      : "Se lo scambio va a buon fine, cederai questo oggetto.";
+  } else {
+    $("p-scambio-titolo").textContent = "Stai ricevendo: " + nome;
+    $("p-scambio-sub").textContent = "";
+  }
+  setStatus($("p-scambio-status"), "Avvicina gli schermi, faccia a faccia.");
+  avviaScambioFotocamera();
+}
+
+async function avviaScambioFotocamera() {
+  try {
+    await startCamera($("p-scambio-video"), "user");
+    scambio.timer = setInterval(scambioTick, QR_TICK_MS);
+  } catch (e) {
+    const msg = e && e.name === "NotAllowedError"
+      ? "Accesso alla fotocamera negato. Consentilo nelle impostazioni del browser e riprova."
+      : "Non riesco ad avviare la fotocamera anteriore.";
+    setStatus($("p-scambio-status"), msg, "ko");
+  }
+}
+
+async function scambioTick() {
+  if (!scambio || scambio.committed) return;
+  if (Date.now() - scambio.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
+
+  scambio.mySeq++;
+  const payload = QR_PREFISSO + JSON.stringify({
+    tipo: scambio.tipo, sessionId: scambio.sessionId, nodo: scambio.nodo,
+    seq: scambio.mySeq, ack: scambio.myReadCount
+  });
+  try {
+    const QRCode = await getQrEncode();
+    await QRCode.toCanvas($("p-scambio-qr"), payload, { margin: 1, width: 220 });
+  } catch { /* un fotogramma di QR saltato non è grave, il prossimo tick riprova */ }
+  if (!scambio || scambio.committed) return; // può essere stato chiuso durante gli "await" sopra
+
+  let testo;
+  try { testo = await leggiQr($("p-scambio-video")); }
+  catch { return; }
+  if (!scambio || scambio.committed || !testo) { aggiornaStatoScambio(); return; }
+
+  const dati = decodificaQr(testo);
+  if (!dati || dati.errore || dati.sessionId !== scambio.sessionId || dati.tipo !== scambio.tipo || dati.nodo !== scambio.nodo) {
+    aggiornaStatoScambio(); return; // non è un fotogramma valido di QUESTA sessione, ignora
+  }
+  if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
+  scambio.theirAck = dati.ack;
+  aggiornaStatoScambio();
+
+  if (scambio.myReadCount >= QR_K && scambio.theirAck >= QR_K) scambioRiuscito();
+}
+
+function aggiornaStatoScambio() {
+  if (!scambio || scambio.committed) return;
+  const n = Math.min(scambio.myReadCount, QR_K);
+  setStatus($("p-scambio-status"), n === 0 ? "Avvicina gli schermi, faccia a faccia." : `Verifica in corso… (${n}/${QR_K})`);
+}
+
+function scambioRiuscito() {
+  scambio.committed = true;
+  clearInterval(scambio.timer);
+  const { ruolo, tipo, nodo } = scambio;
+  const nodoDef = game.nodi[nodo];
+  const nome = nodoDef ? nodoDef.nome : "l'oggetto";
+  if (ruolo === "cedente") {
+    if (tipo === "scambio") cedi(stato(), nodo);
+    stopCamera();
+    setStatus($("p-scambio-status"), (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".", "ok");
+    $("p-scambio-annulla").hidden = true;
+    $("p-scambio-chiudi").hidden = false;
+  } else {
+    const st = stato();
+    const nuovi = chiudiEAggiorna(st, [nodo]);
+    st.scelta = null; saveState(st);
+    stopCamera();
+    chiudiScambio();
+    mostraTab("cerca");
+    showReward(nuovi, st);
+  }
+}
+
+function scambioFallito() {
+  if (!scambio || scambio.committed) return;
+  clearInterval(scambio.timer);
+  stopCamera();
+  setStatus($("p-scambio-status"), "Scambio non riuscito. Riavvicinate gli schermi e riprovate.", "ko");
+  $("p-scambio-riprova").hidden = false;
+}
+
+// Chiude l'interfaccia di scambio senza applicare nessun cambiamento (usata sia da
+// "Annulla" sia, di riflesso, ogni volta che si torna a "Cerca"/"Memoria").
+function chiudiScambio() {
+  if (scambio && scambio.timer) clearInterval(scambio.timer);
+  scambio = null;
+  stopCamera();
+  $("p-scambio").hidden = true;
+  $("p-content").hidden = false; $("p-tabbar").hidden = false;
+}
+
 async function shoot() {
   const st = stato();
   const m = attuale(st, daTrovare(st));
@@ -2199,8 +2510,20 @@ function initPlayer() {
   };
   $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
   $("p-continue").onclick = () => { renderPlayer(); $("p-content").scrollTop = 0; };
-  $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; }, $("p-status"));
+  $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; startFotoQrWatch(); }, $("p-status"));
   $("p-shoot").onclick = shoot;
+  $("p-scambio-annulla").onclick = () => {
+    const ruolo = scambio ? scambio.ruolo : "cedente";
+    chiudiScambio();
+    if (ruolo === "cedente") mostraTab("oggetti"); else { mostraTab("cerca"); mostraSubTab("foto"); }
+  };
+  $("p-scambio-riprova").onclick = () => {
+    if (!scambio) return;
+    const { ruolo, tipo, nodo } = scambio;
+    if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo });
+    else { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
+  };
+  $("p-scambio-chiudi").onclick = () => { chiudiScambio(); mostraTab("oggetti"); };
   $("p-reset").onclick = () => {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
     if (game) saveState(freshState(game)); else store.del(stateKey());

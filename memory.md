@@ -34,9 +34,70 @@ ricostruisce una foto (schema in `docs/MODELLO-DATI.md`).
 Rimandato deliberatamente per costruire prima tutto ciò che un hosting
 statico può fare da solo. Regola pratica: ciò che scrive *solo* il master
 resta su file JSON pubblicati su GitHub; ciò che deve scrivere *anche* un
-giocatore (log attività, scambio ricompense) richiede un database vero
-(quasi certamente Supabase, vedi `docs/ROADMAP.md`), perché un hosting
-statico non accetta scritture concorrenti.
+giocatore in un registro **condiviso e letto da altri** (log attività
+visibile al master, un contatore di scorta condiviso da tutti i
+giocatori) richiede un database vero (quasi certamente Supabase, vedi
+`docs/ROADMAP.md`), perché un hosting statico non accetta scritture
+concorrenti. Non vale invece per uno scambio **diretto fra due telefoni**,
+che non passa da nessun registro condiviso — vedi sotto.
+
+## Scambio fra giocatori: niente arbitro, per scelta ragionata (2026-09-17)
+
+Un regalo (`daValidare: false`) marcato `scambiabile`/`duplicabile` passa
+da un telefono all'altro leggendosi reciprocamente un QR con le
+fotocamere anteriori (`apriScambio()`, vedi `docs/STATO.md`), senza
+nessun server. Non è una scorciatoia presa alla leggera: il problema di
+fondo — due dispositivi che devono accordarsi su un trasferimento
+passandosi solo messaggi che possono perdersi, senza un terzo che
+ricordi l'esito — è il **Problema dei Due Generali**, un risultato
+dimostrato dell'informatica distribuita: **non ha soluzione perfetta**
+con solo due parti e nessun arbitro, qualunque sia il canale (QR,
+Bluetooth, NFC — non è una limitazione del QR). Non riproporre "aggiungi
+ancora una conferma" come se risolvesse il problema: non lo risolve mai
+del tutto, per costruzione.
+
+Quello che si può fare, e che questo gioco fa, è **minimizzare e rendere
+visibile** il rischio residuo invece di eliminarlo:
+- I due telefoni si leggono i QR **a vicenda, in continuo**, non in una
+  sequenza di passaggi separati nel tempo: nessuno dei due scrive il
+  proprio stato finale finché non vede, in tempo reale, che anche l'altro
+  ha ricevuto abbastanza (soglia `QR_K`, doppio contatore `seq`/`ack`
+  nel QR). Se si interrompe prima, non è successo nulla su nessuno dei
+  due telefoni — l'unico esito possibile in caso di fallimento è una
+  **perdita** (nessuno riceve), mai una duplicazione, ed è visibile
+  subito a entrambi, non scoperta dopo.
+- Il confronto fra `Date.now()` dei due telefoni non è mai usato per
+  decidere nulla (l'orologio di un telefono non è comparabile con quello
+  di un altro senza sincronizzarli, cosa che qui non si fa): la
+  freschezza si misura solo con contatori locali crescenti (`seq`) e con
+  l'orologio di ciascun telefono confrontato solo a sé stesso (timeout).
+- Un QR stampato/fotografato e riusato in un secondo momento (es.
+  attaccato a un muro, per duplicare all'infinito senza che nessun amico
+  sia davvero lì) non supera mai la soglia: una schermata statica non può
+  produrre un contatore che cresce rispondendo in tempo reale a quello che
+  l'altro telefono mostra. Per questo "duplicabile" usa lo stesso
+  handshake dal vivo di "scambiabile", anche se in teoria non ne
+  avrebbe bisogno per evitare perdite (chi condivide non perde nulla):
+  serve comunque a provare che dall'altra parte c'è un telefono acceso
+  in quel momento, non un'immagine.
+- Il rischio residuo di perdita, quando c'è, è accettabile per lo stesso
+  motivo già scritto sopra ("Il contesto: chi gioca, con che rischio"):
+  meno di 10 amici, nessun incentivo a exploitare un fallimento raro e
+  autolimitante. Un vero arbitro (database) lo chiuderebbe del tutto, ma
+  è un problema diverso da quello risolto qui — vedi "Perché nessun
+  database, per ora".
+
+**`scambiabile`/`duplicabile` esistono solo sui regali** (`daValidare:
+false`, interfaccia lo nasconde altrimenti): su un nodo che si ottiene
+rifotografando un oggetto reale, chi lo cede potrebbe semplicemente
+tornare sul posto e rifotografarlo per riprenderselo — l'oggetto fisico
+non sparisce dal mondo cedendone la copia digitale. Un regalo ceduto
+(tipo "scambio") viene invece segnato per sempre in un nuovo elenco
+`ceduti` nello stato del giocatore, escluso da lì in poi dalla chiusura
+automatica dei prerequisiti (`chiudi()`): senza questo, la prima volta
+che il giocatore trova qualunque altro oggetto, il regalo ceduto
+ricomparirebbe da solo (i suoi prerequisiti restano soddisfatti anche
+dopo averlo ceduto), duplicandolo silenziosamente.
 
 ## Perché nessuna identità dei giocatori, per ora
 

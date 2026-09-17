@@ -41,6 +41,23 @@ browser, indipendente da dove è ospitato il sito.
 
 ## 3. Scarsità e scambio/condivisione di oggetti, indizi e ricompense
 
+**Trasferimento e condivisione senza scorta — FATTO (2026-09-17), senza
+database**: un regalo (`daValidare: false`) marcato `scambiabile` (=
+"trasferimento" sotto) o `duplicabile` (= "condivisione" sotto, ma senza
+alcun limite di `scorta`) passa da un telefono all'altro con un handshake
+dal vivo a QR reciproci (fotocamere anteriori), **non** con la doppia
+scansione + funzione atomica sul database immaginata nel disegno originale
+qui sotto — si è trovato un modo di ottenere una garanzia quasi equivalente
+senza dipendere dai punti 1 e 2, vedi `memory.md` (sezione "Scambio fra
+giocatori: niente arbitro, per scelta ragionata") e `docs/STATO.md` per il
+meccanismo. Resta **non** implementata la sola `scorta` limitata (il
+contatore condiviso da tutti i giocatori, sotto): quella richiede davvero
+un'operazione atomica su un database, per il motivo spiegato sotto. Il
+resto di questa sezione descrive il disegno originale, ancora valido per la
+parte di `scorta` non ancora fatta (compreso lo schema `istanze` in
+`docs/MODELLO-DATI.md`, da adattare al modello a nodi unificati di
+`caccia-3` quando si arriverà a questo punto).
+
 Dipende dai punti 1 e 2. Disegno concordato in conversazione (2026-09-11),
 non ancora scritto in codice. Formato dati completo in
 `docs/MODELLO-DATI.md`.
