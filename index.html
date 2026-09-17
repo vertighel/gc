@@ -181,6 +181,24 @@
      di condividerne lo spazio, spingendo i bottoni in fondo fuori dallo schermo. */
   #p-scambio { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
   #p-scambio .viewfinder { max-width: 260px; aspect-ratio: 1; width: 100%; margin: 8px auto; flex: none; }
+  /* Cosa si vede lo decidono data-ruolo / data-tipo / data-fase su #p-scambio (vedi HTML). */
+  #p-scambio:not([data-ruolo="cedente"]) .se-cedente, #p-scambio:not([data-ruolo="ricevente"]) .se-ricevente,
+  #p-scambio:not([data-tipo="scambio"]) .se-scambio, #p-scambio:not([data-tipo="duplica"]) .se-duplica { display: none; }
+  #p-scambio:not([data-fase="lettura"]) #p-scambio-annulla,
+  #p-scambio:not([data-fase="fallito"]) #p-scambio-riprova,
+  #p-scambio:not([data-fase="domanda"]) #p-scambio-domanda,
+  #p-scambio:not([data-fase="fatto"]):not([data-fase="incerto"]) #p-scambio-chiudi,
+  #p-scambio[data-ruolo="ricevente"] #p-scambio-chiudi,
+  #p-scambio:not([data-fase="fatto"]) #p-scambio-ok, #p-scambio[data-ruolo="cedente"] #p-scambio-ok { display: none; }
+  /* Il richiedente arriva con la posteriore puntata verso il cedente (è così che ha
+     trovato il QR in "Foto"): il proprio QR in basso ricalca quel gesto. Il cedente parte
+     da fermo dalla scheda Memoria, e vede prima l'anteprima. */
+  #p-scambio > * { order: 2; }
+  #p-scambio > p { order: 0; }
+  #p-scambio .viewfinder { order: 1; }
+  #p-scambio[data-ruolo="ricevente"] .viewfinder { order: 2; }
+  #p-scambio[data-ruolo="ricevente"] #p-scambio-qr { order: 1; }
+  #p-scambio > .status, #p-scambio > #p-scambio-domanda, #p-scambio > .btnrow { order: 3; } /* più specifici di "#p-scambio > p" */
   /* Solo l'anteprima mostrata a schermo: il fotogramma vero letto da jsQR arriva dal
      <video> sorgente, non da questo rendering, quindi specchiarla non tocca la
      lettura del QR — serve solo a rendere intuitivo allineare i due telefoni a mano
@@ -189,7 +207,6 @@
   #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; flex: none; }
   #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
   #p-scambio-codice { font: 700 26px/1.1 var(--display); letter-spacing: .18em; margin: 0 0 6px; }
-  #p-scambio-sub { color: var(--grigio); margin: 0 0 4px; }
   #p-scambio .btnrow { margin-top: 10px; }
   #p-scambio-domanda { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #fff; color: var(--smalto); border: 2px solid var(--giallo); }
   #p-scambio-domanda p { margin: 0; }
@@ -200,10 +217,10 @@
   body.dark #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
   /* Schermata VERDE del ricevente dopo aver scritto: persistente (si chiude solo a
      mano), è la "prova" che il cedente legge — col QR o a occhio (vedi memory.md). */
-  #p-scambio.fatto { background: var(--verde); color: #fff; }
-  #p-scambio.fatto .hint, #p-scambio.fatto .status.ok { color: #fff; }
-  #p-scambio.fatto #p-scambio-codice { font-size: 40px; }
-  #p-scambio.fatto .viewfinder { display: none; } /* fotocamera già spenta: resta solo il QR */
+  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] { background: var(--verde); color: #fff; }
+  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] .status.ok { color: #fff; }
+  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] #p-scambio-codice { font-size: 40px; }
+  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] .viewfinder { display: none; } /* fotocamera già spenta: resta solo il QR */
   .medal {
     width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%; overflow: hidden;
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
@@ -390,7 +407,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 55)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 56)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -495,12 +512,20 @@
     <!-- Interfaccia di scambio: schermo intero, tabbar nascosta finché è aperta (vedi
          apriScambio()/chiudiScambio()) — l'unica uscita è "Annulla"/"Riprova"/"Torna a
          Memoria" qui sotto, mai la navigazione normale. -->
-    <div id="p-scambio" hidden>
-      <p id="p-scambio-titolo"></p>
+    <!-- Lo stato della schermata vive in tre attributi, e il CSS decide cosa si vede:
+         data-ruolo = cedente|ricevente (anche l'ordine QR/anteprima), data-tipo =
+         scambio|duplica (titolo e sottotitolo), data-fase = lettura|domanda|incerto|
+         fatto|fallito (bottoni, riquadro della domanda, schermata verde). Il JS cambia
+         solo gli attributi e i testi variabili (nome, codice, stato). -->
+    <div id="p-scambio" hidden data-ruolo="cedente" data-tipo="scambio" data-fase="lettura">
+      <p id="p-scambio-titolo">
+        <span class="se-cedente se-scambio">Scambia: </span><span class="se-cedente se-duplica">Condividi: </span><span class="se-ricevente">Stai ricevendo: </span><span id="p-scambio-nome"></span>
+      </p>
       <!-- Le prime lettere del sessionId, uguali sui due telefoni: è ciò che il cedente
            confronta a occhio con lo schermo dell'amico nella domanda manuale qui sotto. -->
       <p id="p-scambio-codice"></p>
-      <p id="p-scambio-sub" class="hint"></p>
+      <p class="hint se-cedente se-scambio">Se lo scambio va a buon fine, cederai questo oggetto.</p>
+      <p class="hint se-cedente se-duplica">Il tuo amico riceverà una copia, tu mantieni la tua.</p>
       <div class="viewfinder">
         <video id="p-scambio-video" playsinline muted autoplay></video>
       </div>
@@ -510,7 +535,7 @@
            cedente di uno "scambio", quando la lettura automatica non ha ancora visto la
            conferma finale ma il ricevente potrebbe già aver scritto. La fotocamera resta
            accesa sotto: se la lettura riesce nel frattempo, la domanda sparisce da sola. -->
-      <div id="p-scambio-domanda" hidden>
+      <div id="p-scambio-domanda">
         <p>Non ho ancora letto la conferma. Guarda il telefono del tuo amico: mostra la
           schermata <b>verde</b> «Ricevuto» con il codice <b class="codice"></b>?</p>
         <div class="btnrow">
@@ -520,8 +545,9 @@
       </div>
       <div class="btnrow">
         <button id="p-scambio-annulla" class="btn">Annulla</button>
-        <button id="p-scambio-riprova" class="btn primary" hidden>Riprova</button>
-        <button id="p-scambio-chiudi" class="btn primary" hidden>Torna a Memoria</button>
+        <button id="p-scambio-riprova" class="btn primary">Riprova</button>
+        <button id="p-scambio-chiudi" class="btn primary">Torna a Memoria</button>
+        <button id="p-scambio-ok" class="btn primary">Chiudi</button>
       </div>
     </div>
 
@@ -2598,29 +2624,10 @@ function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
   };
   $("p-content").hidden = true; $("p-tabbar").hidden = true;
   $("p-scambio").hidden = false;
-  $("p-scambio").classList.remove("fatto");
-  $("p-scambio-annulla").hidden = false;
-  $("p-scambio-riprova").hidden = true;
-  $("p-scambio-chiudi").hidden = true;
-  $("p-scambio-chiudi").textContent = "Torna a Memoria";
-  $("p-scambio-domanda").hidden = true;
+  Object.assign($("p-scambio").dataset, { ruolo, tipo, fase: "lettura" }); // il resto lo fa il CSS
+  $("p-scambio-nome").textContent = nome;
   $("p-scambio-codice").textContent = codiceScambio();
   $("p-scambio-domanda").querySelector(".codice").textContent = codiceScambio();
-  // Il richiedente arriva già con la posteriore in mano puntata verso il cedente (è
-  // così che ha trovato il QR in "Foto"): mettere QUI il proprio QR in basso, sotto
-  // l'anteprima, ricalca esattamente il gesto appena fatto. Il cedente invece parte
-  // da fermo dalla scheda Memoria, senza un'inquadratura precedente da ricalcare.
-  const vf = $("p-scambio").querySelector(".viewfinder"), qr = $("p-scambio-qr");
-  $("p-scambio").insertBefore(ruolo === "ricevente" ? qr : vf, ruolo === "ricevente" ? vf : qr);
-  if (ruolo === "cedente") {
-    $("p-scambio-titolo").textContent = (tipo === "duplica" ? "Condividi: " : "Scambia: ") + nome;
-    $("p-scambio-sub").textContent = tipo === "duplica"
-      ? "Il tuo amico riceverà una copia, tu mantieni la tua."
-      : "Se lo scambio va a buon fine, cederai questo oggetto.";
-  } else {
-    $("p-scambio-titolo").textContent = "Stai ricevendo: " + nome;
-    $("p-scambio-sub").textContent = "";
-  }
   setStatus($("p-scambio-status"), "Avvicina gli schermi, faccia a faccia.");
   avviaScambioFotocamera();
 }
@@ -2751,16 +2758,15 @@ function scambioDomanda() {
   if (!scambio || scambio.committed || scambio.domanda) return;
   if (scambio.myReadCount === 0) { scambioFallito(); return; }
   scambio.domanda = true;
-  $("p-scambio-annulla").hidden = true;
   if (scambio.tipo === "duplica") {
     clearInterval(scambio.timer);
     stopCamera();
     setStatus($("p-scambio-status"), `Non ho letto la conferma, ma se il tuo amico vede la schermata verde con il codice ${codiceScambio()} ha ricevuto la copia lo stesso.`);
-    $("p-scambio-chiudi").hidden = false;
+    $("p-scambio").dataset.fase = "incerto";
     return;
   }
   setStatus($("p-scambio-status"), "");
-  $("p-scambio-domanda").hidden = false;
+  $("p-scambio").dataset.fase = "domanda";
   // Sta in fondo, sotto anteprima e QR: su un telefono può finire fuori dallo schermo.
   $("p-scambio-domanda").scrollIntoView({ block: "end", behavior: "smooth" });
 }
@@ -2772,14 +2778,12 @@ function scambioRiuscito() {
   const nodoDef = game.nodi[nodo];
   const nome = (nodoDef ? nodoDef.nome : "l'oggetto") + (istanza ? " " + istanza : "");
   stopCamera();
-  $("p-scambio-annulla").hidden = true;
-  $("p-scambio-domanda").hidden = true;
+  $("p-scambio").dataset.fase = "fatto";
   if (ruolo === "cedente") {
     // Ultimo a scrivere per costruzione: nessun periodo di grazia, non c'è più nessuno
     // che debba leggere qualcosa da questo schermo.
     if (tipo === "scambio") cedi(stato(), nodo);
     setStatus($("p-scambio-status"), (tipo === "duplica" ? "Fatto! Hai condiviso " : "Fatto! Hai ceduto ") + nome + ".", "ok");
-    $("p-scambio-chiudi").hidden = false;
   } else {
     // Scrivo subito, poi resto sulla schermata VERDE con il QR "fatto" (già sul
     // canvas, vedi scambioTickCorpo) finché il giocatore non preme "Chiudi": è la
@@ -2796,10 +2800,7 @@ function scambioRiuscito() {
     if (istanza && nodoDef && !nuovi.some(n => n.id === nodo)) nuovi.unshift({ id: nodo, ...nodoDef, istanza });
     st.scelta = null; saveState(st);
     scambio.esito = { nuovi, st };
-    $("p-scambio").classList.add("fatto");
     setStatus($("p-scambio-status"), "Ricevuto! Mostra questa schermata al tuo amico finché il suo telefono non dice \"Fatto!\".", "ok");
-    $("p-scambio-chiudi").textContent = "Chiudi";
-    $("p-scambio-chiudi").hidden = false;
   }
 }
 
@@ -2807,11 +2808,10 @@ function scambioFallito() {
   if (!scambio || scambio.committed) return;
   clearInterval(scambio.timer);
   stopCamera();
-  $("p-scambio-domanda").hidden = true;
   setStatus($("p-scambio-status"), scambio.ruolo === "cedente"
     ? "Scambio non riuscito: l'oggetto è rimasto qui. Riavvicinate gli schermi e riprovate."
     : "Scambio non riuscito. Riavvicinate gli schermi e riprovate.", "ko");
-  $("p-scambio-riprova").hidden = false;
+  $("p-scambio").dataset.fase = "fallito";
 }
 
 // Chiude l'interfaccia di scambio senza applicare nessun cambiamento (usata sia da
@@ -2908,15 +2908,16 @@ function initPlayer() {
   $("p-scambio-si").onclick = () => { if (scambio && !scambio.committed) scambioRiuscito(); };
   $("p-scambio-riprova").onclick = () => {
     if (!scambio) return;
-    const { ruolo, tipo, nodo } = scambio;
-    if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo });
+    const { ruolo, tipo, nodo, istanza } = scambio;
+    if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo, istanza });
     else { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
   };
-  $("p-scambio-chiudi").onclick = () => {
+  $("p-scambio-chiudi").onclick = () => { chiudiScambio(); mostraTab("oggetti"); }; // cedente: fatto o incerto
+  $("p-scambio-ok").onclick = () => {                                              // ricevente: dalla schermata verde alla festa
     const esito = scambio && scambio.esito;
     chiudiScambio();
-    if (esito) { mostraTab("cerca"); showReward(esito.nuovi, esito.st); }
-    else mostraTab("oggetti");
+    mostraTab("cerca");
+    if (esito) showReward(esito.nuovi, esito.st);
   };
   $("p-reset").onclick = () => {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;

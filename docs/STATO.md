@@ -1,4 +1,4 @@
-# Stato attuale (versione 54)
+# Stato attuale (versione 56)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -193,7 +193,12 @@ sempre (nessun database, vedi `memory.md`).
     mentre l'amico è già verde. Un terzo telefono che in "Foto" inquadra la schermata
     verde di un ricevente vede "Questo scambio è già concluso."
 
-  Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack:mioId:istanza`,
+  La schermata `#p-scambio` è guidata da tre attributi — `data-ruolo`
+  (cedente/ricevente: anche l'ordine QR/anteprima, via `order`), `data-tipo`
+  (scambio/duplica: titolo e sottotitolo scritti in HTML, il CSS mostra la variante),
+  `data-fase` (lettura/domanda/incerto/fatto/fallito: bottoni, riquadro della domanda,
+  schermata verde) — e il JS cambia solo questi e i testi variabili (nome, codice,
+  stato). Il contenuto del QR (`"gc1:" + tipo-in-un-carattere:sessionId:nodo:seq:ack:mioId:istanza`,
   non JSON; l'ultimo campo è vuoto per i nodi normali, un QR a 6 campi di una versione
   precedente si legge ancora) è pensato apposta per restare piccolo (44 byte nel caso
   peggiore, versione QR 3): meno byte da codificare vuol dire

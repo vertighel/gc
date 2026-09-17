@@ -85,7 +85,7 @@ const tick = p => p.evaluate(() => window.__debug.scambioTickCorpo());
 const stato = p => p.evaluate(() => window.__debug.stato());
 const apri = (p, o) => p.evaluate(o => { window.__debug.apriScambio(o); }, o).then(() => p.waitForTimeout(50)).then(() => p.evaluate(() => window.__debug.fermaTimer()));
 const vis = (p, id) => p.evaluate(id => { const e = document.getElementById(id); return !!e && !e.hidden && e.offsetParent !== null; }, id);
-const txt = (p, id) => p.evaluate(id => document.getElementById(id).textContent, id);
+const txt = (p, id) => p.evaluate(id => document.getElementById(id).innerText, id);
 const backdate = (p, ms) => p.evaluate(ms => { window.__debug.scambio.inizio -= ms; if (window.__debug.scambio.theirAckKAt) window.__debug.scambio.theirAckKAt -= ms; }, ms);
 
 const browser = await chromium.launch();
@@ -119,15 +119,16 @@ const browser = await chromium.launch();
   }
   ok(sb.committed && sa.committed, `entrambi committed in ${giri} giri`);
   ok((await qr(B)).startsWith("gc1:S:"), "l'ultimo QR di B è quello 'fatto' (S)");
-  ok(await B.evaluate(() => document.getElementById("p-scambio").classList.contains("fatto")), "B è sulla schermata verde");
-  ok(await vis(B, "p-scambio-chiudi") && (await txt(B, "p-scambio-chiudi")) === "Chiudi", "B ha il bottone Chiudi");
+  ok(await B.evaluate(() => { const d = document.getElementById("p-scambio").dataset; return d.fase === "fatto" && d.ruolo === "ricevente" && getComputedStyle(document.getElementById("p-scambio")).backgroundColor === "rgb(46, 122, 76)"; }), "B è sulla schermata verde (data-fase=fatto, sfondo verde via CSS)");
+  ok(await vis(B, "p-scambio-ok") && !(await vis(B, "p-scambio-chiudi")) && !(await vis(B, "p-scambio-annulla")), "B ha solo il bottone Chiudi");
+  ok((await txt(B, "p-scambio-titolo")).replace(/\s+/g, " ").trim() === "Stai ricevendo: Chiave" && (await txt(A, "p-scambio-titolo")).replace(/\s+/g, " ").trim() === "Scambia: Chiave", "titoli scelti dal CSS per ruolo/tipo (testo visibile)");
   const stA = await stato(A), stB = await stato(B);
   ok(!stA.trovati.includes("gift1") && stA.ceduti.includes("gift1"), "A ha ceduto gift1");
   ok(stB.trovati.includes("gift1"), "B possiede gift1");
   ok(await vis(A, "p-scambio-chiudi") && !(await vis(A, "p-scambio-domanda")), "A: Torna a Memoria visibile, niente domanda");
   ok((await txt(A, "p-scambio-status")).startsWith("Fatto! Hai ceduto"), "A: messaggio Fatto");
   // B chiude → festa
-  await B.click("#p-scambio-chiudi");
+  await B.click("#p-scambio-ok");
   ok(await vis(B, "p-reward"), "B: festa di sblocco dopo Chiudi");
   // Ordine: B ha scritto PRIMA di A? verifica che B fosse committed quando A non lo era ancora
   await A.context().close(); await B.context().close();
@@ -319,7 +320,7 @@ const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato();
   ok(festa.some(n => n.id === "sig" && n.istanza === ia) && festa.some(n => n.id === "fin"), "[I3] la festa di B mostra l'istanza ricevuta e il Tesoro");
   ok((await bottino(A, "sig")).length === 1 && !(await stato(A)).trovati.includes("fin"), "[I3] A invariato (duplica)");
   // I4. stessa istanza di nuovo → rifiutata
-  await B.click("#p-scambio-chiudi");
+  await B.click("#p-scambio-ok");
   await B.evaluate(t => window.__debug.gestisciQrFoto(t), qa.replace("gc1:d:", "gc1:d:"));
   ok((await txt(B, "p-status")).includes("Hai già l'istanza " + ia) && !(await S(B)), "[I4] B rifiuta una seconda copia della stessa istanza");
   // I8. Memoria: due righe Sigillo con badge, il 👥 della riga condivide QUELLA istanza
@@ -338,7 +339,7 @@ const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato();
   while (giri++ < 20) { await feed(C, await qr(B)); await tick(C); await feed(B, await qr(C)); await tick(B); if ((await S(B)).committed) break; }
   let bc = await bottino(C, "sig");
   ok(bc.length === 1 && bc[0].istanza === ia && !bc[0].prodotta && !(await stato(C)).prodotti.length, "[I5] C ha la copia di A ricevuta da B, non ha prodotto nulla");
-  await C.click("#p-scambio-chiudi");
+  await C.click("#p-scambio-ok");
   const nuoviC = await trova(C, ["obj2"]);
   bc = await bottino(C, "sig");
   ok(bc.length === 2 && bc.some(r => r.prodotta && ISTANZA_RE.test(r.istanza) && r.istanza !== ia), "[I5] C, trovata la saracinesca DOPO aver ricevuto, produce comunque la sua");
