@@ -207,7 +207,7 @@ Pannello `#master`: menu delle cacce, registrazione di un nuovo elemento (Oggett
 
 **A system for field visual-recognition paths, running entirely in the browser.** A curator records physical elements of a territory; participants locate them and verify them with the camera of their own device. Elements are organised in a directed acyclic graph of prerequisites, and transfer and replication operations between devices are carried out by a peer-to-peer optical protocol, with no server. There are no identities, no database and no image transmission: the whole state lives on the device.
 
-Public instance: <https://vertighel.github.io/gc/> — curator panel: <https://vertighel.github.io/gc/#master>.
+Public instance: <https://vertighel.github.io/gc/> 
 
 The system has four layers.
 
