@@ -267,7 +267,7 @@
   body[data-view]:not([data-view^="master"]) #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
   /* Schermata VERDE a scambio riuscito, su ENTRAMBI i telefoni. Sul ricevente è
      persistente (si chiude solo a mano) ed è la "prova" che il cedente legge — col QR
-     o a occhio (vedi memory.md); sul cedente arriva quando ha letto quella prova, ed
+     o a occhio (vedi docs/DECISIONI.md); sul cedente arriva quando ha letto quella prova, ed
      è l'unico dei due ad averne la certezza. Mai verde in fase "incerto": lì il
      cedente ha risposto "Sì" a mano senza aver letto nulla. */
   #p-scambio[data-fase="fatto"] { background: var(--verde); color: #fff; }
@@ -484,7 +484,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 65)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 66)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -1608,7 +1608,7 @@ function creaSchedaNodo(n, id, ids, notify) {
   // Flag e modo del regalo (radio, vedi MODI_REGALO). La radio si vede solo con
   // "Validare" spento (data-validare, via CSS): su un nodo che si ottiene rifotografando
   // un oggetto reale, chi lo cede potrebbe rifotografarlo per riprenderselo (vedi
-  // memory.md) — riaccendere "Validare" riporta il modo a "libero".
+  // docs/DECISIONI.md) — riaccendere "Validare" riporta il modo a "libero".
   const cbThumb = campo("conThumb"), cbValida = campo("daValidare"), cbPos = campo("richiedePosizione");
   cbThumb.checked = !!n.conThumb; cbValida.checked = !!n.daValidare; cbPos.checked = !!n.richiedePosizione;
   const radios = [...el.querySelectorAll('[name="modo"]')];
@@ -2167,7 +2167,7 @@ const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
    riceve una copia la tiene accanto alla propria, e un nodo può richiedere "almeno N
    istanze DIVERSE" di un altro (istanzeRichieste). È il modo di rendere obbligatorio
    l'incontro fra giocatori senza identità né database: nessuno può produrre due
-   istanze, quindi la seconda deve arrivare da un altro telefono. Vedi memory.md. */
+   istanze, quindi la seconda deve arrivare da un altro telefono. Vedi docs/DECISIONI.md. */
 const ISTANZA_LETTERE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", ISTANZA_CIFRE = "0123456789";
 const pesca = s => s[Math.floor(Math.random() * s.length)];
 // Lettera-cifra-lettera (26·10·26 = 6760 id): abbastanza per meno di 10 produttori
@@ -2616,10 +2616,10 @@ function showReward(nuovi, st) {
    con la fotocamera anteriore per qualche secondo, finché entrambi i telefoni non si
    sono scambiati abbastanza fotogrammi crescenti da potersi fidare che la connessione
    è vera e in corso ora (non una foto vecchia o un QR stampato su un muro) — vedi
-   memory.md per il ragionamento completo dietro questo disegno.
+   docs/DECISIONI.md per il ragionamento completo dietro questo disegno.
 
    Il protocollo è deliberatamente ASIMMETRICO (Problema dei Due Generali, vedi
-   memory.md): il RICEVENTE scrive per primo, appena ha letto abbastanza fotogrammi
+   docs/DECISIONI.md): il RICEVENTE scrive per primo, appena ha letto abbastanza fotogrammi
    crescenti del cedente (QR_K) e sa che il cedente lo ha visto almeno una volta;
    poi mostra una schermata verde persistente col QR "fatto" (codice tipo maiuscolo).
    Il CEDENTE cancella SOLO dopo aver letto quel QR "fatto" — oppure, se la lettura
@@ -2642,7 +2642,7 @@ const QR_K = 3;
 // Il ricevente ha un timeout vero (prima di scrivere non è successo nulla, quindi
 // fallire è sicuro). Parte quando SI APRE l'interfaccia, non da quando i due telefoni
 // iniziano davvero a leggersi: girare il telefono e allineare gli schermi si mangia
-// comunque il cronometro. Vedi memory.md.
+// comunque il cronometro. Vedi docs/DECISIONI.md.
 const QR_TIMEOUT_MS = 40000;
 // Il cedente invece non "fallisce" mai per tempo: l'amico potrebbe aver già scritto.
 // Dopo QR_DOMANDA_MIN_MS dal tocco, E almeno QR_DOMANDA_DOPO_K_MS da quando ha visto
@@ -2680,7 +2680,7 @@ function nuovoSessionId() {
 // per intero): un QR con meno byte da codificare usa moduli più grandi a parità di
 // dimensione a schermo, più facili da mettere a fuoco e leggere al volo — un JSON
 // con nomi di campo interi arrivava a una versione di QR 6-7 (moduli piccolissimi),
-// questo formato resta tipicamente sulla 3-4. Vedi memory.md.
+// questo formato resta tipicamente sulla 3-4. Vedi docs/DECISIONI.md.
 function decodificaQr(testo) {
   if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
   const parti = testo.slice(QR_PREFISSO.length).split(":");
@@ -2690,7 +2690,7 @@ function decodificaQr(testo) {
   const [codiceTipo, sessionId, nodo, seqTxt, ackTxt, mioId, istanza = ""] = parti;
   const tipo = QR_TIPI_DA_CODICE[codiceTipo];
   // "tipo" sconosciuto: un codice che questa versione non traduce ancora, lascia la
-  // porta aperta a futuri tipi di QR di gioco (vedi memory.md) invece di un errore
+  // porta aperta a futuri tipi di QR di gioco (vedi docs/DECISIONI.md) invece di un errore
   // fatale.
   if (!tipo) return { errore: "tiposconosciuto" };
   const seq = Number(seqTxt), ack = Number(ackTxt);
@@ -2771,7 +2771,7 @@ function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
     // serve solo a riconoscere ed escludere un fotogramma che risultasse essere il
     // proprio invece che quello dell'altro (es. un riflesso sul vetro dell'altro
     // schermo) — sessionId/tipo/nodo da soli non basterebbero, sono identici su
-    // entrambi i lati per costruzione. Vedi memory.md.
+    // entrambi i lati per costruzione. Vedi docs/DECISIONI.md.
     mioId: nuovoSessionId().slice(0, 4),
     mySeq: 0, myReadCount: 0, lastSeqSeen: -1, theirAck: 0,
     // Solo cedente: quando ha visto per la prima volta il ricevente a soglia (= il
@@ -2828,7 +2828,7 @@ async function scambioTick() {
 // maiuscolo): l'intervallo si ferma subito dopo e quel QR resta a schermo finché il
 // giocatore non chiude, è la prova che il cedente legge. Con l'ordine invertito
 // resterebbe congelato il valore del fotogramma prima — capitato davvero, vedi
-// memory.md.
+// docs/DECISIONI.md.
 async function scambioTickCorpo() {
   const ora = Date.now();
   // Solo il ricevente fallisce per tempo: prima di scrivere non è successo nulla,

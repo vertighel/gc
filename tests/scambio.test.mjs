@@ -12,7 +12,7 @@
 //     node /percorso/gc/tests/scambio.test.mjs
 // Non tocca il repository: copia index.html in una cartella temporanea, SOLO lì
 // aggiunge in fondo un `window.__debug` con le funzioni interne da pilotare (mai nel
-// file vero, vedi memory.md), scrive un caccia.json finto e serve tutto con
+// file vero, vedi docs/DECISIONI.md), scrive un caccia.json finto e serve tutto con
 // `python3 -m http.server` su una porta libera.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
