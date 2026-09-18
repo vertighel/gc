@@ -4,22 +4,44 @@
 
 # Italiano
 
-**Un sistema per percorsi di riconoscimento visivo sul campo, eseguito interamente nel browser.** Un curatore registra elementi fisici di un territorio; i partecipanti li individuano e li verificano con la fotocamera del proprio dispositivo. Gli elementi sono organizzati in un grafo diretto aciclico di prerequisiti, e fra dispositivi sono possibili operazioni di trasferimento e replica realizzate con un protocollo ottico fra pari, senza server. Non esistono identità, database né trasmissione di immagini: l'intero stato risiede sul dispositivo.
+**Sistema per percorsi di riconoscimento visivo sul campo, eseguito interamente nel browser.** 
+
+Un curatore registra elementi fisici di un territorio; i partecipanti li individuano e li verificano con la fotocamera del proprio dispositivo. Gli elementi sono organizzati in un grafo diretto aciclico di prerequisiti, e fra dispositivi sono possibili operazioni di trasferimento e replica realizzate con un protocollo ottico fra pari, senza server. 
+Non esistono identità, database né trasmissione di immagini: l'intero stato risiede sul dispositivo.
 
 Istanza pubblica: <https://vertighel.github.io/gc/> 
 
 Il sistema è composto da quattro strati.
 
-1. **Verifica.** Ogni elemento è descritto da un insieme di riferimenti acquisiti sul posto dal curatore: embedding visivi dell'elemento (positivi), embedding dell'ambiente circostante (negativi) e posizione geografica. La verifica del partecipante è un confronto di similarità fra l'embedding dell'inquadratura e quei riferimenti, con una soglia calibrata automaticamente all'acquisizione: riconoscimento di *istanze* visive, a una classe per volta, senza addestramento e senza dataset. Un secondo fattore opzionale è la prossimità geografica (entro un raggio dal punto registrato), controllata dopo la verifica visiva.
-2. **Progressione.** Gli elementi formano un grafo diretto aciclico; gli archi sono prerequisiti in AND. Un elemento si acquisisce per *verifica* (fotocamera, più eventualmente posizione) o per *derivazione*, automaticamente, quando tutti i suoi prerequisiti sono soddisfatti. A ogni elemento sono associati un testo visibile prima dell'acquisizione (traccia) e uno dopo (contenuto di sblocco); il curatore dispone inoltre di un canale di annunci e può pubblicare più percorsi indipendenti dallo stesso sito.
-3. **Interazione fra dispositivi.** Sugli elementi derivati sono definite tre operazioni: *trasferimento* esclusivo (l'elemento si sposta da un dispositivo all'altro), *replica* (copia identica, non esclusiva) e *replica a istanze* (ogni dispositivo può produrre un solo token univoco dell'elemento, e può replicare quelli ricevuti). Un arco può richiedere "almeno N istanze distinte": poiché nessun dispositivo ne produce due, il vincolo è soddisfacibile solo cooperando. Le operazioni avvengono su un canale ottico bidirezionale — i due dispositivi si leggono a vicenda un codice QR con le fotocamere anteriori — con un protocollo di commit asimmetrico e senza terze parti.
-4. **Autoria e distribuzione.** Il curatore acquisisce i riferimenti sul campo, modifica il grafo (con controllo di aciclicità) e pubblica; il tutto da un pannello nello stesso file. L'applicazione è un unico file HTML su hosting statico; i dati pubblicati sono file JSON in sola lettura, scritti dal curatore tramite l'API di GitHub e scaricati dai partecipanti a ogni avvio. Lo stato di ciascun partecipante risiede esclusivamente nel suo dispositivo.
+1. **Verifica.** Ogni elemento è descritto da un insieme di riferimenti acquisiti sul posto dal curatore:
+ - rappresentazioni vettoriali dell'elemento (positivi),
+ - dell'ambiente circostante (negativi),
+ - della posizione geografica.
+2. La verifica del partecipante è un confronto di similarità fra la cattura dell'inquadratura e quei riferimenti, con una soglia calibrata automaticamente all'acquisizione:
+ - riconoscimento di *istanze* visive, a una classe per volta, senza addestramento e senza dataset;
+ - un secondo fattore opzionale è la prossimità geografica (entro un raggio dal punto registrato), controllata dopo la verifica visiva.
+3. **Progressione** Gli elementi formano un *grafo diretto aciclico*:
+ - gli archi sono prerequisiti in `AND`;
+ - un elemento si acquisisce per *verifica* (fotocamera, più eventualmente posizione); o per *derivazione*, automaticamente, quando tutti i suoi prerequisiti sono soddisfatti.
+ - A ogni elemento sono associati un testo visibile prima dell'acquisizione (traccia) e uno dopo (contenuto di sblocco);
+ - il curatore dispone inoltre di un canale di annunci e può pubblicare più percorsi indipendenti dallo stesso sito.
+4. **Operazioni sugli elementi derivati** Sugli elementi derivati sono definite tre operazioni:
+ - *trasferimento* esclusivo (l'elemento si sposta da un dispositivo all'altro),
+ - *replica* (copia identica, non esclusiva);
+ - *replica a istanze* (ogni dispositivo può produrre un solo token univoco dell'elemento, e può replicare quelli ricevuti). Un arco può richiedere "almeno N istanze distinte": poiché nessun dispositivo ne produce due, il vincolo è soddisfacibile solo cooperando.
+4.1. **Interazione** Le operazioni avvengono su un canale ottico bidirezionale:
+ - i due dispositivi si leggono a vicenda un codice QR con le fotocamere anteriori;
+ - usano un protocollo di consegna asimmetrico e senza terze parti.
+5. **Compilazione del grafo e distribuzione.** Il curatore acquisisce i riferimenti sul campo, modifica il grafo (con controllo di aciclicità) e pubblica; il tutto da un pannello nello stesso file. L'applicazione è un unico file HTML su hosting statico; i dati pubblicati sono file JSON in sola lettura, scritti dal curatore tramite l'API di GitHub e scaricati dai partecipanti a ogni avvio. Lo stato di ciascun partecipante risiede esclusivamente nel suo dispositivo.
 
 **Cosa distingue questo progetto**
 
-- **Riconoscimento senza infrastruttura né addestramento.** Il modello (MobileNet v3 via MediaPipe) gira nel browser; ogni elemento nasce da una cattura di pochi secondi sul posto, con soglia calibrata automaticamente contro l'ambiente circostante. Nessuna immagine dei partecipanti lascia mai il dispositivo: la verifica avviene in locale e in rete circolano solo vettori quantizzati del curatore.
-- **Cooperazione obbligata senza identità.** L'unicità della produzione delle istanze — un token per dispositivo — rende alcuni elementi ottenibili solo incontrando altri partecipanti, senza che il sistema sappia chi è chi: nessun account, nessun database, nessun tracciamento.
-- **Commit fra pari su canale ottico.** Il trasferimento fra due dispositivi è un'istanza del Problema dei Due Generali, che non ha soluzione perfetta senza arbitro. Il protocollo non finge di risolverlo: è asimmetrico (il ricevente scrive per primo, il cedente cancella solo dopo aver letto la prova) e sceglie l'errore residuo — la duplicazione resta possibile in un caso preciso, la perdita è impossibile per costruzione. La freschezza si misura con contatori locali crescenti, mai confrontando gli orologi.
+- **Riconoscimento senza infrastruttura né addestramento.** Il modello (MobileNet v3 via MediaPipe) gira nel browser; ogni elemento nasce da una cattura di pochi secondi sul posto, con soglia calibrata automaticamente contro l'ambiente circostante.
+- Nessuna immagine dei partecipanti lascia mai il dispositivo: la verifica avviene in locale e in rete circolano solo vettori quantizzati del curatore.
+- Nessuna informazione sulla posizione lascia mai il dispositivo.
+- Nessuna informazione sull'identità dell'utente è condivisa con un server.
+- **Cooperazione obbligata senza identità.** L'unicità della produzione delle istanze (una stringa per dispositivo) rende alcuni elementi ottenibili solo incontrando altri utilizzatori, senza che il sistema sappia chi è chi.
+- **Commit fra pari su canale ottico.** Il trasferimento fra due dispositivi è un'istanza del ["Problema dei Due Generali"](https://en.wikipedia.org/wiki/Two_Generals%27_Problem), che non ha soluzione perfetta senza arbitro. Il protocollo non finge di risolverlo: è asimmetrico (il ricevente scrive per primo, il cedente cancella solo dopo aver letto la prova) e sceglie l'errore residuo. Tecnicamente, la duplicazione resta possibile in un caso preciso, mentre la perdita è impossibile per costruzione. La prova di presenza dal vivo (*"Freshness"*) si misura con contatori locali crescenti.
 - **Zero infrastruttura.** Un solo file, nessun build, nessun server applicativo: la pubblicazione è un `git push`, il "database" sono due file JSON, e il sistema funziona offline con l'ultima copia scaricata.
 - **Dichiarativo fino all'interfaccia.** Il markup è HTML nativo (`<template>`, `<dialog>`, `<details>`), lo stato visibile è un attributo `data-*` letto dal CSS, i clic sono azioni dichiarate nell'HTML e risolte da un unico listener: il file si legge senza seguire il JavaScript.
 
