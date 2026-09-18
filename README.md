@@ -110,9 +110,7 @@ Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`: `GET` per
 | `lavoro.json`, `lavoro-<slug>.json` | Bozze di lavoro del master salvate sul server. Mai lette dal giocatore normale; provabili col link `#b`/`#b-<slug>`. |
 | `cacce.json` | Elenco degli slug delle cacce con nome (quella di sempre non ci compare mai). |
 | `messaggi.json` | Annunci del master, in ordine di pubblicazione, uguali per tutte le cacce. |
-| [`docs/STATO.md`](docs/STATO.md) | Stato attuale, funzione per funzione. Da leggere prima di toccare il codice. |
-| [`docs/MODELLO-DATI.md`](docs/MODELLO-DATI.md) | Schema di tutti i file JSON e delle chiavi `localStorage`; i formati precedenti come archivio. |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Cosa manca, in ordine di dipendenza. |
+| `img/` | Gli screenshot di questo README. |
 | [`tests/`](tests/) | `scambio.test.mjs`, test Playwright del protocollo di scambio. |
 
 ### Architettura
@@ -120,7 +118,7 @@ Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`: `GET` per
 - **Un solo file HTML**, senza framework e senza build: si pubblica con un `git push` su GitHub Pages. Le uniche librerie esterne si caricano da CDN con `import()` dinamico, solo quando servono.
 - **I JSON sono il database, in sola lettura.** I giocatori li scaricano con `fetch()` (senza cache) a ogni apertura; solo il master li scrive, tramite l'API di GitHub. Non c'è nessun database vero.
 - **Lo stato del giocatore vive nel `localStorage`** del suo telefono: la caccia scaricata, gli elementi posseduti, il bottino, i messaggi letti, gli elementi ceduti e le istanze prodotte, con chiavi separate per caccia (`gioco`/`stato`, `gioco:<slug>`/`stato:<slug>`). Funziona offline con l'ultima copia scaricata.
-- **Il riconoscimento immagini è interamente nel browser.** `index.html` usa [MediaPipe Tasks Vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) (`@mediapipe/tasks-vision@1.0.1`, classe `ImageEmbedder`) con il modello `mobilenet_v3_small` (float32) scaricato dal repository dei modelli MediaPipe; prova prima il delegato GPU e ripiega su CPU. Ogni fotogramma diventa un vettore normalizzato (1024 dimensioni, vedi `docs/MODELLO-DATI.md`) e si confronta per prodotto scalare con i vettori dell'oggetto (`pos`) e dei dintorni (`neg`) registrati dal master; vince il migliore di 5 fotogrammi ravvicinati, valido se supera la soglia calcolata alla registrazione ed è più simile all'oggetto che ai dintorni. In `caccia.json` i vettori sono compressi a 8 bit (`pack()`/`unpack()`): nessuna foto dei giocatori lascia mai il telefono, e da un embedding non si ricostruisce un'immagine.
+- **Il riconoscimento immagini è interamente nel browser.** `index.html` usa [MediaPipe Tasks Vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) (`@mediapipe/tasks-vision@1.0.1`, classe `ImageEmbedder`) con il modello `mobilenet_v3_small` (float32) scaricato dal repository dei modelli MediaPipe; prova prima il delegato GPU e ripiega su CPU. Ogni fotogramma diventa un vettore normalizzato (1024 dimensioni) e si confronta per prodotto scalare con i vettori dell'oggetto (`pos`) e dei dintorni (`neg`) registrati dal master; vince il migliore di 5 fotogrammi ravvicinati, valido se supera la soglia calcolata alla registrazione ed è più simile all'oggetto che ai dintorni. In `caccia.json` i vettori sono compressi a 8 bit (`pack()`/`unpack()`): nessuna foto dei giocatori lascia mai il telefono, e da un embedding non si ricostruisce un'immagine.
 - **QR per lo scambio**: lettura con [`jsqr`](https://www.npmjs.com/package/jsqr) 1.4.0, generazione con [`qrcode`](https://www.npmjs.com/package/qrcode) 1.5.4, entrambi caricati da CDN solo quando si apre l'interfaccia di scambio.
 
 ### Modello dati
@@ -133,15 +131,11 @@ Formato `caccia-3`: un solo tipo di nodo. Ogni nodo nasce dalla cattura sul camp
 
 `richiede` è la lista dei prerequisiti (sempre in AND). Sui regali, i modi `scambiabile` / `duplicabile` / `istanze`; su chi richiede un nodo a istanze, `istanzeRichieste: { "<id>": N }` per chiedere "almeno N istanze diverse". Un'istanza è un id casuale a tre caratteri lettera-cifra-lettera (es. `K7X`), prodotto una sola volta per telefono. `testo` (l'indizio, prima) e `messaggio` (dopo lo sblocco) sono sempre riferiti al nodo stesso. Prima di pubblicare, `trovaCiclo()` controlla che i collegamenti non formino un ciclo. Se il master ripubblica con lo stesso `formato`, i progressi dei giocatori restano e i nuovi nodi si aggiungono; un `formato` diverso azzera tutto.
 
-Schema completo, chiavi `localStorage` e formati precedenti in [`docs/MODELLO-DATI.md`](docs/MODELLO-DATI.md).
-
 ### Scambio senza server
 
 Un regalo `scambiabile` o `duplicabile` passa da un telefono all'altro con un handshake dal vivo: i due telefoni si mettono schermo contro schermo e ognuno legge, con la fotocamera anteriore, il QR che l'altro mostra e ridisegna alcune volte al secondo. Il QR contiene solo `gc1:tipo:sessionId:nodo:seq:ack:mioId:istanza` (44 byte al massimo, versione QR 3, così i moduli restano grandi e leggibili). Le prime quattro lettere del `sessionId` sono il codice mostrato grande su entrambi gli schermi.
 
 Il problema di fondo — due dispositivi che devono accordarsi su un trasferimento scambiandosi messaggi che possono perdersi, senza un terzo che ricordi l'esito — è il **Problema dei Due Generali**, che non ha soluzione perfetta. Il gioco non lo risolve: sceglie quale dei due errori possibili resta ammesso. Il **protocollo è asimmetrico**: il ricevente scrive per primo, appena ha letto `QR_K` (3) fotogrammi crescenti del cedente e sa di essere stato letto almeno una volta, e mostra una schermata verde persistente col codice; il cedente cancella l'oggetto **solo** dopo aver letto quel QR "fatto" (e a quel punto diventa verde anche lui: è l'unico dei due ad avere la certezza), oppure dopo che il giocatore ha guardato con i propri occhi lo schermo verde dell'amico e confrontato il codice (domanda manuale, che compare dopo 30 s dal tocco e 10 s da quando l'amico può aver scritto, comunque entro 60 s). Così la **perdita** (cancellato da chi cede, mai arrivato a chi riceve) è impossibile per costruzione; l'unico errore residuo, accettato, è la **duplicazione**, e solo se il cedente risponde "No" mentre l'amico è già verde. La freschezza si misura con contatori locali crescenti, mai confrontando gli orologi dei due telefoni; un QR stampato non supera mai la soglia, perché non può rispondere in tempo reale. Chi cede un nodo lo vede segnato per sempre in `ceduti`, così la chiusura automatica dei regali non glielo restituisce alla foto successiva.
-
-Meccanismo e ragionamento in [`docs/STATO.md`](docs/STATO.md).
 
 ### Convenzioni dell'interfaccia
 
@@ -177,47 +171,47 @@ Il banner di avvio mostra `Avvio del gioco… (versione N)`: `N` si incrementa a
 - **Scarsità rimandata.** Un regalo duplicabile si condivide un numero illimitato di volte: un tetto condiviso (`scorta`) richiede un'operazione atomica su un database.
 - Il repository **deve restare pubblico**: GitHub Pages sui repository privati richiede un piano a pagamento.
 
-L'ordine di dipendenza e i passi concreti sono in [`docs/ROADMAP.md`](docs/ROADMAP.md). Strade già provate e scartate, da non riproporre: **GitLab dell'INAF** come hosting (certificato https non valido sui siti Pages, che impedisce alla fotocamera di funzionare, oltre a un controllo di accesso che bloccava i giocatori) e **Netlify Drop** (funzionante, ma scomodo per pubblicazioni ricorrenti senza CLI).
+Strade già provate e scartate, da non riproporre: **GitLab dell'INAF** come hosting (certificato https non valido sui siti Pages, che impedisce alla fotocamera di funzionare, oltre a un controllo di accesso che bloccava i giocatori) e **Netlify Drop** (funzionante, ma scomodo per pubblicazioni ricorrenti senza CLI).
 
 ## Screenshot
 
-![Scelta della caccia](docs/img/giocatore-scelta.png)
+![Scelta della caccia](img/giocatore-scelta.png)
 
 Schermata di scelta: si apre la prima volta senza `#` nell'indirizzo; la caccia di sempre più quelle elencate in `cacce.json`.
 
-![Cerca › Traccia](docs/img/giocatore-traccia.png)
+![Cerca › Traccia](img/giocatore-traccia.png)
 
 Cerca › Traccia: la targa con l'indizio dell'elemento scelto e, sotto, l'elenco di tutto ciò che si può cercare adesso.
 
-![Cerca › Foto](docs/img/giocatore-foto.png)
+![Cerca › Foto](img/giocatore-foto.png)
 
 Cerca › Foto con la fotocamera attiva (qui quella finta di Chromium) e "Scatta e verifica" pronto.
 
-![Memoria](docs/img/giocatore-memoria.png)
+![Memoria](img/giocatore-memoria.png)
 
 Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con i bottoni 🔄/👥 e un'istanza `K7X` marcata "★ tua".
 
-![Istruzioni](docs/img/giocatore-istruzioni.png)
+![Istruzioni](img/giocatore-istruzioni.png)
 
 Il pannello ❓ con le istruzioni riportate sopra.
 
-![Scambio, lato cedente](docs/img/giocatore-scambio.png)
+![Scambio, lato cedente](img/giocatore-scambio.png)
 
 Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture.
 
-![Scambio, lato ricevente](docs/img/giocatore-scambio-verde.png)
+![Scambio, lato ricevente](img/giocatore-scambio-verde.png)
 
 Lato ricevente a scambio concluso: la schermata verde persistente con codice e QR "fatto", da tenere in vista finché il cedente non ha letto (anche il cedente diventa verde quando l'ha letta).
 
-![Pannello master](docs/img/master-pannello.png)
+![Pannello master](img/master-pannello.png)
 
 Pannello `#master`: menu delle cacce, registrazione di un nuovo elemento (Oggetto/Dintorni, Prova/Aggiungi), elenco degli elementi, messaggi e configurazione di GitHub.
 
-![Collega gli elementi](docs/img/master-collega.png)
+![Collega gli elementi](img/master-collega.png)
 
 `#master-collega`: una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e "Richiede" (con "almeno N" per un prerequisito a istanze).
 
-![Grafo dei collegamenti](docs/img/master-grafo.png)
+![Grafo dei collegamenti](img/master-grafo.png)
 
 `#master-grafo` sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili.
 
@@ -336,10 +330,7 @@ At the bottom: **Pubblica** writes `caccia*.json` to GitHub (after `trovaCiclo()
 | `lavoro.json`, `lavoro-<slug>.json` | The master's server draft, never read by normal players; reachable with `#b` / `#b-<slug>`. |
 | `cacce.json` | Array of slugs of the named hunts (the default hunt is never listed). |
 | `messaggi.json` | Array of broadcast messages `{ id, quando, testo }`, shared by all hunts. |
-| `docs/STATO.md` | Current state of the code, feature by feature (Italian). |
-| `docs/MODELLO-DATI.md` | Data model: files, `localStorage` keys, older formats (Italian). |
-| `docs/ROADMAP.md` | What is missing, in dependency order (Italian). |
-| `docs/img/` | Screenshots used in this README. |
+| `img/` | Screenshots used in this README. |
 | `tests/scambio.test.mjs` | Playwright test of the QR exchange protocol. |
 
 ### Architecture
@@ -354,7 +345,7 @@ Routing is by URL hash (`route()`): `#master`, `#master-collega`, `#master-grafo
 
 ### Data model
 
-Format `caccia-3`, described in full in [docs/MODELLO-DATI.md](docs/MODELLO-DATI.md) (Italian). A hunt is `{ formato, creato, nodi }`; `nodi` is a map from id to node, and every node has the same shape, whatever its role:
+Format `caccia-3`. A hunt is `{ formato, creato, nodi }`; `nodi` is a map from id to node, and every node has the same shape, whatever its role:
 
 - `nome`, `testo` (clue), `messaggio` (unlock message), `immagine` (JPEG data URL), `pos` / `neg` (embeddings), `soglia` (threshold), `luogo` (`{ lat, lon, raggio }`);
 - `daValidare`: `true` = the player must photograph it; `false` = a gift, owned automatically as soon as `richiede` is satisfied;
@@ -377,7 +368,7 @@ Two phones agreeing on a transfer over a channel where messages can be lost, wit
 - the **receiver** writes first, as soon as it has read `QR_K` = 3 *increasing* frames from the giver (proof of a live phone, not a printed QR) and has seen `ack ≥ 1` from the giver (optics work both ways). It then shows a persistent green screen with a large 4-letter code and the "done" QR, with no expiry. If it times out (40 s) before writing, nothing was written and it simply fails;
 - the **giver** never fails on time. It deletes (`cedi()`, swap only) **only** after reading the "done" QR, or after the player, asked by a yellow prompt ("does your friend's phone show the green screen with code ABCD?"), answers "Sì" having looked at the other screen. When it does delete, the giver's screen turns green too: it is the only one of the two that knows for sure. The prompt appears after 30 s from the tap and 10 s after the receiver reached the threshold, at most after 60 s; automatic reading continues underneath and closes the prompt on success. If the giver never read the friend at all, the friend cannot have written, and the giver fails safely without any prompt.
 
-Outcome: **loss** (deleted on A, never arrived on B) is impossible by construction. The only residual error is **duplication**, and only if the giver answers "No" while the friend is already green. Clocks of the two phones are never compared; freshness comes from local increasing counters. A swapped-away node is added forever to `stato.ceduti`, so the automatic closure of prerequisites cannot silently give it back. Details in [docs/STATO.md](docs/STATO.md) (Italian).
+Outcome: **loss** (deleted on A, never arrived on B) is impossible by construction. The only residual error is **duplication**, and only if the giver answers "No" while the friend is already green. Clocks of the two phones are never compared; freshness comes from local increasing counters. A swapped-away node is added forever to `stato.ceduti`, so the automatic closure of prerequisites cannot silently give it back.
 
 ### UI conventions
 
@@ -409,48 +400,46 @@ The boot banner at the top of the page reads `Avvio del gioco… (versione N)`; 
 - Messages are global, not per hunt; a published hunt cannot be renamed or deleted from the panel; the older `caccia-1` / `caccia-2` formats are not migrated.
 - The real optical convergence of the asymmetric exchange protocol still has to be re-tested with two phones after the version 52 rewrite.
 
-The full list, in dependency order, is in [docs/ROADMAP.md](docs/ROADMAP.md) (Italian).
-
 Tried and dropped: hosting on the INAF GitLab Pages (invalid https certificate, which also blocks the browser camera, plus access control that locked players out) and Netlify Drop (worked, but inconvenient for repeated publishing without a CLI). Also removed on request: an Instagram share button on the end-of-hunt screen.
 
 ## Screenshots
 
-![Hunt chooser](docs/img/giocatore-scelta.png)
+![Hunt chooser](img/giocatore-scelta.png)
 
 The hunt chooser, shown at the first opening without a `#c-<slug>` link.
 
-![Cerca › Traccia](docs/img/giocatore-traccia.png)
+![Cerca › Traccia](img/giocatore-traccia.png)
 
 🔍 Cerca › 👾 Traccia: the clue plate and the list of everything that can be looked for right now.
 
-![Foto tab](docs/img/giocatore-foto.png)
+![Foto tab](img/giocatore-foto.png)
 
 📷 Foto: the viewfinder and "Scatta e verifica".
 
-![Memoria](docs/img/giocatore-memoria.png)
+![Memoria](img/giocatore-memoria.png)
 
 💽 Memoria: found objects, with 🔄 / 👥 on the gifts that can be passed on.
 
-![Instructions](docs/img/giocatore-istruzioni.png)
+![Instructions](img/giocatore-istruzioni.png)
 
 The ❓ panel with the in-game instructions.
 
-![Exchange, giver](docs/img/giocatore-scambio.png)
+![Exchange, giver](img/giocatore-scambio.png)
 
 The exchange screen on the giver's phone during the reading phase.
 
-![Exchange, receiver done](docs/img/giocatore-scambio-verde.png)
+![Exchange, receiver done](img/giocatore-scambio-verde.png)
 
 The receiver's green "done" screen with the code to compare (the giver turns green as well once it has read it).
 
-![Master panel](docs/img/master-pannello.png)
+![Master panel](img/master-pannello.png)
 
 The `#master` panel: hunt menu, recording, elements, messages, GitHub configuration.
 
-![Collega gli elementi](docs/img/master-collega.png)
+![Collega gli elementi](img/master-collega.png)
 
 "Collega gli elementi": node cards with flags, gift mode and "Richiede".
 
-![Graph](docs/img/master-grafo.png)
+![Graph](img/master-grafo.png)
 
 The graph of `richiede` links, laid out by dependency level.
