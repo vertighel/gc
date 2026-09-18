@@ -6,6 +6,8 @@
 
 **Sistema per percorsi di riconoscimento visivo sul campo, eseguito interamente nel browser.** 
 
+## Sommario
+
 Un curatore registra elementi fisici di un territorio; i partecipanti li individuano e li verificano con la fotocamera del proprio dispositivo. Gli elementi sono organizzati in un grafo diretto aciclico di prerequisiti, e fra dispositivi sono possibili operazioni di trasferimento e replica realizzate con un protocollo ottico fra pari, senza server. 
 Non esistono identità, database né trasmissione di immagini: l'intero stato risiede sul dispositivo.
 
@@ -45,7 +47,7 @@ Il sistema è composto da quattro strati.
 - **Zero infrastruttura.** Un solo file, nessun build, nessun server applicativo: la pubblicazione è un `git push`, il "database" sono due file JSON, e il sistema funziona offline con l'ultima copia scaricata.
 - **Dichiarativo fino all'interfaccia.** Il markup è HTML nativo (`<template>`, `<dialog>`, `<details>`), lo stato visibile è un attributo `data-*` letto dal CSS, i clic sono azioni dichiarate nell'HTML e risolte da un unico listener: il file si legge senza seguire il JavaScript.
 
-## Sommario
+## Indice
 
 - [Caso d'uso: la caccia al tesoro](#caso-duso-la-caccia-al-tesoro)
 - [Come si gioca](#come-si-gioca)
@@ -222,6 +224,8 @@ Pannello `#master`: menu delle cacce, registrazione di un nuovo elemento (Oggett
 **A system for field visual-recognition paths, running entirely in the browser.** A curator records physical elements of a territory; participants locate them and verify them with the camera of their own device. Elements are organised in a directed acyclic graph of prerequisites, and transfer and replication operations between devices are carried out by a peer-to-peer optical protocol, with no server. There are no identities, no database and no image transmission: the whole state lives on the device.
 
 Public instance: <https://vertighel.github.io/gc/> 
+
+## Abstract
 
 The system has four layers.
 
