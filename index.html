@@ -484,7 +484,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 66)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 67)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -1214,7 +1214,10 @@ const inCaccia3 = g => !!(g && g.formato === "caccia-3" && g.nodi);
 // L.slug = quale caccia si sta modificando ORA nel pannello master (scelta dal menu in
 // cima), indipendente da quale il giocatore stia guardando (quella è activeSlug()).
 // "" = la caccia di sempre.
-const L = { nodi: null, slug: "" };
+// L.base: data (ISO) della versione remota — bozza sul server o caccia pubblicata — da cui
+// deriva la copia di lavoro. È ciò che permette a due dispositivi del master (telefono e
+// computer) di sincronizzarsi via "Salva bozza"/"Pubblica": vedi caricaCopiaLavoro().
+const L = { nodi: null, slug: "", base: "" };
 
 function masterRefresh() {
   const esportabile = M.baseLoaded && !M.busy;
@@ -1347,9 +1350,13 @@ function aggiornaContatorePanel() {
 // pubblicata": i giocatori non la leggono mai (nessun codice giocatore referenzia
 // questa chiave né draftFile()). Chiamata da ogni punto che modifica L.nodi. Porta con
 // sé lo slug: è l'unico modo per sapere, al prossimo avvio, QUALE caccia stavo modificando.
-function salvaLocale() {
+// "salvato" è la data dell'ultima modifica locale, "base" quella della versione remota da
+// cui deriva: salvato > base significa "modifiche non ancora salvate sul server né
+// pubblicate". Dopo un caricamento o un salvataggio riuscito si passa la data della
+// versione remota, così le due coincidono.
+function salvaLocale(salvato = new Date().toISOString()) {
   if (!L.nodi) return;
-  store.set("m-lavoro", { formato: FORMATO, slug: L.slug, nodi: L.nodi });
+  store.set("m-lavoro", { formato: FORMATO, slug: L.slug, nodi: L.nodi, salvato, base: L.base || "" });
 }
 
 // Bozza locale valida SOLO se è della caccia richiesta: passare a un'altra caccia dal
@@ -1399,8 +1406,12 @@ async function registraCaccia(slug) {
 
 // Carica nel pannello master la copia di lavoro della caccia "slug" (una delle due vie
 // per arrivarci: scelta dal menu, o all'avvio con lo slug della bozza locale se c'è).
-// Stessa precedenza di sempre: bozza locale di QUESTA caccia, poi bozza sul server,
-// altrimenti la caccia pubblicata (o vuota, se non esiste ancora).
+// Fra bozza locale, bozza sul server e caccia pubblicata vince LA PIÙ RECENTE (per data:
+// "salvato" locale/server, "creato" della pubblicata): è così che telefono e computer del
+// master si passano il lavoro — il telefono fotografa e "Salva bozza", il computer apre e
+// trova gli oggetti; il computer rinomina e "Pubblica", il telefono riapre e vede i nomi.
+// La bozza locale vince solo se deriva dall'ultima versione remota (L.base); se invece ha
+// modifiche mai salvate E sul server c'è di più recente, si chiede prima di scartarle.
 async function caricaCopiaLavoro(slug) {
   L.slug = slug; L.nodi = null;
   M.loading = true;
@@ -1423,20 +1434,40 @@ async function caricaCopiaLavoro(slug) {
   M.loading = false;
 
   const locale = caricaBozzaLocale(slug);
-  const remoto = locale ? null : await loadDraftServer(slug);
-  const bozza = locale || remoto;
-  if (bozza) {
-    L.nodi = bozza.nodi;
-    setStatus($("m-draft-status"), locale
-      ? "Bozza di lavoro ripristinata da questo telefono, non ancora pubblicata."
-      : "Bozza di lavoro ripristinata dal server, non ancora pubblicata.");
-  } else {
-    L.nodi = M.base ? clone(M.base.nodi) : {};
-  }
+  const remoto = await loadDraftServer(slug);
+  // La versione remota più recente fra bozza sul server e caccia pubblicata. Le date ISO
+  // (stesso formato, UTC) si confrontano come stringhe; una copia senza data vale "".
+  const candidati = [];
+  if (remoto) candidati.push({ nodi: remoto.nodi, ts: remoto.salvato || "", da: "server" });
+  if (M.base) candidati.push({ nodi: clone(M.base.nodi), ts: M.base.creato || "", da: "pubblicata" });
+  candidati.sort((a, b) => (a.ts > b.ts ? -1 : a.ts < b.ts ? 1 : 0));
+  const rem = candidati[0] || null;
+  const tsLoc = locale ? locale.salvato || "" : "", baseLoc = locale ? locale.base || "" : "";
+  // Modifiche locali mai salvate: solo se c'è davvero qualcosa (una caccia appena creata,
+  // vuota, non conta) e sono più recenti della versione remota da cui la bozza deriva.
+  const modificheLocali = !!locale && tsLoc > baseLoc && Object.keys(locale.nodi).length > 0;
+  let scelta, avviso = "";
+  if (!locale && !rem) scelta = { nodi: {}, ts: "", da: "vuota" };
+  else if (!locale) scelta = rem;
+  else if (!rem || rem.ts <= baseLoc) scelta = { nodi: locale.nodi, ts: baseLoc, da: "locale" };
+  else if (modificheLocali && !confirm(`Su questo dispositivo ci sono modifiche delle ${oraBreve(tsLoc)} mai salvate sul server, ma ${rem.da === "server" ? "sul server c'è una bozza" : "è stata pubblicata una versione"} più recente (${oraBreve(rem.ts)}), probabilmente da un altro dispositivo.\n\nOK = carica quella più recente (le modifiche locali vanno perse).\nAnnulla = tieni le modifiche locali (sovrascriveranno l'altra al prossimo salvataggio o pubblicazione).`)) {
+    scelta = { nodi: locale.nodi, ts: baseLoc, da: "locale" };
+    avviso = `Tenuta la bozza di questo dispositivo (modifiche delle ${oraBreve(tsLoc)} non salvate): ${rem.da === "server" ? "la bozza sul server" : "la caccia pubblicata"} delle ${oraBreve(rem.ts)} verrà sovrascritta se salvi o pubblichi.`;
+  } else scelta = rem;
+  L.nodi = scelta.nodi; L.base = scelta.ts;
+  const superata = locale && scelta.da !== "locale" ? ` La copia su questo dispositivo era più vecchia${tsLoc ? ` (${oraBreve(tsLoc)})` : ""} ed è stata sostituita.` : "";
+  const stato = {
+    locale: modificheLocali ? `Bozza di lavoro di questo dispositivo, con modifiche delle ${oraBreve(tsLoc)} non ancora salvate sul server né pubblicate.` : "Bozza di lavoro ripristinata da questo dispositivo, allineata all'ultima versione salvata.",
+    server: `Bozza di lavoro presa dal server (salvata alle ${oraBreve(scelta.ts)}), non ancora pubblicata.${superata}`,
+    pubblicata: `Copia di lavoro presa dalla caccia pubblicata alle ${oraBreve(scelta.ts)}.${superata}`,
+    vuota: "",
+  }[scelta.da];
+  setStatus($("m-draft-status"), avviso || stato, avviso ? "ko" : "");
   // Riallinea subito l'autosalvataggio locale a QUESTA caccia: altrimenti la bozza non
   // salvata di quella lasciata poco fa resterebbe lì e "risorgerebbe" tornandoci sopra,
-  // smentendo l'avviso mostrato prima di cambiare caccia dal menu.
-  salvaLocale();
+  // smentendo l'avviso mostrato prima di cambiare caccia dal menu. Con la data della
+  // versione caricata, non "adesso": non è una modifica.
+  salvaLocale(scelta.da === "locale" ? tsLoc : scelta.ts);
 
   aggiornaMenuCacce(); aggiornaLinkGiocatore(); aggiornaLinkBozza();
   renderPanelList(); masterRefresh(); linkRefresh();
@@ -1520,6 +1551,8 @@ async function publishGame(statusEl) {
   const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) {
     M.base = g;
+    L.base = g.creato; salvaLocale(g.creato); // la copia locale deriva ora dalla versione pubblicata
+    setStatus($("m-draft-status"), `Pubblicata alle ${oraBreve(g.creato)}: un altro dispositivo del master la riprende riaprendo il pannello.`);
     await registraCaccia(L.slug);
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   }
@@ -1976,7 +2009,10 @@ function initMaster() {
   // di prova "#b-<slug>" qui sotto, per testarla da giocatore senza pubblicare.
   Object.assign(AZIONI, { "salva-bozza": async () => {
     const g = { formato: FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
-    await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
+    const ok = await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
+    // Da qui in poi la copia locale deriva da QUESTA bozza: un altro dispositivo che la
+    // carica la vedrà più recente della sua (vedi caricaCopiaLavoro()).
+    if (ok) { L.base = g.salvato; salvaLocale(g.salvato); setStatus($("m-draft-status"), `Bozza salvata sul server alle ${oraBreve(g.salvato)}: da un altro dispositivo, riapri il pannello per riprenderla.`); }
   } });
 
   // "+ Nuova caccia": chiede un nome (diventa lo slug: file e link), avvisa se la copia
@@ -2056,6 +2092,7 @@ function initMaster() {
 let msgList = [];
 
 const dataBreve = iso => new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const oraBreve = iso => iso ? new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "?";
 function renderMsgList() {
   const ul = $("m-msg-list"); // vuoto → "Nessun messaggio ancora." dal CSS
   ul.replaceChildren(...[...msgList].reverse().map(m => { const li = document.createElement("li"); li.textContent = `${dataBreve(m.quando)} — ${m.testo}`; return li; }));
