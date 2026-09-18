@@ -114,8 +114,6 @@ Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`: `GET` per
 | [`docs/MODELLO-DATI.md`](docs/MODELLO-DATI.md) | Schema di tutti i file JSON e delle chiavi `localStorage`; i formati precedenti come archivio. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Cosa manca, in ordine di dipendenza. |
 | [`tests/`](tests/) | `scambio.test.mjs`, test Playwright del protocollo di scambio. |
-| [`CLAUDE.md`](CLAUDE.md) | Istruzioni di lavoro per l'assistente di programmazione: regole del progetto e pattern di test. |
-| [`memory.md`](memory.md) | Decisioni prese e perché: i vincoli ancora validi, non una cronologia. |
 
 ### Architettura
 
@@ -143,7 +141,7 @@ Un regalo `scambiabile` o `duplicabile` passa da un telefono all'altro con un ha
 
 Il problema di fondo — due dispositivi che devono accordarsi su un trasferimento scambiandosi messaggi che possono perdersi, senza un terzo che ricordi l'esito — è il **Problema dei Due Generali**, che non ha soluzione perfetta. Il gioco non lo risolve: sceglie quale dei due errori possibili resta ammesso. Il **protocollo è asimmetrico**: il ricevente scrive per primo, appena ha letto `QR_K` (3) fotogrammi crescenti del cedente e sa di essere stato letto almeno una volta, e mostra una schermata verde persistente col codice; il cedente cancella l'oggetto **solo** dopo aver letto quel QR "fatto" (e a quel punto diventa verde anche lui: è l'unico dei due ad avere la certezza), oppure dopo che il giocatore ha guardato con i propri occhi lo schermo verde dell'amico e confrontato il codice (domanda manuale, che compare dopo 30 s dal tocco e 10 s da quando l'amico può aver scritto, comunque entro 60 s). Così la **perdita** (cancellato da chi cede, mai arrivato a chi riceve) è impossibile per costruzione; l'unico errore residuo, accettato, è la **duplicazione**, e solo se il cedente risponde "No" mentre l'amico è già verde. La freschezza si misura con contatori locali crescenti, mai confrontando gli orologi dei due telefoni; un QR stampato non supera mai la soglia, perché non può rispondere in tempo reale. Chi cede un nodo lo vede segnato per sempre in `ceduti`, così la chiusura automatica dei regali non glielo restituisce alla foto successiva.
 
-Meccanismo in [`docs/STATO.md`](docs/STATO.md), ragionamento in [`memory.md`](memory.md).
+Meccanismo e ragionamento in [`docs/STATO.md`](docs/STATO.md).
 
 ### Convenzioni dell'interfaccia
 
@@ -343,12 +341,10 @@ At the bottom: **Pubblica** writes `caccia*.json` to GitHub (after `trovaCiclo()
 | `docs/ROADMAP.md` | What is missing, in dependency order (Italian). |
 | `docs/img/` | Screenshots used in this README. |
 | `tests/scambio.test.mjs` | Playwright test of the QR exchange protocol. |
-| `CLAUDE.md` | Working rules for the project, aimed at the coding assistant (Italian). |
-| `memory.md` | Decisions still in force and why (Italian). |
 
 ### Architecture
 
-One HTML file, no framework, no build step, no dependencies to install. `git push` on `main` is the deployment: GitHub Pages serves the repository as is (the repository must stay public; Pages on private repositories is a paid feature, see [memory.md](memory.md)).
+One HTML file, no framework, no build step, no dependencies to install. `git push` on `main` is the deployment: GitHub Pages serves the repository as is (the repository must stay public; Pages on private repositories is a paid feature).
 
 The JSON files next to `index.html` are a read-only database. Players download them with `fetch(..., { cache: "no-store" })` at every start; the master writes them through the GitHub REST API (Contents endpoint) with a token that lives only in the master phone's `localStorage`. Nothing else writes anywhere: all player state (downloaded hunt, found nodes, loot, read messages, hunt choice) is in the player's `localStorage`, namespaced by hunt slug (`gioco:<slug>`, `stato:<slug>`; the default hunt keeps the bare `gioco` / `stato` keys). The game works offline with the last copy downloaded.
 
@@ -381,7 +377,7 @@ Two phones agreeing on a transfer over a channel where messages can be lost, wit
 - the **receiver** writes first, as soon as it has read `QR_K` = 3 *increasing* frames from the giver (proof of a live phone, not a printed QR) and has seen `ack ≥ 1` from the giver (optics work both ways). It then shows a persistent green screen with a large 4-letter code and the "done" QR, with no expiry. If it times out (40 s) before writing, nothing was written and it simply fails;
 - the **giver** never fails on time. It deletes (`cedi()`, swap only) **only** after reading the "done" QR, or after the player, asked by a yellow prompt ("does your friend's phone show the green screen with code ABCD?"), answers "Sì" having looked at the other screen. When it does delete, the giver's screen turns green too: it is the only one of the two that knows for sure. The prompt appears after 30 s from the tap and 10 s after the receiver reached the threshold, at most after 60 s; automatic reading continues underneath and closes the prompt on success. If the giver never read the friend at all, the friend cannot have written, and the giver fails safely without any prompt.
 
-Outcome: **loss** (deleted on A, never arrived on B) is impossible by construction. The only residual error is **duplication**, and only if the giver answers "No" while the friend is already green. Clocks of the two phones are never compared; freshness comes from local increasing counters. A swapped-away node is added forever to `stato.ceduti`, so the automatic closure of prerequisites cannot silently give it back. Details in [docs/STATO.md](docs/STATO.md) and [memory.md](memory.md) (Italian).
+Outcome: **loss** (deleted on A, never arrived on B) is impossible by construction. The only residual error is **duplication**, and only if the giver answers "No" while the friend is already green. Clocks of the two phones are never compared; freshness comes from local increasing counters. A swapped-away node is added forever to `stato.ceduti`, so the automatic closure of prerequisites cannot silently give it back. Details in [docs/STATO.md](docs/STATO.md) (Italian).
 
 ### UI conventions
 
@@ -398,7 +394,7 @@ Serve the folder locally and open it in a browser:
 python3 -m http.server 8765
 ```
 
-Camera, GPS and recognition cannot be exercised from a terminal. The pattern used so far, documented in [CLAUDE.md](CLAUDE.md), is Playwright (or an equivalent headless browser): open both the plain page and the `#master` page; for the master, intercept `https://api.github.com/**` with a fake handler that simulates `GET` (current sha) and `PUT`; for the player, write a `caccia.json` and a `messaggi.json` by hand in the served folder; to simulate a recognised object, inject fake embeddings into the master state (`M.pos`, `M.cal`) through a `window.__debug` hook added to a **copy** of `index.html` in a temporary folder, never to the real file.
+Camera, GPS and recognition cannot be exercised from a terminal. The pattern used so far is Playwright (or an equivalent headless browser): open both the plain page and the `#master` page; for the master, intercept `https://api.github.com/**` with a fake handler that simulates `GET` (current sha) and `PUT`; for the player, write a `caccia.json` and a `messaggi.json` by hand in the served folder; to simulate a recognised object, inject fake embeddings into the master state (`M.pos`, `M.cal`) through a `window.__debug` hook added to a **copy** of `index.html` in a temporary folder, never to the real file.
 
 `tests/scambio.test.mjs` does exactly this for the exchange protocol. It copies `index.html` to a temporary directory, replaces `window.__avviato = true;` with a `window.__debug` block exposing the internal functions, writes a fake hunt (an object to photograph, a swappable/duplicable gift that requires it, a second object producing an instanced seal, and a final gift requiring two different seals), serves everything with `python3 -m http.server` on a free port and drives two Chromium pages as the two phones. QR reading and generation are replaced by stubs and the protocol loop (`scambioTickCorpo`) is stepped by hand. It covers: the happy path; the receiver not writing when the giver never reads it; the manual prompt, its timing and its "Sì" / "No" answers; the prompt closing by itself when automatic reading succeeds; "Annulla"; "duplica"; receiver timeout; a third phone seeing a "done" QR; instance production, sharing, "Ti manca" at end of hunt and QR compatibility with the older 6-field payload. It does **not** test real optical convergence between two cameras: that is only seen with two real phones. Run it with `node tests/scambio.test.mjs` from a directory where `playwright` with Chromium is installed.
 

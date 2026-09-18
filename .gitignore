@@ -1,2 +1,7 @@
 # salvataggi automatici di Emacs
 \#*\#
+
+# file di lavoro per Claude Code, non fanno parte del gioco
+CLAUDE.md
+memory.md
+.claude/
