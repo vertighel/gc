@@ -375,10 +375,12 @@ nulla prima che il master prema "Pubblica" (che scrive invece
 | Chiave | Contenuto |
 |---|---|
 | `caccia-scelta` | slug dell'ultima caccia scelta/vista (`""` = quella di sempre) — assente = non ha ancora scelto, vedi `docs/STATO.md` |
+| `caccia-scelta-continuita-vista` | `true` una volta scattata la continuità per chi giocava prima della schermata di scelta (`avvioGiocatore()`): non deve riscattare dopo un "Cambia caccia" esplicito |
 | `gioco` / `gioco:<slug>` | l'ultimo `caccia*.json` scaricato per quella caccia (`caccia-3`) — la caccia di sempre resta su `gioco` senza suffisso, per compatibilità con chi giocava già |
 | `stato` / `stato:<slug>` | `{ trovati, bottino, visti, scelta, ceduti, prodotti }` — vedi sotto, namespaced come sopra |
 | `msg-letti` | array di `id` di messaggi già letti — **non** namespaced per caccia: i messaggi sono globali |
 | `gioco-prova` / `stato-prova` / `prova` | copie separate usate dalla modalità di prova del master, mai namespaced per caccia |
+| `gioco-bozza:<slug>` / `stato-bozza:<slug>` | copie separate della modalità bozza (link `#b`/`#b-<slug>`, che scarica `lavoro*.json`): non toccano i progressi della caccia pubblicata |
 
 `stato.trovati` è un array di id di nodi **posseduti**: sia quelli
 validati fisicamente dal giocatore (`daValidare: true`, foto + eventuale

@@ -54,8 +54,8 @@
   [hidden] { display: none !important; }
 
   /* Su schermo largo (computer) la colonna si allarga: di poco ovunque, molto di più
-     nella pagina "Collega gli elementi" (classe "wide" su body), dove le schede
-     possono affiancarsi in una griglia invece di stare tutte impilate. */
+     nelle pagine "Collega gli elementi" e "Grafo" (derivato da body[data-view]), dove
+     le schede possono affiancarsi in una griglia invece di stare tutte impilate. */
   @media (min-width: 700px) {
     main { max-width: 640px; }
     body:is([data-view$="collega"], [data-view$="grafo"]) main { max-width: 1180px; }
@@ -265,12 +265,16 @@
      "chiari" di .btn, non quelli di body[data-view]:not([data-view^="master"]). */
   body[data-view]:not([data-view^="master"]) #p-scambio-domanda .btn { border-color: var(--smalto); color: var(--smalto); }
   body[data-view]:not([data-view^="master"]) #p-scambio-domanda .btn.primary { background: var(--smalto); color: var(--bianco); }
-  /* Schermata VERDE del ricevente dopo aver scritto: persistente (si chiude solo a
-     mano), è la "prova" che il cedente legge — col QR o a occhio (vedi memory.md). */
-  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] { background: var(--verde); color: #fff; }
-  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] .status .ok { color: #fff; }
-  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] #p-scambio-codice { font-size: 40px; }
-  #p-scambio[data-ruolo="ricevente"][data-fase="fatto"] .viewfinder { display: none; } /* fotocamera già spenta: resta solo il QR */
+  /* Schermata VERDE a scambio riuscito, su ENTRAMBI i telefoni. Sul ricevente è
+     persistente (si chiude solo a mano) ed è la "prova" che il cedente legge — col QR
+     o a occhio (vedi memory.md); sul cedente arriva quando ha letto quella prova, ed
+     è l'unico dei due ad averne la certezza. Mai verde in fase "incerto": lì il
+     cedente ha risposto "Sì" a mano senza aver letto nulla. */
+  #p-scambio[data-fase="fatto"] { background: var(--verde); color: #fff; }
+  #p-scambio[data-fase="fatto"] .status .ok { color: #fff; }
+  #p-scambio[data-fase="fatto"] #p-scambio-codice { font-size: 40px; }
+  #p-scambio[data-fase="fatto"] .viewfinder { display: none; } /* fotocamera già spenta: resta solo il QR */
+  #p-scambio[data-fase="fatto"] .hint { display: none; } /* "Se lo scambio va a buon fine…": ormai è andato */
   .medal {
     width: 136px; height: 136px; margin: 12px auto 18px; border-radius: 50%; overflow: hidden;
     box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
@@ -480,7 +484,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 64)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 65)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -575,9 +579,18 @@
              "istruzioni", come Messaggi e Impostazioni). Testo statico, il JS non lo tocca. -->
         <div id="p-help" class="inbox istruzioni">
           <h2>Istruzioni</h2>
+          
+          <p>Questa pagina necessita dei permessi per usare fotocamere
+            e GPS, ma <strong>non</strong> trasmette a terzi né
+            immagini né posizione: tutto resta nel tuo telefono. Le
+            interazioni fra utilizzatori <strong>non</strong> sono
+            mediate da un server e <strong>non</strong> scambiano
+            alcuna informazione personale.</p>
+
           <p>In basso hai due schede: <b>🔍 Cerca</b> per trovare
-          gli oggetti, <b>💽 Memoria</b> per rivedere quelli
-          trovati.</p>
+            gli oggetti, <b>💽 Memoria</b> per rivedere quelli
+            trovati.</p>
+          
           <ol>
             <li><b>👾 Traccia</b> mostra l'indizio dell'oggetto da
             cercare (testo e, a volte, una foto). Sotto c'è l'elenco
@@ -585,20 +598,18 @@
             sceglierlo.</li>
 
             <li>Trovato l'oggetto, vai in <b>📷 Foto</b>,
-            tocca <b>Attiva la fotocamera</b>, inquadralo per intero
-            e premi <b>Scatta e verifica</b>. Il riconoscimento
-            avviene sul tuo telefono: la foto non esce da qui. Se la
-            tappa chiede anche la posizione, il GPS viene
-            controllato solo dopo che la foto è valida: accendilo e
-            resta vicino all'oggetto. Servono i permessi di
-            fotocamera e posizione.</li>
+            tocca <b>Attiva la fotocamera</b>, inquadralo per intero e
+            premi <b>Scatta e verifica</b>. Se la tappa chiede anche
+            la posizione, il GPS viene controllato solo dopo che la
+            foto è valida: accendilo e resta vicino
+            all'oggetto.</li>
 
-            <li>In <b>💽 Memoria</b> tocca una riga per rivedere
-            foto e messaggio. Alcuni oggetti si possono condividere:
-            con <b>🔄</b> (scambia) lo trasferisci, e scomparirà
-            dalla tua Memoria, con <b>👥</b> duplichi una copia
-            identica. Un oggetto con 🎟️ è diverso per ogni giocatore:
-            puoi duplicare una copia diversa.</li>
+            <li>In <b>💽 Memoria</b> tocca una riga per rivedere foto
+            e messaggio. Alcuni oggetti si possono condividere con
+            altri utilizzatori: con <b>🔄</b> (scambia) lo
+            trasferisci, e scomparirà dalla tua Memoria, con <b>👥</b>
+            duplichi una copia identica. Un oggetto con 🎟️  è diverso
+            per ogni giocatore: puoi duplicare una copia diversa.</li>
 
             <li>Per passarlo: tu premi 🔄 o 👥 in Memoria; chi
             riceve apre <b>📷 Foto</b>, attiva la fotocamera e

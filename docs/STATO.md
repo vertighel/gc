@@ -1,4 +1,4 @@
-# Stato attuale (versione 60)
+# Stato attuale (versione 65)
 
 Un solo file: `index.html`, alla radice del repository. Nessuna dipendenza
 installata: le uniche librerie esterne (MediaPipe) si caricano da CDN via
@@ -122,9 +122,11 @@ sempre (nessun database, vedi `memory.md`).
   meno che lo slug dopo il trattino sia vuoto (link rotto), nel qual caso
   mostra comunque la lista invece di caricare la caccia di sempre per
   sbaglio.
-- **Dentro "Cerca", quattro sotto-schede sempre mutuamente esclusive**
-  (una sola visibile alla volta, `mostraSubTab()`):
-  - **Indizio**: una targa smaltata (stile grafico volutamente diverso dal
+- **Dentro "Cerca", cinque sotto-schede sempre mutuamente esclusive**
+  (una sola visibile alla volta, `mostraSubTab()`): "👾 Traccia", "📷 Foto"
+  e tre bottoni-icona che aprono un pannello (✉️ Messaggi, ⚙️ Impostazioni,
+  ❓ Istruzioni).
+  - **Traccia** (`data-sub="indizio"`): una targa smaltata (stile grafico volutamente diverso dal
     solito chat-bot, vedi in fondo la sezione sullo stile) per l'oggetto
     scelto adesso, col testo dal campo `testo` **dello stesso nodo che si
     sta cercando** (mai da un prerequisito o un dipendente, vedi
@@ -162,7 +164,7 @@ sempre (nessun database, vedi `memory.md`).
   (non in coda uno alla volta), ognuno con la propria foto vera se ce l'ha
   (altrimenti un colore calcolato dal nome), nome e messaggio — `conThumb`
   qui non conta: una volta posseduto un nodo, la foto si vede sempre.
-  **Dopo la festa si riparte sempre dalla scheda "Indizio"**, mai restando
+  **Dopo la festa si riparte sempre dalla scheda "Traccia"**, mai restando
   su "Foto" (dove inevitabilmente ci si trova appena dopo aver scattato).
   Un nodo "regalo" a **zero prerequisiti** (`daValidare: false`,
   `richiede: []`, es. un dono iniziale) si festeggia già al primo avvio o
@@ -221,7 +223,10 @@ sempre (nessun database, vedi `memory.md`).
     "fatto" (codice tipo **maiuscolo**, `S`/`D`, zero byte in più) e passa a una
     **schermata verde persistente** con codice grande, fotocamera spenta, QR fermo e
     un solo bottone "Chiudi" (che porta alla festa di sblocco). Non ha scadenza: è la
-    prova che il cedente deve leggere, col telefono o con gli occhi. Se va in timeout
+    prova che il cedente deve leggere, col telefono o con gli occhi. Anche il
+    **cedente** diventa verde quando arriva a `fatto` (ha letto quella prova: è
+    l'unico dei due ad averne la certezza), con lo stesso codice grande; mai in
+    `incerto`, dove ha risposto "Sì" a mano senza aver letto nulla. Se va in timeout
     (`QR_TIMEOUT_MS`, 40 s dall'apertura) *prima* di scrivere, "Scambio non riuscito"
     + "Riprova" — sicuro, non ha scritto nulla.
   - il **cedente** non scrive mai per tempo: cancella (`cedi()`, solo tipo "scambio")
@@ -336,7 +341,7 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   resta invisibile ai giocatori normali finché non si preme "Pubblica" —
   ma da qui in poi provabile da subito col link "#b"/"#b-<slug>" mostrato
   sotto lo stesso bottone.
-- **"Caccia pubblicata"**: solo un elenco di sola lettura (foto + nome di
+- **"Elementi"**: solo un elenco di sola lettura (foto + nome di
   ogni nodo della copia di lavoro condivisa, variabile `L.nodi`) — nessun
   editing qui. La foto è una miniatura cliccabile: al tocco si apre più
   grande in una lightbox, perché nel pallino piccolo spesso si vede solo
@@ -362,8 +367,8 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
 - **Pagina "Collega gli elementi"** (`#master-collega`, raggiungibile con
   un pulsante dal pannello master, con un link "← Torna al pannello
   master" per uscirne): pensata per un computer, non per il telefono — su
-  schermi larghi (≥700px) la pagina si allarga di più delle altre (classe
-  `wide` su `<body>`) e le schede si affiancano in una griglia; sul
+  schermi larghi (≥700px) la pagina si allarga di più delle altre (il CSS lo
+  deriva da `body[data-view]`) e le schede si affiancano in una griglia; sul
   telefono restano impilate. È qui, e solo qui, che si modifica **tutto**
   di un nodo: la foto (miniatura cliccabile come sopra) e il **nome**
   (editabile), subito seguiti dalle flag — **Thumb** (la foto fa
@@ -393,7 +398,7 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
   poi due
   campi separati, entrambi auto-riferiti a
   questo nodo (mai su un prerequisito né su un dipendente): l'**indizio**
-  (`testo`, mostrato al giocatore nella scheda "Indizio" mentre lo si
+  (`testo`, mostrato al giocatore nella scheda "Traccia" mentre lo si
   cerca) e il **messaggio**
   (si vede nella propria schermata di sblocco, poi resta rivedibile
   toccando l'oggetto nel bottino) — e un elenco di checkbox "Richiede"
@@ -472,7 +477,7 @@ vive solo nella pagina "Collega gli elementi" — vedi sotto).
 - Non c'è modo di creare un nodo senza passare dalla fotocamera (per
   scelta, vedi `memory.md`) né di sostituire in un secondo momento solo la
   foto o solo pos/neg/soglia di un nodo già esistente: per quello serve
-  registrarne uno nuovo dal modulo "Registra un nuovo oggetto".
+  registrarne uno nuovo dal modulo "Registra un nuovo elemento".
 - Non legge né migra i vecchi `caccia.json` in formato `caccia-1`/`caccia-2`.
 - Non c'è modo dal pannello master di rinominare o eliminare una caccia già
   pubblicata (si può solo crearne di nuove dal menu).

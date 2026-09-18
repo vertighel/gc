@@ -52,7 +52,7 @@ writeFileSync(join(dir, "caccia.json"), JSON.stringify({ formato: "caccia-3", cr
   sig: nodo({ nome: "Sigillo", messaggio: "un sigillo", richiede: ["obj2"], daValidare: false, duplicabile: true, istanze: true }),
   fin: nodo({ nome: "Tesoro", messaggio: "fine", richiede: ["sig"], istanzeRichieste: { sig: 2 }, daValidare: false }),
 } }));
-writeFileSync(join(dir, "messaggi.json"), '{"messaggi":[]}');
+writeFileSync(join(dir, "messaggi.json"), "[]");
 writeFileSync(join(dir, "cacce.json"), "[]");
 
 const port = await new Promise(r => { const s = createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
