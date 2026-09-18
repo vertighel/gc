@@ -6,7 +6,7 @@
 
 **Un sistema per percorsi di riconoscimento visivo sul campo, eseguito interamente nel browser.** Un curatore registra elementi fisici di un territorio; i partecipanti li individuano e li verificano con la fotocamera del proprio dispositivo. Gli elementi sono organizzati in un grafo diretto aciclico di prerequisiti, e fra dispositivi sono possibili operazioni di trasferimento e replica realizzate con un protocollo ottico fra pari, senza server. Non esistono identità, database né trasmissione di immagini: l'intero stato risiede sul dispositivo.
 
-Istanza pubblica: <https://vertighel.github.io/gc/> — pannello del curatore: <https://vertighel.github.io/gc/#master>.
+Istanza pubblica: <https://vertighel.github.io/gc/> 
 
 Il sistema è composto da quattro strati.
 
