@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-17T22:35:49.626Z",
+  "creato": "2026-09-18T11:07:26.932Z",
   "nodi": {
     "nmu16lpb4h0p": {
       "nome": "cacciavite",
@@ -575,7 +575,7 @@
         "nmu16lpb4h0p"
       ],
       "testo": "usami con testo largo per vedere se fa wrap",
-      "scambiabile": false,
+      "scambiabile": true,
       "duplicabile": false,
       "istanze": false
     },
