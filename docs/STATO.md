@@ -67,6 +67,23 @@ sempre (nessun database, vedi `memory.md`).
 - La lightbox è un `<dialog id="lightbox">` nativo (`apriAnteprima()`), che si
   chiude al tocco o con Esc. "Nessun messaggio ancora." è un `::before` CSS
   sull'elenco vuoto.
+- **I clic sono azioni dichiarate nell'HTML, un solo listener le esegue.**
+  Ogni elemento cliccabile porta `data-azione="nome"` (più i dati che servono:
+  `data-tab`, `data-sub`, `data-id`, `data-slug`, `data-chiave`, `data-nodo`…)
+  e la funzione con quel nome sta in `AZIONI`, registrata con
+  `Object.assign(AZIONI, {...})` vicino al codice che riguarda (bottoni fissi
+  in `initMaster()`/`initPlayer()`, righe di lista accanto a `renderTodo()`/
+  `renderMemoria()`, grafo accanto a `disegnaGrafo()`). Un unico
+  `document.addEventListener("click")` trova l'elemento con `closest` e
+  chiama la funzione: nessun `onclick =` nel file. Un clic esegue una sola
+  azione, la più interna — per questo la miniatura dentro una scheda apre
+  l'anteprima senza aprire la scheda, senza `stopPropagation`. Un'azione
+  dichiarata ma non registrata finisce in `console.error`. Valgono anche per
+  gli elementi SVG del grafo (`dataset` funziona anche lì). I campi di testo
+  e le spunte restano con `oninput`/`onchange` propri: hanno bisogno del nodo
+  che stanno modificando, non di un nome.
+- Le Impostazioni del giocatore contengono le **Istruzioni** in un
+  `<details>` nativo chiuso di default (testo statico, il JS non lo tocca).
 
 ## Modalità giocatore (indirizzo normale, senza `#`)
 

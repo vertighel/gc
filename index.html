@@ -135,6 +135,15 @@
   .inbox li:first-child { border-top: none; }
   .inbox .when { display: block; font-size: 13px; color: #93A9C2; margin-bottom: 2px; }
   .inbox li.unread .when::before { content: "● "; color: var(--rosso); }
+  /* Istruzioni in "Impostazioni": <details> nativo chiuso di default. Le regole
+     .inbox li/ul (righe dei messaggi) non devono valere per questo elenco. */
+  .istruzioni { margin: 0 0 12px; font-size: 15px; line-height: 1.45; color: #93A9C2; }
+  .istruzioni summary { cursor: pointer; font: 600 17px/1.2 var(--display); color: var(--testo-chiaro); padding: 6px 0; }
+  .istruzioni[open] summary { margin-bottom: 6px; }
+  .istruzioni p { margin: 0 0 8px; }
+  .istruzioni ol { margin: 0 0 8px; padding: 0 0 0 20px; }
+  .istruzioni li { padding: 0 0 6px; border-top: none; }
+  .istruzioni b { color: var(--testo-chiaro); font-weight: 600; }
   .brand { font: 700 24px/1 var(--display); color: var(--smalto); letter-spacing: .01em; }
   .progress { font: 600 18px/1 var(--display); color: #93A9C2; }
   .tag { font: 600 16px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 10px; border-radius: 4px; }
@@ -195,8 +204,27 @@
   /* "flex: 1; min-height: 0" come #p-content, non "height: 100%": dentro la colonna
      flessibile di #view-player, un figlio a "height: 100%" si somma all'header invece
      di condividerne lo spazio, spingendo i bottoni in fondo fuori dallo schermo. */
-  #p-scambio { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; box-sizing: border-box; text-align: center; }
-  #p-scambio .viewfinder { max-width: 260px; aspect-ratio: 1; width: 100%; margin: 8px auto; flex: none; }
+  /* Tutto visibile senza scorrere, anche su schermi bassi (360×640): i testi, i bottoni
+     e gli spazi si stringono con l'altezza del viewport (--h, in dvh dove c'è), la
+     fotocamera è l'unico elemento che cede spazio (flex: 0 1 auto, fino a sparire nei
+     casi peggiori), il QR resta sempre 160px. overflow-y: auto è solo una rete di
+     sicurezza (es. caratteri ingranditi dal sistema). Riferimenti: a 640px di altezza
+     testo 12px e bottoni 40px, da 844px in su le misure di sempre (17px, 54px). */
+  #p-scambio {
+    --h: 100vh;
+    --t: clamp(12px, calc(var(--h) * .0245 - 3.7px), 17px);   /* testo corrente */
+    --m: clamp(4px, calc(var(--h) * .03 - 15px), 12px);       /* spazio fra i blocchi */
+    --p: clamp(8px, calc(var(--h) * .04 - 18px), 16px);       /* bordo esterno */
+    display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto;
+    padding: calc(var(--p) + env(safe-area-inset-top)) 16px var(--p); box-sizing: border-box; text-align: center;
+    font-size: var(--t);
+  }
+  @supports (height: 1dvh) { #p-scambio { --h: 100dvh; } }
+  #p-scambio > * { flex: none; }
+  #p-scambio .viewfinder { max-width: 260px; max-height: 260px; aspect-ratio: 1; width: auto; height: auto; margin: calc(var(--m) / 2) auto; flex: 0 1 auto; min-height: 0; align-self: center; }
+  #p-scambio .hint { margin: var(--m) 0 calc(var(--m) / 2); }
+  #p-scambio .status { margin-top: var(--m); }
+  #p-scambio .btn { min-height: 0; padding-top: clamp(10px, calc(var(--h) * .0245 - 5.7px), 15px); padding-bottom: clamp(10px, calc(var(--h) * .0245 - 5.7px), 15px); font-size: clamp(16px, calc(var(--h) * .024), 20px); }
   /* Cosa si vede lo decidono data-ruolo / data-tipo / data-fase su #p-scambio (vedi HTML). */
   #p-scambio:not([data-ruolo="cedente"]) .se-cedente, #p-scambio:not([data-ruolo="ricevente"]) .se-ricevente,
   #p-scambio:not([data-tipo="scambio"]) .se-scambio, #p-scambio:not([data-tipo="duplica"]) .se-duplica { display: none; }
@@ -225,10 +253,10 @@
      (altrimenti muoversi verso destra sposta l'immagine verso sinistra, disorientante). */
   #p-scambio-video { transform: scaleX(-1); }
   #p-scambio-qr { display: block; width: 160px; height: 160px; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-sizing: border-box; flex: none; }
-  #p-scambio-titolo { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
-  #p-scambio-codice { font: 700 26px/1.1 var(--display); letter-spacing: .18em; margin: 0 0 6px; }
-  #p-scambio .btnrow { margin-top: 10px; }
-  #p-scambio-domanda { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #fff; color: var(--smalto); border: 2px solid var(--giallo); }
+  #p-scambio-titolo { font: 700 clamp(15px, calc(var(--h) * .025 - 1px), 20px)/1.2 var(--display); margin: 0 0 4px; }
+  #p-scambio-codice { font: 700 clamp(20px, calc(var(--h) * .031), 26px)/1.1 var(--display); letter-spacing: .18em; margin: 0 0 6px; }
+  #p-scambio .btnrow { margin-top: var(--m); }
+  #p-scambio-domanda { margin-top: var(--m); padding: var(--m) 12px; border-radius: 8px; background: #fff; color: var(--smalto); border: 2px solid var(--giallo); }
   #p-scambio-domanda p { margin: 0; }
   #p-scambio-domanda .codice { letter-spacing: .15em; }
   /* Riquadro chiaro dentro la parte giocatore (scura): i bottoni riprendono i colori
@@ -354,7 +382,10 @@
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
   .todo { list-style: none; margin: 0; padding: 0; }
-  .todo li { display: flex; align-items: stretch; gap: 8px; margin-bottom: 8px; }
+  /* Griglia, non flex: la colonna "auto" del bottone d'azione (.todo-action) si
+     ridimensiona sull'altezza della riga (aspect-ratio: 1), cosa che un flex item non fa
+     quando l'altezza del contenitore non è fissa. Una riga senza azione ha una colonna sola. */
+  .todo li { display: grid; grid-auto-flow: column; grid-template-columns: minmax(0, 1fr); grid-auto-columns: auto; align-items: stretch; gap: 8px; margin-bottom: 8px; }
   .todo button {
     display: flex; flex: 1; min-width: 0; width: auto; align-items: center; gap: 10px;
     text-align: left; font: inherit; color: var(--testo-chiaro); background: var(--superficie); cursor: pointer;
@@ -372,15 +403,18 @@
   .todo button .badge .istanza { margin-left: 0; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; align-self: center; }
-  /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
-     principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
-     validi. Quadrato, tocco comodo, stessa altezza della riga. */
   /* Id di un'istanza (es. "K7X"): sempre monospaziato, così I/1 e O/0 si distinguono;
      il colore di sfondo è l'hash dell'id, per riconoscere "quella" istanza a colpo
      d'occhio anche senza leggere. Vedi nuovaIstanza(). */
   .istanza { display: inline-block; font: 700 13px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .12em; padding: 3px 6px 2px; border-radius: 5px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); vertical-align: middle; margin-left: 6px; }
   .istanza-tua { font-size: 12px; opacity: .8; margin-left: 4px; }
-  .todo-action { flex: none; width: 48px; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
+  /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
+     principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
+     validi. Quadrato, tocco comodo, stessa altezza della riga (vedi .todo li).
+     ".todo .todo-action", non ".todo-action": deve battere ".todo button" qui sopra
+     (stessa specificità), che altrimenti impone flex: 1 / width: auto e il suo
+     padding — era così che il bottone finiva largo metà riga. */
+  .todo .todo-action { width: auto; aspect-ratio: 1; padding: 0; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
   #m-cfg-summary { cursor: pointer; color: var(--grigio); text-decoration: underline; padding: 8px 0; }
@@ -437,7 +471,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 60)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 61)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -457,32 +491,32 @@
     <div id="p-content">
       <!-- ===== scheda "Cerca" ===== -->
       <div id="tab-cerca" class="playertab">
-        <p id="p-test" class="testbar">Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link">Torna a quella pubblicata</button></p>
+        <p id="p-test" class="testbar">Stai provando una caccia non ancora pubblicata. <button id="p-test-exit" class="link" data-azione="esci-prova">Torna a quella pubblicata</button></p>
         <p id="p-news" class="newsbar" role="status" hidden></p>
 
         <!-- Le quattro schede restano SEMPRE raggiungibili, anche senza una caccia in
              corso o a caccia finita: altrimenti da "Hai trovato tutto" non si potrebbe
              più arrivare a "Impostazioni" per ricominciare. -->
         <div class="subtabs">
-          <button id="sub-indizio-btn" class="subtab">👾 Traccia</button>
-          <button id="sub-foto-btn" class="subtab">📷 Foto</button>
-          <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi">
+          <button id="sub-indizio-btn" class="subtab" data-azione="sub" data-sub="indizio">👾 Traccia</button>
+          <button id="sub-foto-btn" class="subtab" data-azione="sub" data-sub="foto">📷 Foto</button>
+          <button id="sub-msg-btn" class="subtab icon" aria-label="Messaggi" data-azione="sub" data-sub="messaggi">
             ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
           </button>
-          <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni">⚙️</button>
+          <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni" data-azione="sub" data-sub="impostazioni">⚙️</button>
         </div>
 
         <div id="p-reward" class="reward">
           <p class="done">Sbloccato!</p>
           <div id="p-reward-list" class="unlocked"></div>
-          <button id="p-continue" class="btn primary">Continua</button>
+          <button id="p-continue" class="btn primary" data-azione="continua">Continua</button>
         </div>
 
         <div id="sub-indizio" class="schermo-scheda">
           <div id="p-empty" class="empty">
             <h1 class="title">Nessuna caccia in corso</h1>
             <p id="p-empty-msg">Controllo se il master ha pubblicato una caccia…</p>
-            <button id="p-retry" class="btn primary" hidden>Riprova</button>
+            <button id="p-retry" class="btn primary" hidden data-azione="riprova-caccia">Riprova</button>
           </div>
 
           <div id="p-alldone" class="empty">
@@ -507,9 +541,9 @@
           <div class="viewfinder" id="p-vf">
             <video id="p-video" playsinline muted autoplay></video>
             <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-            <button class="btn primary start" id="p-cam">Attiva la fotocamera</button>
+            <button class="btn primary start" id="p-cam" data-azione="fotocamera">Attiva la fotocamera</button>
           </div>
-          <button id="p-shoot" class="btn primary" disabled>Scatta e verifica</button>
+          <button id="p-shoot" class="btn primary" disabled data-azione="scatta">Scatta e verifica</button>
           <p id="p-status" class="status" role="status"></p>
           <p id="p-score" class="score"></p>
         </div>
@@ -517,14 +551,75 @@
         <div id="p-inbox" class="inbox">
           <h2>Messaggi</h2>
           <ul id="p-inbox-list"></ul>
-          <button id="p-inbox-close" class="link">Chiudi</button>
+          <button id="p-inbox-close" class="link" data-azione="sub" data-sub="indizio">Chiudi</button>
         </div>
 
         <div id="p-settings" class="inbox">
           <h2>Impostazioni</h2>
-          <button id="p-change-hunt" class="link">Cambia caccia</button>
-          <button id="p-reset" class="link">Ricomincia la caccia</button>
-          <button id="p-settings-close" class="link">Chiudi</button>
+          <!-- Istruzioni per il giocatore: <details> nativo, chiuso di default così il
+               pannello resta corto. Tutto testo statico, il JS non lo tocca. -->
+          <details class="istruzioni">
+            <summary>Istruzioni</summary>
+            <p>In basso hai due schede: <b>🔍 Cerca</b> per trovare
+            gli oggetti, <b>💽 Memoria</b> per rivedere quelli
+            trovati.</p>
+            <ol>
+              <li><b>👾 Traccia</b> mostra l'indizio dell'oggetto da
+              cercare (testo e, a volte, una foto). Sotto c'è l'elenco
+              di tutto ciò che puoi cercare adesso: toccane uno per
+              sceglierlo.</li>
+
+              <li>Trovato l'oggetto, vai in <b>📷 Foto</b>,
+              tocca <b>Attiva la fotocamera</b>, inquadralo per intero
+              e premi <b>Scatta e verifica</b>. Il riconoscimento
+              avviene sul tuo telefono: la foto non esce da qui. Se la
+              tappa chiede anche la posizione, il GPS viene
+              controllato solo dopo che la foto è valida: accendilo e
+              resta vicino all'oggetto. Servono i permessi di
+              fotocamera e posizione.</li>
+
+              <li>In <b>💽 Memoria</b> tocca una riga per rivedere
+              foto e messaggio. Alcuni oggetti si possono condividere:
+              con <b>🔄</b> (scambia) lo trasferisci, e scomparirà
+              dalla tua Memoria, con <b>👥</b> duplichi una copia
+              identica. Un oggetto con 🎟️ è diverso per ogni giocatore:
+              puoi duplicare una copia diversa.</li>
+
+              <li>Per passarlo: tu premi 🔄 o 👥 in Memoria; chi
+              riceve apre <b>📷 Foto</b>, attiva la fotocamera e
+              inquadra il tuo schermo. Poi mettete i telefoni schermo
+              contro schermo: le fotocamere anteriori si leggono a
+              vicenda. Aspettate <b>Fatto!</b>: chi riceve vede una
+              schermata verde con un codice e la tiene in vista finché
+              l'altro telefono non ha finito. Se il tuo telefono dice
+              «Non ho letto la conferma», guarda l'altro schermo:
+              rispondi <b>Sì</b> solo se è verde e mostra lo stesso
+              codice.</li>
+
+              <li>Per riceverlo: apri <b>📷 Foto</b>, attiva la
+              fotocamera e inquadra il QR nell'altro schermo. Dopo
+              pochi istanti si aprirà la camera anteriore. Metti i
+              telefoni schermo contro schermo: le fotocamere anteriori
+              si leggono a vicenda. Aspettate <b>Fatto!</b>: chi
+              riceve vede una schermata verde con un codice e la tiene
+              in vista finché l'altro telefono non ha finito. Se il
+              tuo telefono dice «Non ho letto la conferma», guarda
+              l'altro schermo: rispondi <b>Sì</b> solo se è verde e
+              mostra lo stesso codice.</li>
+
+              <li><b>✉️</b> sono i messaggi del master: si scaricano a
+                ogni apertura dell'app.</li>
+
+              <li><b>⚙️</b> sono queste impostazioni: <b>Cambia
+              caccia</b> torna alla scelta della caccia; <b>Ricomincia
+              la caccia</b> cancella la Memoria e i progressi di
+              questa caccia su questo telefono.</li>
+            </ol>
+            <p>Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra bloccato, ricarica la pagina. Il numero di versione nel banner di avvio ti dice se hai l'ultima versione.</p>
+          </details>
+          <button id="p-change-hunt" class="btn" data-azione="cambia-caccia">Cambia caccia</button>
+          <button id="p-reset" class="btn" data-azione="ricomincia">Ricomincia la caccia</button>
+          <button id="p-settings-close" class="link" data-azione="sub" data-sub="indizio">Chiudi</button>
         </div>
       </div>
 
@@ -591,21 +686,21 @@
         <p>Non ho ancora letto la conferma. Guarda il telefono del tuo amico: mostra la
           schermata <b>verde</b> «Ricevuto» con il codice <b class="codice"></b>?</p>
         <div class="btnrow">
-          <button id="p-scambio-no" class="btn">No, tengo l'oggetto</button>
-          <button id="p-scambio-si" class="btn primary">Sì, l'ho controllato</button>
+          <button id="p-scambio-no" class="btn" data-azione="scambio-no">No, tengo l'oggetto</button>
+          <button id="p-scambio-si" class="btn primary" data-azione="scambio-si">Sì, l'ho controllato</button>
         </div>
       </div>
       <div class="btnrow">
-        <button id="p-scambio-annulla" class="btn">Annulla</button>
-        <button id="p-scambio-riprova" class="btn primary">Riprova</button>
-        <button id="p-scambio-chiudi" class="btn primary">Torna a Memoria</button>
-        <button id="p-scambio-ok" class="btn primary">Chiudi</button>
+        <button id="p-scambio-annulla" class="btn" data-azione="scambio-annulla">Annulla</button>
+        <button id="p-scambio-riprova" class="btn primary" data-azione="scambio-riprova">Riprova</button>
+        <button id="p-scambio-chiudi" class="btn primary" data-azione="scambio-chiudi">Torna a Memoria</button>
+        <button id="p-scambio-ok" class="btn primary" data-azione="scambio-ok">Chiudi</button>
       </div>
     </div>
 
     <nav id="p-tabbar">
-      <button id="p-tab-cerca" class="ptab">🔍 Cerca</button>
-      <button id="p-tab-oggetti" class="ptab">💽 Memoria</button>
+      <button id="p-tab-cerca" class="ptab" data-azione="tab" data-tab="cerca">🔍 Cerca</button>
+      <button id="p-tab-oggetti" class="ptab" data-azione="tab" data-tab="oggetti">💽 Memoria</button>
     </nav>
   </section>
 
@@ -641,22 +736,22 @@
       <div class="viewfinder" id="m-vf">
         <video id="m-video" playsinline muted autoplay></video>
         <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
-        <button class="btn primary start" id="m-cam">Attiva la fotocamera</button>
+        <button class="btn primary start" id="m-cam" data-azione="fotocamera-master">Attiva la fotocamera</button>
       </div>
       <p class="hint">Inquadra e muoviti piano per 6 secondi: da vicino, da lontano, di lato. Attiva il GPS.</p>
       <div class="btnrow">
-        <button id="m-rec-pos" class="btn primary" disabled>Oggetto</button>
-        <button id="m-rec-neg" class="btn" disabled>Dintorni</button>
+        <button id="m-rec-pos" class="btn primary" disabled data-azione="registra-oggetto">Oggetto</button>
+        <button id="m-rec-neg" class="btn" disabled data-azione="registra-dintorni">Dintorni</button>
       </div>
 
       <p id="m-train-status" class="status" role="status"></p>
       <div class="btnrow">
-        <button id="m-test" class="btn" disabled>Prova</button>
-        <button id="m-add" class="btn primary" disabled>Aggiungi</button>
+        <button id="m-test" class="btn" disabled data-azione="prova-riconoscimento">Prova</button>
+        <button id="m-add" class="btn primary" disabled data-azione="aggiungi-oggetto">Aggiungi</button>
       </div>
       <p id="m-test-status" class="status" role="status"></p>
       <p id="m-add-status" class="status" role="status"></p>
-      <button id="m-save-draft" class="btn" disabled>Salva bozza sul server</button>
+      <button id="m-save-draft" class="btn" disabled data-azione="salva-bozza">Salva bozza sul server</button>
       <p id="m-save-draft-status" class="status" role="status"></p>
       <p id="m-draft-link-hint" class="hint"></p>
     </div>
@@ -666,7 +761,7 @@
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
       <p id="m-draft-status" class="status" role="status"></p>
       <ul id="m-panel-list" class="baselist"></ul>
-      <button id="m-base-retry" class="link" hidden>Riprova</button>
+      <button id="m-base-retry" class="link" hidden data-azione="ricarica-base">Riprova</button>
     </div>
 
     <div class="current">
@@ -680,7 +775,7 @@
       <p class="hint">Invia un messaggio pubblico visto da tutti i giocatori.</p>
       <ul id="m-msg-list" class="baselist"></ul>
       <textarea id="m-msg-text" placeholder="Scrivi un annuncio per tutti…"></textarea>
-      <button id="m-msg-send" class="btn primary" disabled>Pubblica messaggio</button>
+      <button id="m-msg-send" class="btn primary" disabled data-azione="invia-messaggio">Pubblica messaggio</button>
       <p id="m-msg-status" class="status" role="status"></p>
     </div>
 
@@ -704,8 +799,8 @@
         <label>Token
           <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
         </label>
-        <button id="cfg-save" class="btn">Salva configurazione</button>
-        <button id="cfg-clear" class="link">Dimentica il token da questo telefono</button>
+        <button id="cfg-save" class="btn" data-azione="salva-config">Salva configurazione</button>
+        <button id="cfg-clear" class="link" data-azione="dimentica-config">Dimentica il token da questo telefono</button>
         <p id="cfg-status" class="status" role="status"></p>
       </details>
     
@@ -728,10 +823,10 @@
 
       <p class="hint">Per cambiare caccia, o crearne una nuova, usa il menu in cima al pannello master.</p>
 
-      <button id="m-link-publish" class="btn primary" disabled>Pubblica</button>
+      <button id="m-link-publish" class="btn primary" disabled data-azione="pubblica-caccia">Pubblica</button>
       <p id="m-link-status" class="status" role="status"></p>
 
-      <button id="m-local" class="btn" disabled>Prova su questo telefono</button>
+      <button id="m-local" class="btn" disabled data-azione="prova-in-locale">Prova su questo telefono</button>
     </div>
   </section>
 
@@ -750,7 +845,7 @@
         <div id="m-grafo-wrap"><svg id="m-grafo-svg"></svg></div>
         <aside id="m-grafo-panel" class="grafopanel" hidden>
           <div id="m-grafo-panel-scheda"></div>
-          <button id="m-grafo-panel-chiudi" class="btn" type="button">Chiudi</button>
+          <button id="m-grafo-panel-chiudi" class="btn" type="button" data-azione="chiudi-pannello-grafo">Chiudi</button>
         </aside>
       </div>
     </div>
@@ -763,7 +858,7 @@
      regalo si vede; una riga "Richiede" per ogni altro nodo (tpl-richiede), col campo
      "almeno N" mostrato dal CSS solo se la spunta è accesa e l'altro nodo è a istanze. -->
 <!-- Lightbox nativa (apriAnteprima): un solo <dialog> riusato, si chiude al tocco o con Esc. -->
-<dialog id="lightbox" class="lightbox"><img alt=""></dialog>
+<dialog id="lightbox" class="lightbox" data-azione="chiudi-lightbox"><img alt=""></dialog>
 
 <!-- Righe e schede generate dai dati: il markup vive qui, il JS clona e riempie. -->
 <template id="tpl-riga">
@@ -786,7 +881,7 @@
   <div class="scheda-nodo">
     <div class="head">
       <div class="titlewrap"><span class="thumb"></span><input type="text" name="nome"></div>
-      <button class="link" name="rimuovi" type="button">Rimuovi</button>
+      <button class="link" name="rimuovi" type="button" data-azione="rimuovi-nodo">Rimuovi</button>
     </div>
     <div class="flags">
       <label class="check"><input type="checkbox" name="conThumb"> Thumb</label>
@@ -878,6 +973,25 @@ const $ = id => document.getElementById(id);
 // Il primo elemento di un <template> (vedi in fondo all'HTML), clonato per riempirlo.
 const clona = tplId => $(tplId).content.firstElementChild.cloneNode(true);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- azioni: un solo listener per tutti i clic ----------
+   Ogni elemento cliccabile dichiara nell'HTML cosa fa (data-azione="nome", più i dati
+   che servono in altri data-*: data-tab, data-id, data-slug…) e il JS registra la
+   funzione con lo stesso nome in AZIONI, vicino al codice che riguarda. Niente
+   handler agganciati uno per uno: chi legge l'HTML vede l'azione, chi cerca il nome
+   in AZIONI trova il codice. Vale anche per gli elementi clonati dai <template> e per
+   il disegno SVG del grafo. Un clic esegue UNA sola azione, la più interna (closest):
+   la miniatura dentro una scheda apre l'anteprima e non la scheda, senza
+   stopPropagation. Un'azione dichiarata e mai registrata è un errore di programmazione:
+   finisce in console, non fallisce in silenzio. */
+const AZIONI = {};
+document.addEventListener("click", ev => {
+  const el = ev.target.closest("[data-azione]");
+  if (!el) return;
+  const fn = AZIONI[el.dataset.azione];
+  if (!fn) { console.error("Azione non registrata:", el.dataset.azione, el); return; }
+  fn(el, ev);
+});
 
 /* ---------- archivio locale (resta tutto sul telefono) ---------- */
 const store = {
@@ -1168,15 +1282,16 @@ function apriAnteprima(src) {
   $("lightbox").querySelector("img").src = src;
   $("lightbox").showModal();
 }
-$("lightbox").onclick = () => $("lightbox").close(); // Esc lo chiude da solo, è un <dialog>
+Object.assign(AZIONI, { "chiudi-lightbox": () => $("lightbox").close() }); // Esc lo chiude da solo, è un <dialog>
 
 // Un'immagine che al tocco si apre nella lightbox (apriAnteprima): l'unico modo in
 // cui una foto compare nell'interfaccia, sia come miniatura sia come foto grande.
 function imgAnteprima(src, classe = "") {
   const img = document.createElement("img"); img.src = src || ""; if (classe) img.className = classe;
-  img.onclick = () => apriAnteprima(src);
+  img.dataset.azione = "anteprima";
   return img;
 }
+Object.assign(AZIONI, { anteprima: img => apriAnteprima(img.getAttribute("src")) });
 function thumbEl(immagine) {
   const wrap = document.createElement("span"); wrap.className = "thumb";
   wrap.append(imgAnteprima(immagine));
@@ -1443,8 +1558,22 @@ function iconaNodo(n) {
 // (es. "richiede posizione" ⇒ "da validare"). notify() gira dopo ogni modifica che deve
 // riflettersi altrove (nome, flag, richiede — true se il nodo è stato rimosso), mai per
 // testo/messaggio, che non toccano il grafo.
+// "Rimuovi" di una scheda: una sola azione per "Collega gli elementi" e per il riquadro
+// del Grafo (l'id del nodo sta sulla scheda, data-id). Nel Grafo chiude anche il riquadro.
+Object.assign(AZIONI, {
+  "rimuovi-nodo": btn => {
+    const id = btn.closest(".scheda-nodo").dataset.id, n = L.nodi[id];
+    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
+    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
+    delete L.nodi[id];
+    salvaLocale();
+    renderPanelList(); aggiornaContatorePanel(); renderLinkList();
+    if (grafoPanelId === id) chiudiPannelloGrafo();
+  },
+});
 function creaSchedaNodo(n, id, ids, notify) {
-  const el = clona("tpl-nodo");
+  const el = clona("tpl-nodo"); el.dataset.id = id;
   const campo = nome => el.querySelector(`[name="${nome}"]`);
 
   // Testata: foto, nome, "Rimuovi".
@@ -1452,15 +1581,6 @@ function creaSchedaNodo(n, id, ids, notify) {
   const nome = campo("nome"); nome.value = n.nome || "";
   nome.oninput = () => { n.nome = nome.value; };
   nome.onchange = () => { n.nome = nome.value.trim() || n.nome; salvaLocale(); renderPanelList(); renderLinkList(); notify(); };
-  campo("rimuovi").onclick = () => {
-    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
-    if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
-    if (!confirm(`Rimuovere "${n.nome}"?`)) return;
-    delete L.nodi[id];
-    salvaLocale();
-    renderPanelList(); aggiornaContatorePanel(); renderLinkList();
-    notify(true);
-  };
 
   // Flag e modo del regalo (radio, vedi MODI_REGALO). La radio si vede solo con
   // "Validare" spento (data-validare, via CSS): su un nodo che si ottiene rifotografando
@@ -1511,7 +1631,6 @@ function creaSchedaNodo(n, id, ids, notify) {
       salvaLocale(); notify();
     };
     num.value = String(istanzeRichieste(L.nodi, n, oid));
-    num.onclick = ev => ev.stopPropagation();
     num.onchange = () => {
       const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
       n.istanzeRichieste = n.istanzeRichieste || {};
@@ -1538,7 +1657,7 @@ function schedaNodo(id, ids) {
 function wireGhConfigPanel() {
   const cfg = ghConfig();
   if (cfg) { $("cfg-owner").value = cfg.owner || ""; $("cfg-repo").value = cfg.repo || ""; $("cfg-branch").value = cfg.branch || ""; }
-  $("cfg-save").onclick = () => {
+  Object.assign(AZIONI, { "salva-config": () => {
     const owner = $("cfg-owner").value.trim(), repo = $("cfg-repo").value.trim();
     const branch = $("cfg-branch").value.trim() || "main";
     const token = $("cfg-token").value.trim() || (ghConfig() || {}).token;
@@ -1547,13 +1666,12 @@ function wireGhConfigPanel() {
     $("cfg-token").value = "";
     setStatus($("cfg-status"), "Configurazione salvata su questo telefono.", "ok");
     ghConfigStatus();
-  };
-  $("cfg-clear").onclick = () => {
+  }, "dimentica-config": () => {
     store.del("gh-config");
     for (const id of ["cfg-owner", "cfg-repo", "cfg-branch", "cfg-token"]) $(id).value = "";
     setStatus($("cfg-status"), "Token dimenticato.", "");
     ghConfigStatus();
-  };
+  } });
 }
 
 /* ---------- pagina "Grafo": stessa "richiede" di "Collega gli elementi", vista come
@@ -1684,14 +1802,7 @@ function disegnaGrafo() {
         const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", (x1 + x2) / 2); t.setAttribute("y", my); t.setAttribute("class", "edge-label"); t.textContent = "×" + quante;
         g.append(t);
       }
-      g.onclick = (e) => {
-        e.stopPropagation();
-        if (!confirm(`Togliere il collegamento "${L.nodi[rid].nome}" → "${L.nodi[id].nome}"?`)) return;
-        L.nodi[id].richiede = (L.nodi[id].richiede || []).filter(x => x !== rid);
-        salvaLocale();
-        renderLinkList(); disegnaGrafo();
-        if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
-      };
+      g.dataset.azione = "togli-collegamento"; g.dataset.da = rid; g.dataset.a = id;
       svgEl.append(g);
     }
   }
@@ -1710,22 +1821,18 @@ function disegnaGrafo() {
     card.querySelector(".grafonode-nome").textContent = n.nome;
     const ic = iconaNodo(n), icone = card.querySelector(".grafonode-icone");
     icone.textContent = ic.icona; icone.title = ic.titolo;
-    card.onclick = (e) => {
-      if (e.target.closest(".thumb")) return;
-      if (grafoLinkSrc) { annullaCollegamentoGrafo(); return; }
-      apriPannelloGrafo(id);
-    };
+    card.dataset.azione = "apri-nodo-grafo"; // la miniatura dentro ha la sua azione (anteprima), che vince
     fo.append(card);
     svgEl.append(fo);
 
     const dot = document.createElementNS(SVGNS, "circle");
     dot.setAttribute("cx", x + GNODE_W / 2); dot.setAttribute("cy", y + GNODE_H); dot.setAttribute("r", 8);
     dot.setAttribute("class", "grafo-dot");
-    dot.onclick = (e) => { e.stopPropagation(); clicDotGrafo(id); };
+    dot.dataset.azione = "punto-grafo"; dot.dataset.id = id;
     svgEl.append(dot);
   }
 
-  svgEl.onclick = () => annullaCollegamentoGrafo();
+  svgEl.dataset.azione = "annulla-collegamento";
   svgEl.onmousemove = (e) => {
     if (!grafoLinkSrc || !pos[grafoLinkSrc]) return;
     const p = $("grafo-preview");
@@ -1756,6 +1863,23 @@ function apriPannelloGrafo(id) {
   $("m-grafo-panel-scheda").replaceChildren(creaSchedaNodo(n, id, ids, notify));
 }
 
+// Clic sul disegno del grafo: il più interno vince (un'azione sola per clic, vedi il
+// dispatcher di AZIONI), quindi la miniatura apre l'anteprima e non la scheda, e il
+// pallino non annulla il collegamento in corso.
+Object.assign(AZIONI, {
+  "togli-collegamento": g => {
+    const { da: rid, a: id } = g.dataset;
+    if (!confirm(`Togliere il collegamento "${L.nodi[rid].nome}" → "${L.nodi[id].nome}"?`)) return;
+    L.nodi[id].richiede = (L.nodi[id].richiede || []).filter(x => x !== rid);
+    salvaLocale();
+    renderLinkList(); disegnaGrafo();
+    if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
+  },
+  "apri-nodo-grafo": card => { if (grafoLinkSrc) annullaCollegamentoGrafo(); else apriPannelloGrafo(card.dataset.id); },
+  "punto-grafo": dot => clicDotGrafo(dot.dataset.id),
+  "annulla-collegamento": () => annullaCollegamentoGrafo(),
+  "chiudi-pannello-grafo": chiudiPannelloGrafo,
+});
 function chiudiPannelloGrafo() {
   grafoPanelId = null;
   $("m-grafo-panel").hidden = true;
@@ -1764,14 +1888,13 @@ function chiudiPannelloGrafo() {
 
 function initMaster() {
   $("m-cam").hidden = false; $("m-cam").disabled = false;
-  $("m-cam").onclick = () => cameraButton($("m-cam"), $("m-video"), masterRefresh, $("m-train-status"));
-  $("m-base-retry").onclick = () => caricaCopiaLavoro(L.slug);
-  $("m-grafo-panel-chiudi").onclick = chiudiPannelloGrafo;
-
   wireGhConfigPanel();
   ghConfigStatus();
 
-  $("m-rec-pos").onclick = async () => {
+  Object.assign(AZIONI, {
+  "fotocamera-master": btn => cameraButton(btn, $("m-video"), masterRefresh, $("m-train-status")),
+  "ricarica-base": () => caricaCopiaLavoro(L.slug),
+  "registra-oggetto": async () => {
     M.busy = true; masterRefresh();
     try {
       M.pos = await record(FRAME_OGGETTO, "Oggetto");
@@ -1781,16 +1904,16 @@ function initMaster() {
       recalibrate();
     } catch (e) { setStatus($("m-train-status"), e.message, "ko"); }
     M.busy = false; masterRefresh();
-  };
+  },
 
-  $("m-rec-neg").onclick = async () => {
+  "registra-dintorni": async () => {
     M.busy = true; masterRefresh();
     try { M.neg = await record(FRAME_DINTORNI, "Dintorni"); recalibrate(); }
     catch (e) { setStatus($("m-train-status"), e.message, "ko"); }
     M.busy = false; masterRefresh();
-  };
+  },
 
-  $("m-test").onclick = async () => {
+  "prova-riconoscimento": async () => {
     M.busy = true; masterRefresh();
     setStatus($("m-test-status"), "Guardo l'immagine…");
     flash($("m-vf"));
@@ -1800,9 +1923,9 @@ function initMaster() {
       `${r.valido ? "Riconosciuto" : "Non riconosciuto"}. Somiglianza ${fmtNum(r.somiglianza)}, soglia ${fmtNum(obj.soglia)}.`,
       r.valido ? "ok" : "ko");
     M.busy = false; masterRefresh();
-  };
+  },
 
-  $("m-add").onclick = () => {
+  "aggiungi-oggetto": () => {
     if (!L.nodi) L.nodi = {};
     const id = newId("n");
     const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
@@ -1821,16 +1944,17 @@ function initMaster() {
     setStatus($("m-add-status"), `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`, "ok");
     salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
-  };
+  },
+  });
 
   // Scrive draftFile(slug), mai caccia*.json: resta invisibile ai giocatori finché non
   // si preme "Pubblica". Porta la bozza da un telefono all'altro (letta anche dal
   // pannello master su un browser "vuoto", vedi caricaCopiaLavoro) e alimenta il link
   // di prova "#b-<slug>" qui sotto, per testarla da giocatore senza pubblicare.
-  $("m-save-draft").onclick = async () => {
+  Object.assign(AZIONI, { "salva-bozza": async () => {
     const g = { formato: FORMATO, salvato: new Date().toISOString(), nodi: L.nodi || {} };
     await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
-  };
+  } });
 
   // "+ Nuova caccia": chiede un nome (diventa lo slug: file e link), avvisa se la copia
   // di lavoro attuale non è salvata, poi parte da una caccia vuota. Passare a una caccia
@@ -1863,7 +1987,9 @@ function initMaster() {
     await caricaCopiaLavoro(v);
   };
 
-  $("m-local").onclick = async () => {
+  $("m-msg-text").oninput = () => { $("m-msg-send").disabled = !$("m-msg-text").value.trim(); };
+  Object.assign(AZIONI, {
+  "prova-in-locale": () => {
     const g = currentGame();
     const ok = store.set("gioco-prova", g) &&
       store.set("stato-prova", freshState(g)) &&
@@ -1871,10 +1997,8 @@ function initMaster() {
     if (!ok) { setStatus($("m-link-status"), "Memoria del browser non disponibile.", "ko"); return; }
     stopCamera();
     location.hash = "";
-  };
-
-  $("m-msg-text").oninput = () => { $("m-msg-send").disabled = !$("m-msg-text").value.trim(); };
-  $("m-msg-send").onclick = async () => {
+  },
+  "invia-messaggio": async () => {
     const testo = $("m-msg-text").value.trim();
     if (!testo) return;
     $("m-msg-send").disabled = true;
@@ -1883,14 +2007,14 @@ function initMaster() {
     const ok = await ghPutFile(MSG_URL, JSON.stringify(aggiornati, null, 2), "Nuovo messaggio", $("m-msg-status"));
     if (ok) { msgList = aggiornati; renderMsgList(); $("m-msg-text").value = ""; }
     $("m-msg-send").disabled = !$("m-msg-text").value.trim();
-  };
-  loadMessages();
-
-  $("m-link-publish").onclick = async () => {
-    $("m-link-publish").disabled = true;
+  },
+  "pubblica-caccia": async btn => {
+    btn.disabled = true;
     await publishGame($("m-link-status"));
-    $("m-link-publish").disabled = false;
-  };
+    btn.disabled = false;
+  },
+  });
+  loadMessages();
 
   if (!M.baseLoaded && !M.loading) {
     caricaElencoCacce().then(() => {
@@ -2325,35 +2449,38 @@ function renderMemoria(st) {
       azione.type = "button";
       azione.textContent = modo === "scambiabile" ? "🔄" : "👥";
       azione.title = modo === "scambiabile" ? "Scambia con un amico" : "Condividi con un amico";
-      azione.onclick = ev => {
-        ev.stopPropagation();
-        // Su un nodo a istanze si condivide QUESTA istanza (la riga), non il nodo.
-        apriScambio({ ruolo: "cedente", tipo: modo === "scambiabile" ? "scambio" : "duplica", nodo: r.nodo, istanza: r.istanza || "" });
-      };
+      // Su un nodo a istanze si condivide QUESTA istanza (la riga), non il nodo.
+      azione.dataset.azione = "avvia-scambio"; azione.dataset.tipo = modo === "scambiabile" ? "scambio" : "duplica";
+      azione.dataset.nodo = r.nodo; azione.dataset.istanza = r.istanza || "";
     }
     rigaSelezionabile(list, {
       prima: [thumb], testo: r.nome, badge: badgeIstanza(r), dopo: azione,
       attiva: memoriaScelta === chiaveVoce(r),
-      onClick: () => { memoriaScelta = chiaveVoce(r); renderMemoria(stato()); },
+      azione: "scegli-memoria", dati: { chiave: chiaveVoce(r) },
     });
   }
 }
+Object.assign(AZIONI, {
+  "scegli-memoria": b => { memoriaScelta = b.dataset.chiave; renderMemoria(stato()); },
+  "avvia-scambio": b => apriScambio({ ruolo: "cedente", tipo: b.dataset.tipo, nodo: b.dataset.nodo, istanza: b.dataset.istanza }),
+});
 
 // Una riga di lista "todo"-stile: bottone con decorazioni facoltative prima/dopo il
 // testo (troncato a una riga via CSS), evidenziata se "attiva". Condivisa fra la
 // lista di "Traccia" (oggetti raggiungibili) e quella di "Memoria" (oggetti trovati):
-// stessa forma e stesso meccanismo di selezione, contenuto diverso.
+// stessa forma e stesso meccanismo di selezione, contenuto diverso. Il clic è un'azione
+// dichiarata (data-azione + i dati che le servono), risolta dal dispatcher di AZIONI.
 // Markup in tpl-riga: [miniature] nome (+ badge sotto, es. l'id di un'istanza: sta FUORI
 // da .txt, che tronca con i puntini — la riga è stretta e l'id è ciò che distingue due
 // righe con lo stesso nome, non può sparire).
-function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, onClick }) {
+function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, azione, dati }) {
   const li = clona("tpl-riga");
   const b = li.querySelector("button");
   b.querySelector(".prima").append(...(prima || []));
   b.querySelector(".txt").textContent = testo;
   if (badge) b.querySelector(".badge").append(badge);
   if (attiva) b.setAttribute("aria-current", "true");
-  b.onclick = onClick;
+  b.dataset.azione = azione; Object.assign(b.dataset, dati || {});
   // "dopo" resta fuori dal bottone principale, non annidato: in Memoria può essere un
   // bottone d'azione a sé (🔄/👥, vedi renderMemoria), e due <button> innestati non
   // sono validi né cliccabili in modo affidabile.
@@ -2375,17 +2502,20 @@ function renderTodo(st, todo, cur) {
     rigaSelezionabile(list, {
       prima: imgs, testo: etichettaOggetto(m.id), dopo: nuovo,
       attiva: cur && m.id === cur.id,
-      onClick: () => {
-        const s = stato();
-        s.scelta = m.id;
-        if (!s.visti.includes(m.id)) s.visti.push(m.id);
-        saveState(s);
-        setStatus($("p-status"), ""); $("p-score").textContent = "";
-        renderPlayer();
-      },
+      azione: "scegli-traccia", dati: { id: m.id },
     });
   }
 }
+Object.assign(AZIONI, {
+  "scegli-traccia": b => {
+    const id = b.dataset.id, s = stato();
+    s.scelta = id;
+    if (!s.visti.includes(id)) s.visti.push(id);
+    saveState(s);
+    setStatus($("p-status"), ""); $("p-score").textContent = "";
+    renderPlayer();
+  },
+});
 
 function contaTrovati(st) {
   return st.trovati.filter(id => game.nodi[id] && game.nodi[id].daValidare).length;
@@ -2886,15 +3016,16 @@ function initPlayer() {
   $("p-empty-msg").textContent = "Controllo se il master ha pubblicato una caccia…";
   $("p-retry").hidden = true;
 
-  $("p-test-exit").onclick = () => {
+  Object.assign(AZIONI, {
+  "esci-prova": () => {
     if (inBozza()) { stopCamera(); location.hash = ""; return; }
     store.del("prova"); stopCamera(); initPlayer();
-  };
-  $("p-retry").onclick = () => { $("p-empty-msg").textContent = "Controllo…"; $("p-retry").hidden = true; syncGame(); };
-  $("p-continue").onclick = () => { renderPlayer(); $("p-content").scrollTop = 0; };
-  $("p-cam").onclick = () => cameraButton($("p-cam"), $("p-video"), () => { $("p-shoot").disabled = false; startFotoQrWatch(); }, $("p-status"));
-  $("p-shoot").onclick = shoot;
-  $("p-scambio-annulla").onclick = () => {
+  },
+  "riprova-caccia": btn => { $("p-empty-msg").textContent = "Controllo…"; btn.hidden = true; syncGame(); },
+  continua: () => { renderPlayer(); $("p-content").scrollTop = 0; },
+  fotocamera: btn => cameraButton(btn, $("p-video"), () => { $("p-shoot").disabled = false; startFotoQrWatch(); }, $("p-status")),
+  scatta: shoot,
+  "scambio-annulla": () => {
     const ruolo = scambio ? scambio.ruolo : "cedente";
     // Un cedente che ha già letto l'amico almeno una volta non può più annullare alla
     // cieca: l'amico potrebbe aver scritto un istante fa. Passa dalla stessa domanda
@@ -2902,30 +3033,30 @@ function initPlayer() {
     if (scambio && ruolo === "cedente" && scambio.tipo === "scambio" && !scambio.committed && scambio.myReadCount > 0) { scambioDomanda(); return; }
     chiudiScambio();
     if (ruolo === "cedente") mostraTab("oggetti"); else { mostraTab("cerca"); mostraSubTab("foto"); }
-  };
-  $("p-scambio-no").onclick = () => { chiudiScambio(); mostraTab("oggetti"); };
-  $("p-scambio-si").onclick = () => { if (scambio && !scambio.committed) scambioRiuscito(); };
-  $("p-scambio-riprova").onclick = () => {
+  },
+  "scambio-no": () => { chiudiScambio(); mostraTab("oggetti"); },
+  "scambio-si": () => { if (scambio && !scambio.committed) scambioRiuscito(); },
+  "scambio-riprova": () => {
     if (!scambio) return;
     const { ruolo, tipo, nodo, istanza } = scambio;
     if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo, istanza });
     else { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
-  };
-  $("p-scambio-chiudi").onclick = () => { chiudiScambio(); mostraTab("oggetti"); }; // cedente: fatto o incerto
-  $("p-scambio-ok").onclick = () => {                                              // ricevente: dalla schermata verde alla festa
+  },
+  "scambio-chiudi": () => { chiudiScambio(); mostraTab("oggetti"); }, // cedente: fatto o incerto
+  "scambio-ok": () => {                                               // ricevente: dalla schermata verde alla festa
     const esito = scambio && scambio.esito;
     chiudiScambio();
     mostraTab("cerca");
     if (esito) showReward(esito.nuovi, esito.st);
-  };
-  $("p-reset").onclick = () => {
+  },
+  ricomincia: () => {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;
     if (game) saveState(freshState(game)); else store.del(stateKey());
     stopCamera(); setStatus($("p-status"), ""); $("p-score").textContent = "";
     subTabAttivo = "indizio";
     renderPlayer();
-  };
-  $("p-change-hunt").onclick = () => {
+  },
+  "cambia-caccia": () => {
     stopCamera();
     store.del(CHOOSER_KEY);
     // Scelta esplicita del giocatore: la continuità per chi giocava già prima che
@@ -2939,16 +3070,12 @@ function initPlayer() {
     // schermata di scelta direttamente, stesso tema scuro che le darebbe route().
     if (location.hash) history.replaceState(null, "", location.pathname + location.search);
     mostraSceltaCaccia(); // imposta da sé body[data-view="chooser"], quindi il tema scuro
-  };
-  $("sub-msg-btn").onclick = () => mostraSubTab("messaggi");
-  $("p-inbox-close").onclick = () => mostraSubTab("indizio");
-  $("sub-settings-btn").onclick = () => mostraSubTab("impostazioni");
-  $("p-settings-close").onclick = () => mostraSubTab("indizio");
-
-  $("p-tab-cerca").onclick = () => mostraTab("cerca");
-  $("p-tab-oggetti").onclick = () => mostraTab("oggetti");
-  $("sub-indizio-btn").onclick = () => mostraSubTab("indizio");
-  $("sub-foto-btn").onclick = () => mostraSubTab("foto");
+  },
+  // Schede e sotto-schede: il bottone dice dove porta (data-tab / data-sub), anche i
+  // "Chiudi" di Messaggi e Impostazioni, che riportano a "Traccia".
+  tab: btn => mostraTab(btn.dataset.tab),
+  sub: btn => mostraSubTab(btn.dataset.sub),
+  });
 
   // Si riparte sempre da "Memoria": non ha senso ricordare le schede da una sessione
   // all'altra (nuova caccia, o semplice riapertura dell'app), e "Memoria" è il punto
@@ -2991,13 +3118,17 @@ async function mostraSceltaCaccia() {
   wrap.innerHTML = "";
   for (const c of cacce) {
     const btn = document.createElement("button"); btn.className = "btn primary"; btn.textContent = c.nome;
-    btn.onclick = () => {
-      store.set(CHOOSER_KEY, c.slug);
-      if (c.slug) location.hash = "c-" + c.slug; else mostraGiocatore();
-    };
+    btn.dataset.azione = "scegli-caccia"; btn.dataset.slug = c.slug || "";
     wrap.append(btn);
   }
 }
+Object.assign(AZIONI, {
+  "scegli-caccia": btn => {
+    const slug = btn.dataset.slug;
+    store.set(CHOOSER_KEY, slug);
+    if (slug) location.hash = "c-" + slug; else mostraGiocatore();
+  },
+});
 
 // All'apertura senza hash: se il telefono ricorda già una scelta (fatta qui, o perché
 // si sta già giocando da prima che esistesse questa schermata) entra diretto in quella

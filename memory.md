@@ -188,10 +188,20 @@ senza seguire il JS:
   i test copiano `index.html` e iniettano `window.__debug` solo nella
   copia — vedi `CLAUDE.md` e `tests/scambio.test.mjs`.
 
-Rimasto fuori di proposito, da non "sistemare" senza motivo: le tredici
-`stopCamera()` (alcune difendono dalla "fotocamera incantata", si
-sfoltiscono solo con un test a fake camera) e i `onclick =` singoli (un
-listener delegato sarebbe stile, non sostanza).
+- **I clic sono azioni dichiarate** (`data-azione` nell'HTML, funzione con
+  lo stesso nome in `AZIONI`, un solo listener delegato — vedi
+  `docs/STATO.md`): fatto il 2026-09-18 su richiesta del committente, via
+  tutti i 45 `onclick =`. Un bottone nuovo si aggiunge scrivendo
+  `data-azione` nel markup e la funzione in `AZIONI`, mai `x.onclick = …`.
+
+Rimaste fuori di proposito, da non "sistemare" senza motivo, e riconfermate
+dal committente il 2026-09-18 ("che non si sa mai"): le sedici chiamate a
+`stopCamera()`. Alcune difendono dalla "fotocamera incantata" (video
+congelato o bottone disabilitato tornando su "Foto"); non si sa quali sono
+essenziali e quali ridondanti, e il bug si vede solo con una fotocamera
+vera. Si sfoltiscono solo con un test Playwright a fake camera
+(`--use-fake-device-for-media-stream`) che ripercorra Foto → Traccia → Foto,
+cambio scheda e apertura/chiusura dello scambio.
 
 ## Perché nessuna identità dei giocatori, per ora
 
