@@ -82,8 +82,9 @@ sempre (nessun database, vedi `memory.md`).
   gli elementi SVG del grafo (`dataset` funziona anche lì). I campi di testo
   e le spunte restano con `oninput`/`onchange` propri: hanno bisogno del nodo
   che stanno modificando, non di un nome.
-- Le Impostazioni del giocatore contengono le **Istruzioni** in un
-  `<details>` nativo chiuso di default (testo statico, il JS non lo tocca).
+- Le **Istruzioni** per il giocatore sono un pannello a sé (`#p-help`,
+  `data-sub="istruzioni"`), aperto dal bottone "❓" accanto a ⚙️ nella barra
+  dentro "Cerca": testo statico, il JS non lo tocca.
 
 ## Modalità giocatore (indirizzo normale, senza `#`)
 

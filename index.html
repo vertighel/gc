@@ -84,6 +84,7 @@
   #view-player:not([data-tab="cerca"]) #tab-cerca, #view-player:not([data-tab="oggetti"]) #tab-oggetti,
   #view-player:not([data-sub="indizio"]) #sub-indizio, #view-player:not([data-sub="foto"]) #sub-foto,
   #view-player:not([data-sub="messaggi"]) #p-inbox, #view-player:not([data-sub="impostazioni"]) #p-settings,
+  #view-player:not([data-sub="istruzioni"]) #p-help,
   #view-player:not([data-sub="festa"]) #p-reward, #view-player[data-sub="festa"] #p-news { display: none; }
   /* Stato della caccia: data-stato = vuoto (nessuna caccia) / fine (niente da fotografare) /
      gioco; data-prova (modalità di prova o bozza); data-fine = tutto / manca. */
@@ -110,16 +111,19 @@
   }
   .ptab[aria-current="true"] { color: var(--testo-su-acceso); background: var(--acceso); }
 
-  /* Quattro bottoni DENTRO "Cerca": Indizio/Foto (due viste, una attiva alla volta —
-     vedi mostraSubTab()) più Messaggi/Impostazioni (due azioni che aprono un pannello
-     sopra tutto, non due viste in più: non prendono mai lo stato "attivo"). */
-  .subtabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  /* Cinque bottoni DENTRO "Cerca": Traccia/Foto (due viste, una attiva alla volta —
+     vedi mostraSubTab()) più Messaggi/Impostazioni/Istruzioni (tre azioni che aprono
+     un pannello sopra tutto, non viste in più: non prendono mai lo stato "attivo"). */
+  .subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  /* Con tre bottoni-icona, a 360px ai due di testo restano ~85px: padding stretto e
+     niente a capo, così "👾 Traccia" resta su una riga e la barra non si sbilancia. */
   .subtab {
     flex: 1; appearance: none; border: 1.5px solid var(--bordo-superficie); background: transparent; color: var(--testo-chiaro);
-    border-radius: 8px; padding: 10px; font: 600 16px/1 var(--display); cursor: pointer;
+    border-radius: 8px; padding: 10px 4px; font: 600 16px/1 var(--display); cursor: pointer; white-space: nowrap; min-width: 0;
   }
   .subtab[aria-current="true"], .todo button[aria-current="true"] { background: var(--acceso); border-color: var(--acceso); color: var(--testo-su-acceso); }
-  .subtab.icon { flex: 0 0 auto; width: 46px; padding: 10px 0; position: relative; font-size: 18px; }
+  .subtab.icon { flex: 0 0 auto; width: 44px; padding: 10px 0; position: relative; font-size: 18px; }
+  @media (max-width: 349px) { .subtab { font-size: 13px; } .subtab.icon { width: 40px; font-size: 16px; } } /* iPhone SE di prima generazione e simili */
   .subtab.icon .badge {
     position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 3px;
     border-radius: 8px; background: var(--rosso); color: #fff; font: 700 11px/16px var(--display);
@@ -135,11 +139,9 @@
   .inbox li:first-child { border-top: none; }
   .inbox .when { display: block; font-size: 13px; color: #93A9C2; margin-bottom: 2px; }
   .inbox li.unread .when::before { content: "● "; color: var(--rosso); }
-  /* Istruzioni in "Impostazioni": <details> nativo chiuso di default. Le regole
-     .inbox li/ul (righe dei messaggi) non devono valere per questo elenco. */
-  .istruzioni { margin: 0 0 12px; font-size: 15px; line-height: 1.45; color: #93A9C2; }
-  .istruzioni summary { cursor: pointer; font: 600 17px/1.2 var(--display); color: var(--testo-chiaro); padding: 6px 0; }
-  .istruzioni[open] summary { margin-bottom: 6px; }
+  /* Pannello "Istruzioni" (#p-help): stesso riquadro di Messaggi/Impostazioni, ma le
+     regole .inbox li/ul (righe dei messaggi) non devono valere per questo elenco. */
+  .istruzioni { font-size: 15px; line-height: 1.45; color: #93A9C2; }
   .istruzioni p { margin: 0 0 8px; }
   .istruzioni ol { margin: 0 0 8px; padding: 0 0 0 20px; }
   .istruzioni li { padding: 0 0 6px; border-top: none; }
@@ -414,7 +416,7 @@
      ".todo .todo-action", non ".todo-action": deve battere ".todo button" qui sopra
      (stessa specificità), che altrimenti impone flex: 1 / width: auto e il suo
      padding — era così che il bottone finiva largo metà riga. */
-  .todo .todo-action { width: auto; aspect-ratio: 1; padding: 0; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
+  .todo .todo-action { width: auto; aspect-ratio: 1; padding: 0 1em; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
   #m-cfg-summary { cursor: pointer; color: var(--grigio); text-decoration: underline; padding: 8px 0; }
@@ -471,7 +473,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 61)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 62)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -504,6 +506,7 @@
             ✉️<span id="p-inbox-badge" class="badge" hidden>0</span>
           </button>
           <button id="sub-settings-btn" class="subtab icon" aria-label="Impostazioni" data-azione="sub" data-sub="impostazioni">⚙️</button>
+          <button id="sub-help-btn" class="subtab icon" aria-label="Istruzioni" data-azione="sub" data-sub="istruzioni">❓</button>
         </div>
 
         <div id="p-reward" class="reward">
@@ -556,70 +559,72 @@
 
         <div id="p-settings" class="inbox">
           <h2>Impostazioni</h2>
-          <!-- Istruzioni per il giocatore: <details> nativo, chiuso di default così il
-               pannello resta corto. Tutto testo statico, il JS non lo tocca. -->
-          <details class="istruzioni">
-            <summary>Istruzioni</summary>
-            <p>In basso hai due schede: <b>🔍 Cerca</b> per trovare
-            gli oggetti, <b>💽 Memoria</b> per rivedere quelli
-            trovati.</p>
-            <ol>
-              <li><b>👾 Traccia</b> mostra l'indizio dell'oggetto da
-              cercare (testo e, a volte, una foto). Sotto c'è l'elenco
-              di tutto ciò che puoi cercare adesso: toccane uno per
-              sceglierlo.</li>
-
-              <li>Trovato l'oggetto, vai in <b>📷 Foto</b>,
-              tocca <b>Attiva la fotocamera</b>, inquadralo per intero
-              e premi <b>Scatta e verifica</b>. Il riconoscimento
-              avviene sul tuo telefono: la foto non esce da qui. Se la
-              tappa chiede anche la posizione, il GPS viene
-              controllato solo dopo che la foto è valida: accendilo e
-              resta vicino all'oggetto. Servono i permessi di
-              fotocamera e posizione.</li>
-
-              <li>In <b>💽 Memoria</b> tocca una riga per rivedere
-              foto e messaggio. Alcuni oggetti si possono condividere:
-              con <b>🔄</b> (scambia) lo trasferisci, e scomparirà
-              dalla tua Memoria, con <b>👥</b> duplichi una copia
-              identica. Un oggetto con 🎟️ è diverso per ogni giocatore:
-              puoi duplicare una copia diversa.</li>
-
-              <li>Per passarlo: tu premi 🔄 o 👥 in Memoria; chi
-              riceve apre <b>📷 Foto</b>, attiva la fotocamera e
-              inquadra il tuo schermo. Poi mettete i telefoni schermo
-              contro schermo: le fotocamere anteriori si leggono a
-              vicenda. Aspettate <b>Fatto!</b>: chi riceve vede una
-              schermata verde con un codice e la tiene in vista finché
-              l'altro telefono non ha finito. Se il tuo telefono dice
-              «Non ho letto la conferma», guarda l'altro schermo:
-              rispondi <b>Sì</b> solo se è verde e mostra lo stesso
-              codice.</li>
-
-              <li>Per riceverlo: apri <b>📷 Foto</b>, attiva la
-              fotocamera e inquadra il QR nell'altro schermo. Dopo
-              pochi istanti si aprirà la camera anteriore. Metti i
-              telefoni schermo contro schermo: le fotocamere anteriori
-              si leggono a vicenda. Aspettate <b>Fatto!</b>: chi
-              riceve vede una schermata verde con un codice e la tiene
-              in vista finché l'altro telefono non ha finito. Se il
-              tuo telefono dice «Non ho letto la conferma», guarda
-              l'altro schermo: rispondi <b>Sì</b> solo se è verde e
-              mostra lo stesso codice.</li>
-
-              <li><b>✉️</b> sono i messaggi del master: si scaricano a
-                ogni apertura dell'app.</li>
-
-              <li><b>⚙️</b> sono queste impostazioni: <b>Cambia
-              caccia</b> torna alla scelta della caccia; <b>Ricomincia
-              la caccia</b> cancella la Memoria e i progressi di
-              questa caccia su questo telefono.</li>
-            </ol>
-            <p>Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra bloccato, ricarica la pagina. Il numero di versione nel banner di avvio ti dice se hai l'ultima versione.</p>
-          </details>
           <button id="p-change-hunt" class="btn" data-azione="cambia-caccia">Cambia caccia</button>
           <button id="p-reset" class="btn" data-azione="ricomincia">Ricomincia la caccia</button>
           <button id="p-settings-close" class="link" data-azione="sub" data-sub="indizio">Chiudi</button>
+        </div>
+
+        <!-- Istruzioni per il giocatore: pannello a sé, aperto dal bottone "❓" (data-sub
+             "istruzioni", come Messaggi e Impostazioni). Testo statico, il JS non lo tocca. -->
+        <div id="p-help" class="inbox istruzioni">
+          <h2>Istruzioni</h2>
+          <p>In basso hai due schede: <b>🔍 Cerca</b> per trovare
+          gli oggetti, <b>💽 Memoria</b> per rivedere quelli
+          trovati.</p>
+          <ol>
+            <li><b>👾 Traccia</b> mostra l'indizio dell'oggetto da
+            cercare (testo e, a volte, una foto). Sotto c'è l'elenco
+            di tutto ciò che puoi cercare adesso: toccane uno per
+            sceglierlo.</li>
+
+            <li>Trovato l'oggetto, vai in <b>📷 Foto</b>,
+            tocca <b>Attiva la fotocamera</b>, inquadralo per intero
+            e premi <b>Scatta e verifica</b>. Il riconoscimento
+            avviene sul tuo telefono: la foto non esce da qui. Se la
+            tappa chiede anche la posizione, il GPS viene
+            controllato solo dopo che la foto è valida: accendilo e
+            resta vicino all'oggetto. Servono i permessi di
+            fotocamera e posizione.</li>
+
+            <li>In <b>💽 Memoria</b> tocca una riga per rivedere
+            foto e messaggio. Alcuni oggetti si possono condividere:
+            con <b>🔄</b> (scambia) lo trasferisci, e scomparirà
+            dalla tua Memoria, con <b>👥</b> duplichi una copia
+            identica. Un oggetto con 🎟️ è diverso per ogni giocatore:
+            puoi duplicare una copia diversa.</li>
+
+            <li>Per passarlo: tu premi 🔄 o 👥 in Memoria; chi
+            riceve apre <b>📷 Foto</b>, attiva la fotocamera e
+            inquadra il tuo schermo. Poi mettete i telefoni schermo
+            contro schermo: le fotocamere anteriori si leggono a
+            vicenda. Aspettate <b>Fatto!</b>: chi riceve vede una
+            schermata verde con un codice e la tiene in vista finché
+            l'altro telefono non ha finito. Se il tuo telefono dice
+            «Non ho letto la conferma», guarda l'altro schermo:
+            rispondi <b>Sì</b> solo se è verde e mostra lo stesso
+            codice.</li>
+
+            <li>Per riceverlo: apri <b>📷 Foto</b>, attiva la
+            fotocamera e inquadra il QR nell'altro schermo. Dopo
+            pochi istanti si aprirà la camera anteriore. Metti i
+            telefoni schermo contro schermo: le fotocamere anteriori
+            si leggono a vicenda. Aspettate <b>Fatto!</b>: chi
+            riceve vede una schermata verde con un codice e la tiene
+            in vista finché l'altro telefono non ha finito. Se il
+            tuo telefono dice «Non ho letto la conferma», guarda
+            l'altro schermo: rispondi <b>Sì</b> solo se è verde e
+            mostra lo stesso codice.</li>
+
+            <li><b>✉️</b> sono i messaggi del master: si scaricano a
+              ogni apertura dell'app.</li>
+
+            <li><b>⚙️</b> sono le impostazioni: <b>Cambia
+            caccia</b> torna alla scelta della caccia; <b>Ricomincia
+            la caccia</b> cancella la Memoria e i progressi di
+            questa caccia su questo telefono.</li>
+          </ol>
+          <p>Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra bloccato, ricarica la pagina. Il numero di versione nel banner di avvio ti dice se hai l'ultima versione.</p>
+          <button id="p-help-close" class="link" data-azione="sub" data-sub="indizio">Chiudi</button>
         </div>
       </div>
 
@@ -2095,7 +2100,7 @@ function mostraSubTab(sub) {
   subTabAttivo = sub;
   if (sub !== "foto") stopCamera();
   $("view-player").dataset.sub = sub; // scelta esplicita di scheda: anche la festa (sub "festa") finisce qui
-  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni" }, sub);
+  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni", "sub-help-btn": "istruzioni" }, sub);
   if (sub === "foto") {
     // .disabled non si azzera da solo lasciando "Foto" (cameraButton() lo rimette a
     // true solo sull'errore): senza questa riga, tornando qui il bottone "Attiva la
@@ -2572,7 +2577,7 @@ function showReward(nuovi, st) {
   // sceglie di nuovo solo quando si è pronti per il prossimo oggetto.
   subTabAttivo = "indizio";
   $("view-player").dataset.sub = "festa"; // il CSS nasconde le altre schede e le novità
-  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni" }, "");
+  segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni", "sub-help-btn": "istruzioni" }, "");
   const wrap = $("p-reward-list");
   wrap.replaceChildren();
   for (const n of nuovi) {
