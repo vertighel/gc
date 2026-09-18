@@ -412,11 +412,13 @@
   .istanza-tua { font-size: 12px; opacity: .8; margin-left: 4px; }
   /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
      principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
-     validi. Quadrato, tocco comodo, stessa altezza della riga (vedi .todo li).
-     ".todo .todo-action", non ".todo-action": deve battere ".todo button" qui sopra
-     (stessa specificità), che altrimenti impone flex: 1 / width: auto e il suo
-     padding — era così che il bottone finiva largo metà riga. */
-  .todo .todo-action { width: auto; aspect-ratio: 1; padding: 0 1em; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
+     validi. Quadrato, tocco comodo, alto quanto una riga NORMALE (miniatura 40px +
+     padding 12px + bordo 1.5px del bottone principale) e centrato: su una riga più
+     alta (istanza con il badge sotto il nome) non cresce con lei — altrimenti il
+     quadrato si allargava. ".todo .todo-action", non ".todo-action": deve battere
+     ".todo button" qui sopra (stessa specificità), che altrimenti impone flex: 1 /
+     width: auto e il suo padding — era così che il bottone finiva largo metà riga. */
+  .todo .todo-action { align-self: center; height: calc(40px + 2 * 12px + 2 * 1.5px); width: auto; aspect-ratio: 1; padding: 0; font-size: 20px; background: var(--superficie); color: var(--testo-chiaro); border: 1.5px solid var(--bordo-superficie); border-radius: 8px; cursor: pointer; }
   .reward .btn { margin-top: 18px; }
   #m-cfg { margin-top: 14px; }
   #m-cfg-summary { cursor: pointer; color: var(--grigio); text-decoration: underline; padding: 8px 0; }
@@ -473,7 +475,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 62)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 63)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
