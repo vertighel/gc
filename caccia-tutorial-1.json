@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-18T15:15:44.149Z",
+  "creato": "2026-09-18T15:19:02.905Z",
   "nodi": {
     "nmu73ew4f7h6": {
       "nome": "sapore",
@@ -142,7 +142,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmu73hd9cx5c"
+      ]
     },
     "nmu73fkfaty2": {
       "nome": "osservare",
@@ -284,7 +286,10 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmu73hqfx841",
+        "nmu73i4tfk66"
+      ]
     },
     "nmu73gjiid12": {
       "nome": "gusto",
@@ -568,7 +573,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmu73gjiid12"
+      ]
     },
     "nmu73hqfx841": {
       "nome": "vista",
