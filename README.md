@@ -1,14 +1,31 @@
-# gc — Caccia al tesoro a Genova / Treasure hunt in Genoa
+# gc — Percorsi di riconoscimento visivo sul campo / Field visual-recognition paths
 
 🇮🇹 [Italiano](#italiano) · 🇬🇧 [English](#english)
 
 # Italiano
 
-Una caccia al tesoro fra amici per le vie di Genova: si cercano oggetti reali, li si inquadra col telefono e il riconoscimento immagini, eseguito interamente nel browser, conferma se è quello giusto. Gioco: <https://vertighel.github.io/gc/> — pannello del master: <https://vertighel.github.io/gc/#master>.
+**Un sistema per percorsi di riconoscimento visivo sul campo, eseguito interamente nel browser.** Un curatore registra elementi fisici di un territorio; i partecipanti li individuano e li verificano con la fotocamera del proprio dispositivo. Gli elementi sono organizzati in un grafo diretto aciclico di prerequisiti, e fra dispositivi sono possibili operazioni di trasferimento e replica realizzate con un protocollo ottico fra pari, senza server. Non esistono identità, database né trasmissione di immagini: l'intero stato risiede sul dispositivo.
+
+Istanza pubblica: <https://vertighel.github.io/gc/> — pannello del curatore: <https://vertighel.github.io/gc/#master>.
+
+Il sistema è composto da quattro strati.
+
+1. **Verifica.** Ogni elemento è descritto da un insieme di riferimenti acquisiti sul posto dal curatore: embedding visivi dell'elemento (positivi), embedding dell'ambiente circostante (negativi) e posizione geografica. La verifica del partecipante è un confronto di similarità fra l'embedding dell'inquadratura e quei riferimenti, con una soglia calibrata automaticamente all'acquisizione: riconoscimento di *istanze* visive, a una classe per volta, senza addestramento e senza dataset. Un secondo fattore opzionale è la prossimità geografica (entro un raggio dal punto registrato), controllata dopo la verifica visiva.
+2. **Progressione.** Gli elementi formano un grafo diretto aciclico; gli archi sono prerequisiti in AND. Un elemento si acquisisce per *verifica* (fotocamera, più eventualmente posizione) o per *derivazione*, automaticamente, quando tutti i suoi prerequisiti sono soddisfatti. A ogni elemento sono associati un testo visibile prima dell'acquisizione (traccia) e uno dopo (contenuto di sblocco); il curatore dispone inoltre di un canale di annunci e può pubblicare più percorsi indipendenti dallo stesso sito.
+3. **Interazione fra dispositivi.** Sugli elementi derivati sono definite tre operazioni: *trasferimento* esclusivo (l'elemento si sposta da un dispositivo all'altro), *replica* (copia identica, non esclusiva) e *replica a istanze* (ogni dispositivo può produrre un solo token univoco dell'elemento, e può replicare quelli ricevuti). Un arco può richiedere "almeno N istanze distinte": poiché nessun dispositivo ne produce due, il vincolo è soddisfacibile solo cooperando. Le operazioni avvengono su un canale ottico bidirezionale — i due dispositivi si leggono a vicenda un codice QR con le fotocamere anteriori — con un protocollo di commit asimmetrico e senza terze parti.
+4. **Autoria e distribuzione.** Il curatore acquisisce i riferimenti sul campo, modifica il grafo (con controllo di aciclicità) e pubblica; il tutto da un pannello nello stesso file. L'applicazione è un unico file HTML su hosting statico; i dati pubblicati sono file JSON in sola lettura, scritti dal curatore tramite l'API di GitHub e scaricati dai partecipanti a ogni avvio. Lo stato di ciascun partecipante risiede esclusivamente nel suo dispositivo.
+
+**Cosa distingue questo progetto**
+
+- **Riconoscimento senza infrastruttura né addestramento.** Il modello (MobileNet v3 via MediaPipe) gira nel browser; ogni elemento nasce da una cattura di pochi secondi sul posto, con soglia calibrata automaticamente contro l'ambiente circostante. Nessuna immagine dei partecipanti lascia mai il dispositivo: la verifica avviene in locale e in rete circolano solo vettori quantizzati del curatore.
+- **Cooperazione obbligata senza identità.** L'unicità della produzione delle istanze — un token per dispositivo — rende alcuni elementi ottenibili solo incontrando altri partecipanti, senza che il sistema sappia chi è chi: nessun account, nessun database, nessun tracciamento.
+- **Commit fra pari su canale ottico.** Il trasferimento fra due dispositivi è un'istanza del Problema dei Due Generali, che non ha soluzione perfetta senza arbitro. Il protocollo non finge di risolverlo: è asimmetrico (il ricevente scrive per primo, il cedente cancella solo dopo aver letto la prova) e sceglie l'errore residuo — la duplicazione resta possibile in un caso preciso, la perdita è impossibile per costruzione. La freschezza si misura con contatori locali crescenti, mai confrontando gli orologi.
+- **Zero infrastruttura.** Un solo file, nessun build, nessun server applicativo: la pubblicazione è un `git push`, il "database" sono due file JSON, e il sistema funziona offline con l'ultima copia scaricata.
+- **Dichiarativo fino all'interfaccia.** Il markup è HTML nativo (`<template>`, `<dialog>`, `<details>`), lo stato visibile è un attributo `data-*` letto dal CSS, i clic sono azioni dichiarate nell'HTML e risolte da un unico listener: il file si legge senza seguire il JavaScript.
 
 ## Sommario
 
-- [Cos'è](#cosè)
+- [Caso d'uso: la caccia al tesoro](#caso-duso-la-caccia-al-tesoro)
 - [Come si gioca](#come-si-gioca)
 - [Il master: creare una caccia](#il-master-creare-una-caccia)
 - [Struttura del progetto](#struttura-del-progetto)
@@ -20,9 +37,11 @@ Una caccia al tesoro fra amici per le vie di Genova: si cercano oggetti reali, l
 - [Limiti noti e roadmap](#limiti-noti-e-roadmap)
 - [Screenshot](#screenshot)
 
-## Cos'è
+## Caso d'uso: la caccia al tesoro
 
-Un gioco per meno di dieci persone, tutte amiche di chi lo organizza (il *master*). Il master gira per la città, fotografa oggetti reali (portoni, maniglie, orologi, cartelli…) e li collega fra loro in una trama. I giocatori aprono un indirizzo web sul telefono, leggono l'indizio, cercano l'oggetto e lo inquadrano: il riconoscimento avviene sul telefono stesso, confrontando *embedding* calcolati nel browser — nessuna foto lascia mai il dispositivo. Una tappa può anche richiedere di trovarsi entro 100 m dal punto in cui il master ha registrato l'oggetto (GPS, controllato solo dopo che la foto è valida).
+L'istanza pubblica del sistema è una caccia al tesoro per le vie di Genova: un gioco per meno di dieci persone, tutte amiche di chi lo organizza (il *master*, cioè il curatore). Nel resto di questo documento si usa il lessico del gioco — caccia, giocatore, master, oggetto, regalo, bottino — perché è quello dell'interfaccia.
+
+Il master gira per la città, fotografa oggetti reali (portoni, maniglie, orologi, cartelli…) e li collega fra loro in una trama. I giocatori aprono un indirizzo web sul telefono, leggono l'indizio, cercano l'oggetto e lo inquadrano: il riconoscimento avviene sul telefono stesso, confrontando *embedding* calcolati nel browser — nessuna foto lascia mai il dispositivo. Una tappa può anche richiedere di trovarsi entro 100 m dal punto in cui il master ha registrato l'oggetto (GPS, controllato solo dopo che la foto è valida).
 
 Trovare un oggetto può sbloccare dei *regali*: elementi che si ottengono da soli quando i loro prerequisiti sono soddisfatti. Un regalo può essere **scambiabile** (passa a un amico, chi lo cede lo perde), **duplicabile** (l'amico riceve una copia) o **a istanze** (ogni telefono ne produce una copia diversa, e un altro elemento può richiederne "almeno N diverse": l'unico modo per averle è incontrare altri giocatori). Il passaggio avviene telefono-a-telefono, leggendosi a vicenda un QR con le fotocamere anteriori, senza server. Il master può inoltre inviare messaggi a tutti i giocatori.
 
@@ -186,11 +205,28 @@ Pannello `#master`: menu delle cacce, registrazione di un nuovo elemento (Oggett
 
 # English
 
-A treasure hunt among friends in Genoa: real objects, recognised by your phone's camera entirely in the browser, with gifts you can pass from phone to phone via QR codes and no server. Play at [https://vertighel.github.io/gc/](https://vertighel.github.io/gc/); the master panel is at [https://vertighel.github.io/gc/#master](https://vertighel.github.io/gc/#master).
+**A system for field visual-recognition paths, running entirely in the browser.** A curator records physical elements of a territory; participants locate them and verify them with the camera of their own device. Elements are organised in a directed acyclic graph of prerequisites, and transfer and replication operations between devices are carried out by a peer-to-peer optical protocol, with no server. There are no identities, no database and no image transmission: the whole state lives on the device.
+
+Public instance: <https://vertighel.github.io/gc/> — curator panel: <https://vertighel.github.io/gc/#master>.
+
+The system has four layers.
+
+1. **Verification.** Each element is described by a set of references acquired on site by the curator: visual embeddings of the element (positives), embeddings of its surroundings (negatives) and a geographic position. A participant's verification is a similarity comparison between the embedding of the current frame and those references, with a threshold calibrated automatically at acquisition time: visual *instance* recognition, one class at a time, with no training and no dataset. An optional second factor is geographic proximity (within a radius of the recorded point), checked after the visual verification.
+2. **Progression.** Elements form a directed acyclic graph; edges are AND prerequisites. An element is acquired by *verification* (camera, plus optionally position) or by *derivation*, automatically, once all its prerequisites are satisfied. Each element carries a text shown before acquisition (trail) and one shown after (unlock content); the curator also has a broadcast channel and can publish several independent paths from the same site.
+3. **Interaction between devices.** Three operations are defined on derived elements: exclusive *transfer* (the element moves from one device to another), *replication* (an identical, non-exclusive copy) and *instanced replication* (each device can produce a single unique token of the element, and can replicate the ones it has received). An edge can require "at least N distinct instances": since no device produces two, the constraint can only be met by cooperating. The operations run over a bidirectional optical channel — the two devices read each other's QR code with their front cameras — with an asymmetric commit protocol and no third party.
+4. **Authoring and distribution.** The curator acquires references in the field, edits the graph (with an acyclicity check) and publishes, all from a panel in the same file. The application is a single HTML file on static hosting; published data are read-only JSON files, written by the curator through the GitHub API and downloaded by participants at every start. Each participant's state lives only on their device.
+
+**What sets this project apart**
+
+- **Recognition with no infrastructure and no training.** The model (MobileNet v3 via MediaPipe) runs in the browser; every element is born from a few seconds of capture on site, with a threshold calibrated automatically against the surroundings. No participant image ever leaves the device: verification is local, and only the curator's quantised vectors travel over the network.
+- **Forced cooperation without identity.** The uniqueness of instance production — one token per device — makes some elements obtainable only by meeting other participants, without the system knowing who is who: no accounts, no database, no tracking.
+- **Peer-to-peer commit over an optical channel.** A transfer between two devices is an instance of the Two Generals Problem, which has no perfect solution without an arbiter. The protocol does not pretend to solve it: it is asymmetric (the receiver writes first, the giver deletes only after reading the proof) and chooses the residual error — duplication remains possible in one precise case, loss is impossible by construction. Freshness comes from local increasing counters, never from comparing clocks.
+- **Zero infrastructure.** One file, no build, no application server: deployment is a `git push`, the "database" is two JSON files, and the system works offline with the last downloaded copy.
+- **Declarative down to the UI.** The markup is native HTML (`<template>`, `<dialog>`, `<details>`), visible state is a `data-*` attribute read by CSS, clicks are actions declared in the HTML and dispatched by a single listener: the file can be read without following the JavaScript.
 
 ## Contents
 
-- [What it is](#what-it-is)
+- [Use case: a treasure hunt](#use-case-a-treasure-hunt)
 - [How to play](#how-to-play)
 - [The master: creating a hunt](#the-master-creating-a-hunt)
 - [Project structure](#project-structure)
@@ -202,9 +238,11 @@ A treasure hunt among friends in Genoa: real objects, recognised by your phone's
 - [Known limits and roadmap](#known-limits-and-roadmap)
 - [Screenshots](#screenshots)
 
-## What it is
+## Use case: a treasure hunt
 
-A game for fewer than 10 players, all friends. The master walks around Genoa and records real objects (doors, handles, clocks, signs...) with the phone camera. Players then go looking for them: when they think they have found one, they frame it with their phone and an image-recognition model running **entirely in the browser** confirms whether it is the right object. A step can also require the player to be within 100 m of the GPS position the master recorded. Some nodes are "gifts" that unlock automatically once their prerequisites are met; a gift can be marked as swappable (it moves from one phone to another), duplicable (a copy is shared, the giver keeps it) or "instanced" (each phone produces its own unique copy, and another node can require several different ones, which forces players to meet). The master can also broadcast messages that every player downloads when opening the app. Photos never leave the phone; nothing is sent to any server other than the static files on GitHub Pages.
+The public instance of the system is a treasure hunt through the streets of Genoa: a game for fewer than 10 players, all friends of the organiser (the *master*, i.e. the curator). The rest of this document uses the game's vocabulary — hunt, player, master, object, gift, loot — because it is the vocabulary of the interface.
+
+The master walks around Genoa and records real objects (doors, handles, clocks, signs...) with the phone camera. Players then go looking for them: when they think they have found one, they frame it with their phone and an image-recognition model running **entirely in the browser** confirms whether it is the right object. A step can also require the player to be within 100 m of the GPS position the master recorded. Some nodes are "gifts" that unlock automatically once their prerequisites are met; a gift can be marked as swappable (it moves from one phone to another), duplicable (a copy is shared, the giver keeps it) or "instanced" (each phone produces its own unique copy, and another node can require several different ones, which forces players to meet). The master can also broadcast messages that every player downloads when opening the app. Photos never leave the phone; nothing is sent to any server other than the static files on GitHub Pages.
 
 ## How to play
 
