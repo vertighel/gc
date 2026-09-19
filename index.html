@@ -260,6 +260,7 @@
   #p-scambio:is([data-ruolo="ricevente"], [data-ruolo="baratto"]) #p-scambio-qr { order: 1; }
   #p-scambio > .status, #p-scambio > #p-scambio-domanda, #p-scambio > .btnrow { order: 3; } /* più specifici di "#p-scambio > p" */
   #p-scambio-errore:empty { display: none; }
+  #p-scambio-diag { font: 12px/1.3 ui-monospace, monospace; color: var(--giallo); text-align: left; white-space: pre-wrap; word-break: break-all; margin-top: 6px; }
   /* Solo l'anteprima mostrata a schermo: il fotogramma vero letto da jsQR arriva dal
      <video> sorgente, non da questo rendering, quindi specchiarla non tocca la
      lettura del QR — serve solo a rendere intuitivo allineare i due telefoni a mano
@@ -509,7 +510,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 71)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 72)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -749,6 +750,9 @@
         <span class="se-fase-incerto">Non ho letto la conferma, ma se il tuo amico vede la schermata verde con il codice <span class="codice"></span> ha ricevuto la copia lo stesso.</span>
       </p>
       <p id="p-scambio-errore" class="status" role="alert"></p>
+      <!-- Diagnostica sul campo (solo con "?diag" nell'indirizzo, vedi inDiag): cosa legge
+           la fotocamera a ogni giro e perché viene scartato. -->
+      <p id="p-scambio-diag" class="status diag" hidden></p>
       <!-- Fallback umano per l'ultimo messaggio (vedi scambioDomanda()): compare solo sul
            cedente di uno "scambio", quando la lettura automatica non ha ancora visto la
            conferma finale ma il ricevente potrebbe già aver scritto. La fotocamera resta
@@ -1014,6 +1018,8 @@ function activeSlug() {
 // inProva() (stesso banner giallo, vedi renderPlayer), ma quello è istantaneo e locale
 // a QUESTO telefono, questo è un fetch vero e funziona ovunque.
 const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
+// "?diag" nell'indirizzo: riga di diagnostica nella schermata di scambio (vedi diagScambio).
+const inDiag = () => location.search.includes("diag");
 
 // L'unico modo di leggere un file JSON pubblicato accanto a index.html (caccia*.json,
 // lavoro*.json, messaggi.json, cacce.json): sempre senza cache, con i tre esiti che
@@ -2943,6 +2949,7 @@ function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
   for (const el of $("p-scambio").querySelectorAll(".k")) el.textContent = String(QR_K);
   $("p-scambio-codice").textContent = codiceScambio();
   setStatus($("p-scambio-errore"), "");
+  $("p-scambio-diag").hidden = true; $("p-scambio-diag").textContent = "";
   avviaScambioFotocamera();
 }
 
@@ -2997,11 +3004,12 @@ async function scambioTickCorpo() {
 
   let testo;
   try { testo = await leggiQr($("p-scambio-video")); }
-  catch { testo = null; }
+  catch (e) { testo = null; diagScambio("errore lettura: " + (e && e.message)); }
   if (!scambio || scambio.committed) return; // può essere stato chiuso durante l'"await" sopra
 
   if (testo) {
     const dati = decodificaQr(testo);
+    diagScambio("letto " + testo + " → " + (dati ? (dati.errore || (dati.sessionId === scambio.sessionId ? "ok" : "altra sessione")) : "non gc1"));
     // "mioId" scarta un fotogramma che risultasse essere il proprio invece che
     // quello dell'altro (es. un riflesso sul vetro dell'altro schermo) — vedi
     // apriScambio(). sessionId/tipo/nodo da soli non basterebbero, sono identici
@@ -3042,7 +3050,7 @@ async function scambioTickCorpo() {
   if (!scambio || scambio.committed) return; // può essere stato chiuso durante gli "await" sopra
 
   if (scrivo) { scambioRiuscito(); return; }
-  aggiornaStatoScambio();
+  aggiornaStatoScambio(); diagScambio();
 
   if (scambio.ruolo === "cedente" && !scambio.domanda) {
     // Il fallback umano non compare mai prima di QR_DOMANDA_MIN_MS dal tocco, e mai
@@ -3076,11 +3084,12 @@ async function barattoTickCorpo() {
 
   let testo;
   try { testo = await leggiQr($("p-scambio-video")); }
-  catch { testo = null; }
+  catch (e) { testo = null; diagScambio("errore lettura: " + (e && e.message)); }
   if (!scambio || scambio.committed) return;
 
   if (testo) {
     const d = decodificaQr(testo);
+    diagScambio("letto " + testo + " → " + (!d ? "non gc1" : d.errore ? d.errore : d.tipo !== "baratto" ? "non è un baratto" : d.mioId === s.mioId ? "è il MIO (riflesso)" : s.theirId && d.mioId !== s.theirId ? "altro amico" : "ok"));
     // Il primo amico letto è quello con cui si baratta: gli altri (e i propri riflessi,
     // mioId) si ignorano da lì in poi.
     if (d && !d.errore && d.tipo === "baratto" && d.mioId !== s.mioId && (!s.theirId || d.mioId === s.theirId)) {
@@ -3122,7 +3131,7 @@ async function barattoTickCorpo() {
   // non deve contare fotogrammi crescenti per fallire.
   if (s.rifiuto) { clearInterval(s.timer); stopCamera(); $("p-scambio").dataset.fase = "rifiuto"; return; }
   if (cedo) { barattoRiuscito(); return; }
-  aggiornaStatoScambio();
+  aggiornaStatoScambio(); diagScambio();
 
   // Ho acquisito ma non leggo che l'amico ha acquisito: dopo un po' si chiede al giocatore
   // di guardare lo schermo dell'altro (stessi tempi della domanda del cedente).
@@ -3157,6 +3166,19 @@ function barattoRiuscito() {
   cedi(stato(), s.nodo, s.istanza);
   if (s.esito) s.esito.st = stato();
   $("p-scambio").dataset.fase = "fatto";
+}
+
+// Riga di diagnostica (solo con inDiag()): ultimo esito di lettura, contatori, dimensione
+// del video. Non tocca il protocollo.
+function diagScambio(msg) {
+  if (!inDiag() || !scambio) return;
+  const v = $("p-scambio-video"), el = $("p-scambio-diag");
+  scambio.diagGiri = (scambio.diagGiri || 0) + 1;
+  if (msg) scambio.diagUltimo = msg;
+  el.hidden = false;
+  el.textContent = `giri ${scambio.diagGiri} · video ${v.videoWidth}×${v.videoHeight}${v.paused ? " in pausa" : ""} · letture ${scambio.myReadCount} · ack ${scambio.theirAck}` +
+    (scambio.ruolo === "baratto" ? ` · amico ${scambio.theirId || "—"} · acq ${scambio.acquisito ? "sì" : "no"}/${scambio.theirAcquisito ? "sì" : "no"}` : "") +
+    `\n${scambio.diagUltimo || "nessuna lettura ancora"}`;
 }
 
 function aggiornaStatoScambio() {
