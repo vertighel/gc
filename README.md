@@ -52,6 +52,7 @@ Il sistema è composto da quattro strati.
 - [Caso d'uso: la caccia al tesoro](#caso-duso-la-caccia-al-tesoro)
 - [Come si gioca](#come-si-gioca)
 - [Il master: creare una caccia](#il-master-creare-una-caccia)
+- [Usare questo progetto per una caccia tua](#usare-questo-progetto-per-una-caccia-tua)
 - [Struttura del progetto](#struttura-del-progetto)
   - [Architettura](#architettura)
   - [Modello dati](#modello-dati)
@@ -102,6 +103,17 @@ Il pannello del master è lo stesso `index.html` aperto con `#master` in fondo a
 Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`: `GET` per lo sha corrente, `PUT` per scrivere, un tentativo in più su conflitto 409). Il pannello "Configura la pubblicazione su GitHub" salva utente, repository, ramo e un token *fine-grained* con permesso "Contents: Read and write" limitato a questo repository. Il token resta solo nel `localStorage` di quel telefono. I giocatori vedono il file aggiornato entro circa un minuto.
 
 **Più cacce.** Ogni caccia è un file a sé: `caccia.json` per quella di sempre, `caccia-<slug>.json` per le altre, elencate in `cacce.json`. Il giocatore che apre il link senza `#` sceglie da una lista e la scelta viene ricordata; un link diretto `#c-<slug>` salta la scelta e va dritto a quella caccia. I messaggi (`messaggi.json`) sono invece globali, condivisi da tutte le cacce.
+
+## Usare questo progetto per una caccia tua
+
+Non c'è nulla da installare né da configurare nel codice: basta una copia del repository su GitHub Pages.
+
+1. **Copia il repository** sul tuo account: "Use this template" (copia pulita) o un fork. Deve restare **pubblico**: GitHub Pages sui repository privati richiede un piano a pagamento.
+2. **Attiva GitHub Pages**: Settings → Pages → "Deploy from a branch", ramo `main`, cartella `/` (root). Dopo un minuto il gioco risponde a `https://<utente>.github.io/<repository>/`.
+3. **Togli le cacce di esempio** che arrivano con la copia: cancella `caccia-*.json` e `lavoro-*.json`, e svuota `cacce.json`, `lavori.json` e `messaggi.json` lasciando `[]`. `caccia.json` (la caccia di sempre) la sostituirai pubblicando la tua.
+4. **Configura il master**: apri `…/#master` sul telefono e, in "Configura la pubblicazione su GitHub", inserisci proprietario, repository, ramo e un token *fine-grained* (Settings → Developer settings → Personal access tokens) con il solo permesso "Contents: Read and write" limitato a quel repository. Il token resta nel `localStorage` di quel telefono: non finisce mai in un file.
+
+Da lì in poi vale tutto ciò che è scritto sopra: registri gli oggetti sul posto, li colleghi da un computer, provi con `#b`, pubblichi. Il riconoscimento, le librerie QR e il modello MediaPipe si caricano da CDN pubbliche, quindi non c'è altro da ospitare.
 
 ## Struttura del progetto
 
@@ -248,6 +260,7 @@ The system has four layers.
 - [Use case: a treasure hunt](#use-case-a-treasure-hunt)
 - [How to play](#how-to-play)
 - [The master: creating a hunt](#the-master-creating-a-hunt)
+- [Running your own hunt](#running-your-own-hunt)
 - [Project structure](#project-structure)
   - [Architecture](#architecture)
   - [Data model](#data-model)
@@ -324,6 +337,17 @@ At the bottom: **Pubblica** writes `caccia*.json` to GitHub (after `trovaCiclo()
 **Publishing through the GitHub API.** A `<details>` panel in the master page stores owner, repository, branch and a fine-grained personal access token (Contents: read and write, limited to this repository) in `localStorage` on the master's phone only. `ghPutFile()` does a `GET` on the Contents API to fetch the current `sha`, then a `PUT` with the new content; on a `409` conflict it re-reads the `sha` and retries once. The same function publishes the hunt, the server draft, `cacce.json` (updated by `registraCaccia()` on the first successful publish of a named hunt) and the messages. GitHub Pages serves the new file within about a minute.
 
 **Messages.** A textarea in the master page and "Pubblica messaggio": the message is appended to `messaggi.json` (`{ id, quando, testo }`), which is global to all hunts. Players see them in ✉️ with an unread badge; the read state is local to each phone.
+
+## Running your own hunt
+
+Nothing to install and nothing to configure in the code: a copy of the repository on GitHub Pages is enough.
+
+1. **Copy the repository** to your account ("Use this template" for a clean copy, or a fork). It must stay **public**: GitHub Pages on private repositories requires a paid plan.
+2. **Enable GitHub Pages**: Settings → Pages → "Deploy from a branch", branch `main`, folder `/` (root). A minute later the game answers at `https://<user>.github.io/<repository>/`.
+3. **Remove the sample hunts** that come with the copy: delete `caccia-*.json` and `lavoro-*.json`, and empty `cacce.json`, `lavori.json` and `messaggi.json` to `[]`. `caccia.json` (the default hunt) gets replaced when you publish yours.
+4. **Configure the master**: open `…/#master` on your phone and, under "Configura la pubblicazione su GitHub", enter owner, repository, branch and a *fine-grained* token (Settings → Developer settings → Personal access tokens) with the single permission "Contents: Read and write", limited to that repository. The token stays in that phone's `localStorage` and never ends up in a file.
+
+From there everything above applies: record objects on site, link them from a computer, test with `#b`, publish. Recognition, the QR libraries and the MediaPipe model load from public CDNs, so there is nothing else to host.
 
 ## Project structure
 
