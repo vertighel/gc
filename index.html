@@ -511,7 +511,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 74)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 75)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -689,8 +689,8 @@
             <li><b>⚙️</b> sono le impostazioni: <b>Prepara il
             telefono</b> chiede fotocamera e posizione e sblocca i
             suoni una volta sola, prima di partire; <b>Suoni</b>
-            accende i segnali durante uno scambio (bip gravi
-            continui = fermo, tre note che salgono = sta leggendo,
+            accende i segnali durante uno scambio (un bip grave ogni
+            mezzo secondo = fermo, tre note che salgono = sta leggendo,
             un "plin" = fatto); <b>Cambia
             caccia</b> torna alla scelta della caccia; <b>Ricomincia
             la caccia</b> cancella la Memoria e i progressi di
@@ -1113,8 +1113,8 @@ const store = {
 
 /* ---------- suoni dello scambio (Web Audio, nessun file, nessun permesso) ----------
    Tre segnali durante uno scambio/baratto, per non dover guardare lo schermo mentre si
-   tengono i telefoni allineati: FERMO (nessuna lettura nuova da SUONO_FERMO_MS: bip
-   continui a 200 Hz, 80 ms sì / 80 ms no), PROCEDE (una lettura valida dell'altro: 300,
+   tengono i telefoni allineati: FERMO (nessuna lettura nuova da SUONO_FERMO_MS: un bip
+   a 200 Hz di 80 ms ogni mezzo secondo, piano — era 80/80 ms ed era invadente), PROCEDE (una lettura valida dell'altro: 300,
    320, 340 Hz per la prima, seconda, terza), FATTO (un "plin"). Il contesto audio si
    sblocca solo dentro un tocco (regola dei browser mobili): lo fa il listener dei clic
    qui sotto. Se non è sbloccato, i suoni non si sentono e nient'altro cambia. Spunta
@@ -1138,7 +1138,7 @@ function bip(freq, ms, tipo = "sine", volume = 0.25) {
   g.gain.setValueAtTime(volume, t0 + ms / 1000 - 0.01); g.gain.linearRampToValueAtTime(0, t0 + ms / 1000);
   o.connect(g).connect(audioCtx.destination); o.start(t0); o.stop(t0 + ms / 1000 + 0.02);
 }
-function suonoProcede(n) { bip(300 + 20 * (Math.min(Math.max(n, 1), 3) - 1), 120); }
+function suonoProcede(n) { bip(300 + 20 * (Math.min(Math.max(n, 1), 3) - 1), 120, "sine", 0.35); }
 function suonoFatto() {
   if (!audioCtx || audioCtx.state !== "running" || !suoniAttivi()) return;
   const t0 = audioCtx.currentTime;
@@ -1149,7 +1149,7 @@ function suonoFatto() {
   }
 }
 function suonoFermo(acceso) {
-  if (acceso && !fermoTimer) fermoTimer = setInterval(() => bip(200, 80, "square", 0.12), 160);
+  if (acceso && !fermoTimer) fermoTimer = setInterval(() => bip(200, 80, "sine", 0.08), 500);
   if (!acceso && fermoTimer) { clearInterval(fermoTimer); fermoTimer = null; }
 }
 // Chiamata a ogni giro dello scambio/baratto: decide se siamo "fermi".

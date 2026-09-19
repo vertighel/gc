@@ -86,7 +86,7 @@ In basso hai due schede: **🔍 Cerca** per trovare gli oggetti, **💽 Memoria*
 5. Per riceverlo: apri **📷 Foto**, attiva la fotocamera e inquadra il QR nell'altro schermo. Dopo pochi istanti si aprirà la camera anteriore. Metti i telefoni schermo contro schermo: le fotocamere anteriori si leggono a vicenda. Aspettate **Fatto!**: chi riceve vede una schermata verde con un codice e la tiene in vista finché l'altro telefono non ha finito. Se il tuo telefono dice «Non ho letto la conferma», guarda l'altro schermo: rispondi **Sì** solo se è verde e mostra lo stesso codice.
 6. Per barattare: entrambi premete **🤝** in Memoria sull'oggetto che offrite, poi mettete i telefoni schermo contro schermo. Ognuno riceve l'oggetto dell'altro e cede il proprio, nello stesso momento: nessuno dei due deve fidarsi. Se avete già l'oggetto offerto, non c'è niente da barattare e il telefono lo dice. Anche qui vale la schermata verde con il codice.
 7. **✉️** sono i messaggi del master: si scaricano a ogni apertura dell'app.
-8. **⚙️** sono le impostazioni: **Prepara il telefono** chiede fotocamera e posizione e sblocca i suoni una volta sola, prima di partire; **Suoni** accende i segnali durante uno scambio (bip gravi continui = fermo, tre note che salgono = sta leggendo, un "plin" = fatto); qui si legge anche la versione; **Cambia caccia** torna alla scelta della caccia; **Ricomincia la caccia** cancella la Memoria e i progressi di questa caccia su questo telefono.
+8. **⚙️** sono le impostazioni: **Prepara il telefono** chiede fotocamera e posizione e sblocca i suoni una volta sola, prima di partire; **Suoni** accende i segnali durante uno scambio (un bip grave ogni mezzo secondo = fermo, tre note che salgono = sta leggendo, un "plin" = fatto); qui si legge anche la versione; **Cambia caccia** torna alla scelta della caccia; **Ricomincia la caccia** cancella la Memoria e i progressi di questa caccia su questo telefono.
 
 Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra bloccato, ricarica la pagina. Il numero di versione nel banner di avvio ti dice se hai l'ultima versione.
 
@@ -304,7 +304,7 @@ At the bottom you have two tabs: **🔍 Cerca** (Search) to find the objects, **
 
 7. **✉️** are the master's messages: they are downloaded every time the app is opened.
 
-8. **⚙️** are the settings: **Prepara il telefono** asks for camera and location and unlocks sounds once, before you start; **Suoni** turns on the exchange signals (continuous low beeps = stalled, three rising notes = reading, a "plin" = done); the version number is shown here too; **Cambia caccia** (Change hunt) goes back to the hunt chooser; **Ricomincia la caccia** (Restart the hunt) clears the Memoria and the progress of this hunt on this phone.
+8. **⚙️** are the settings: **Prepara il telefono** asks for camera and location and unlocks sounds once, before you start; **Suoni** turns on the exchange signals (a low beep every half second = stalled, three rising notes = reading, a "plin" = done); the version number is shown here too; **Cambia caccia** (Change hunt) goes back to the hunt chooser; **Ricomincia la caccia** (Restart the hunt) clears the Memoria and the progress of this hunt on this phone.
 
 Tips: use Chrome or Safari and keep the page open; if something seems stuck, reload the page. The version number in the boot banner tells you whether you have the latest version.
 
