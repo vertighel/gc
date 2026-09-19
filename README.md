@@ -402,7 +402,7 @@ The boot banner at the top of the page reads `Avvio del gioco… (versione N)`; 
 - No player identity: every phone is anonymous to the master and to the other players. Deliberately postponed, not forgotten.
 - No database: anything that needs writes from several phones (activity log visible to the master, a shared stock counter) cannot exist on static hosting. Supabase is the likely choice when it comes.
 - Scarcity (a limited `scorta` on a shareable gift) is postponed for the same reason: a duplicable gift can be shared an unlimited number of times.
-- Messages are global, not per hunt; a published hunt cannot be renamed or deleted from the panel; the older `caccia-1` / `caccia-2` formats are not migrated.
+- Messages are global, not per hunt; a published hunt cannot be renamed or deleted from the panel.
 - The real optical convergence of the asymmetric exchange protocol still has to be re-tested with two phones after the version 52 rewrite.
 
 Tried and dropped: hosting on the INAF GitLab Pages (invalid https certificate, which also blocks the browser camera, plus access control that locked players out) and Netlify Drop (worked, but inconvenient for repeated publishing without a CLI). Also removed on request: an Instagram share button on the end-of-hunt screen.
