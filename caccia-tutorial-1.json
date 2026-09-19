@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "creato": "2026-09-18T15:25:08.005Z",
+  "creato": "2026-09-19T15:07:57.978Z",
   "nodi": {
     "nmu73ew4f7h6": {
       "nome": "Sapore",
@@ -144,7 +144,9 @@
       "duplicabile": false,
       "richiede": [
         "nmu73hd9cx5c"
-      ]
+      ],
+      "istanze": false,
+      "barattabile": true
     },
     "nmu73fkfaty2": {
       "nome": "Osservare",
