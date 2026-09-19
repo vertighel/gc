@@ -510,7 +510,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 72)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 73)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -763,9 +763,11 @@
         <p class="se-baratto">Non ho ancora letto la conferma. Guarda il telefono del tuo amico: dice
           «Hai ricevuto <b class="nome"></b>» (o è già <b>verde</b>) con il codice <b class="codice"></b>?</p>
         <div class="btnrow">
+          <button id="p-scambio-torna" class="btn" data-azione="scambio-torna">Annulla</button>
           <button id="p-scambio-no" class="btn" data-azione="scambio-no">No, tengo l'oggetto</button>
           <button id="p-scambio-si" class="btn primary" data-azione="scambio-si">Sì, l'ho controllato</button>
         </div>
+        <p class="hint">Annulla chiude la domanda e continua a leggere: ricompare tra qualche secondo.</p>
       </div>
       <div class="btnrow">
         <button id="p-scambio-annulla" class="btn" data-azione="scambio-annulla">Annulla</button>
@@ -3199,8 +3201,11 @@ function aggiornaStatoScambio() {
 // la lettura riesce nel frattempo, scambioRiuscito() chiude tutto da sola.
 // Per un "duplica" non c'è nulla da cancellare, quindi nessuna domanda: si spiega
 // solo che se l'amico è verde è andata bene lo stesso.
-function scambioDomanda() {
+// "forzata": dal bottone Annulla della fase di lettura, senza aspettare il rinvio di
+// "scambio-torna" (che chiude la domanda e la fa ricomparire dopo QR_DOMANDA_DOPO_K_MS).
+function scambioDomanda(forzata = false) {
   if (!scambio || scambio.committed || scambio.domanda) return;
+  if (!forzata && Date.now() < (scambio.domandaNonPrima || 0)) return;
   if (scambio.myReadCount === 0 || (scambio.ruolo === "baratto" && !scambio.acquisito)) { scambioFallito(); return; }
   scambio.domanda = true;
   if (scambio.tipo === "duplica") {
@@ -3338,15 +3343,23 @@ function initPlayer() {
     // Un cedente che ha già letto l'amico almeno una volta non può più annullare alla
     // cieca: l'amico potrebbe aver scritto un istante fa. Passa dalla stessa domanda
     // del timeout (che chiude da sola, in sicurezza, se non l'ha mai letto).
-    if (scambio && ruolo === "cedente" && scambio.tipo === "scambio" && !scambio.committed && scambio.myReadCount > 0) { scambioDomanda(); return; }
+    if (scambio && ruolo === "cedente" && scambio.tipo === "scambio" && !scambio.committed && scambio.myReadCount > 0) { scambioDomanda(true); return; }
     // Chi baratta e ha già acquisito il suo non può più annullare alla cieca: stessa domanda.
-    if (scambio && ruolo === "baratto" && !scambio.committed && scambio.acquisito) { scambioDomanda(); return; }
+    if (scambio && ruolo === "baratto" && !scambio.committed && scambio.acquisito) { scambioDomanda(true); return; }
     chiudiScambio();
     if (ruolo === "ricevente") { mostraTab("cerca"); mostraSubTab("foto"); } else mostraTab("oggetti");
   },
   // "No" alla domanda: tengo il mio. In un baratto ho comunque già acquisito il suo (è la
   // duplicazione accettata): lo festeggio lo stesso.
   "scambio-no": () => { const esito = scambio && scambio.esito; chiudiScambio(); if (esito) { mostraTab("cerca"); showReward(esito.nuovi, esito.st, "scambio", esito.nodo); } else mostraTab("oggetti"); },
+  // "Annulla" nella domanda: non è una risposta, chiude il riquadro e si continua a leggere
+  // (la lettura automatica non si era mai fermata); la domanda ricompare dopo un po'.
+  "scambio-torna": () => {
+    if (!scambio || scambio.committed) return;
+    scambio.domanda = false; scambio.domandaNonPrima = Date.now() + QR_DOMANDA_DOPO_K_MS;
+    $("p-scambio").dataset.fase = scambio.acquisito ? "attesa" : "lettura";
+    aggiornaStatoScambio();
+  },
   "scambio-si": () => { if (scambio && !scambio.committed) (scambio.ruolo === "baratto" ? barattoRiuscito : scambioRiuscito)(); },
   "scambio-riprova": () => {
     if (!scambio) return;

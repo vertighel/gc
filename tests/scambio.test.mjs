@@ -202,6 +202,26 @@ for (const risposta of ["si", "no"]) {
   await A.context().close(); await B.context().close();
 }
 
+// ---- 3a. domanda a schermo, "Annulla" la chiude e si continua a leggere; ricompare dopo 10 s
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await apri(A, { ruolo: "cedente", tipo: "scambio", nodo: "gift1" }); await tick(A);
+  await apri(B, { ruolo: "ricevente", tipo: "scambio", nodo: "gift1", sessionId: (await S(A)).sessionId });
+  await feed(B, await qr(A)); await tick(B); await feed(A, await qr(B)); await tick(A); await feed(A, null);
+  await backdate(A, 61000); await tick(A);
+  ok((await S(A)).domanda && await vis(A, "p-scambio-domanda") && await vis(A, "p-scambio-torna"), "[3a] domanda con il bottone Annulla");
+  await A.click("#p-scambio-torna");
+  ok(!(await S(A)).domanda && !(await vis(A, "p-scambio-domanda")) && (await A.evaluate(() => document.getElementById("p-scambio").dataset.fase)) === "lettura" && (await stato(A)).trovati.includes("gift1"), "[3a] Annulla: domanda chiusa, si torna a leggere, l'oggetto è ancora qui");
+  await tick(A);
+  ok(!(await S(A)).domanda, "[3a] la domanda non ricompare subito");
+  await A.evaluate(() => { window.__debug.scambio.domandaNonPrima -= 11000; }); await tick(A);
+  ok((await S(A)).domanda && await vis(A, "p-scambio-domanda"), "[3a] dopo 10 s la domanda ricompare");
+  // Annulla della fase di lettura (forzata) non aspetta il rinvio
+  await A.click("#p-scambio-torna"); await A.click("#p-scambio-annulla");
+  ok((await S(A)).domanda, "[3a] Annulla della lettura riapre la domanda senza aspettare");
+  await A.context().close(); await B.context().close();
+}
+
 // ---- 3b. domanda a schermo, poi la lettura automatica riesce → risolve da sola
 {
   const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
@@ -495,6 +515,10 @@ for (const risposta of ["si", "no"]) {
   ok(!(await SB(A)).domanda, `[B3 ${risposta}] a 31s dal tocco ma <10s dall'acquisizione: nessuna domanda`);
   await A.evaluate(() => { window.__debug.scambio.acquisitoAt -= 11000; }); await tick(A);
   ok((await SB(A)).domanda && await vis(A, "p-scambio-domanda"), `[B3 ${risposta}] a 10s dall'acquisizione: domanda`);
+  await A.click("#p-scambio-torna");
+  ok(!(await SB(A)).domanda && (await SB(A)).fase === "attesa", `[B3 ${risposta}] Annulla: torna in attesa`);
+  await A.evaluate(() => { window.__debug.scambio.domandaNonPrima -= 11000; }); await tick(A);
+  ok((await SB(A)).domanda, `[B3 ${risposta}] la domanda ricompare`);
   if (risposta === "si") {
     await A.click("#p-scambio-si");
     ok((await SB(A)).committed && (await stato(A)).ceduti.includes("bar1") && (await stato(A)).trovati.includes("bar2") && await vis(A, "p-scambio-ok"), "[B3 si] A cede e va in verde");
