@@ -229,16 +229,21 @@
   #p-scambio .btn { min-height: 0; padding-top: clamp(10px, calc(var(--h) * .0245 - 5.7px), 15px); padding-bottom: clamp(10px, calc(var(--h) * .0245 - 5.7px), 15px); font-size: clamp(16px, calc(var(--h) * .024), 20px); }
   /* Cosa si vede lo decidono data-ruolo / data-tipo / data-fase su #p-scambio (vedi HTML). */
   #p-scambio:not([data-ruolo="cedente"]) .se-cedente, #p-scambio:not([data-ruolo="ricevente"]) .se-ricevente,
+  #p-scambio:not([data-ruolo="baratto"]) .se-baratto,
   #p-scambio:not([data-tipo="scambio"]) .se-scambio, #p-scambio:not([data-tipo="duplica"]) .se-duplica { display: none; }
   #p-scambio:not([data-fase="lettura"]) .se-fase-lettura, #p-scambio:not([data-fase="fatto"]) .se-fase-fatto,
   #p-scambio:not([data-fase="fallito"]) .se-fase-fallito, #p-scambio:not([data-fase="incerto"]) .se-fase-incerto,
+  #p-scambio:not([data-fase="attesa"]) .se-fase-attesa, #p-scambio:not([data-fase="rifiuto"]) .se-fase-rifiuto,
+  #p-scambio:not([data-motivo=""]) .se-motivo-, #p-scambio:not([data-motivo="loro"]) .se-motivo-loro,
   #p-scambio[data-n="0"] .se-n, #p-scambio:not([data-n="0"]) .se-n0,
-  #p-scambio:not([data-fase="lettura"]) #p-scambio-annulla,
+  #p-scambio:not([data-fase="lettura"]):not([data-fase="attesa"]) #p-scambio-annulla,
   #p-scambio:not([data-fase="fallito"]) #p-scambio-riprova,
   #p-scambio:not([data-fase="domanda"]) #p-scambio-domanda,
-  #p-scambio:not([data-fase="fatto"]):not([data-fase="incerto"]) #p-scambio-chiudi,
-  #p-scambio[data-ruolo="ricevente"] #p-scambio-chiudi,
+  #p-scambio:not([data-fase="fatto"]):not([data-fase="incerto"]):not([data-fase="rifiuto"]) #p-scambio-chiudi,
+  #p-scambio[data-ruolo="ricevente"] #p-scambio-chiudi, #p-scambio[data-ruolo="baratto"][data-fase="fatto"] #p-scambio-chiudi,
   #p-scambio:not([data-fase="fatto"]) #p-scambio-ok, #p-scambio[data-ruolo="cedente"] #p-scambio-ok { display: none; }
+  /* Rifiuto nel baratto: fotocamera spenta, resta il QR "x" perché l'amico lo legga. */
+  #p-scambio[data-fase="rifiuto"] .viewfinder { display: none; }
   /* Il richiedente arriva con la posteriore puntata verso il cedente (è così che ha
      trovato il QR in "Foto"): il proprio QR in basso ricalca quel gesto. Il cedente parte
      da fermo dalla scheda Memoria, e vede prima l'anteprima. */
@@ -362,6 +367,7 @@
   .scheda-nodo .richiede-cap { margin: 8px 0 4px; }
   /* Il modo del regalo ha senso solo se non è da validare (vedi tpl-nodo). */
   .scheda-nodo[data-validare="si"] .modi { display: none; }
+  .scheda-nodo[data-modo="libero"] .modo.istanze { display: none; }
   /* "almeno N" solo per un prerequisito a istanze con la spunta accesa; "Nessun altro
      elemento" solo se non c'è nessuna riga. */
   .linkreq label:not(.istanze) .linkreq-n, .linkreq label:not(:has([name="richiede"]:checked)) .linkreq-n { display: none; }
@@ -429,7 +435,7 @@
      d'occhio anche senza leggere. Vedi nuovaIstanza(). */
   .istanza { display: inline-block; font: 700 13px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .12em; padding: 3px 6px 2px; border-radius: 5px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); vertical-align: middle; margin-left: 6px; }
   .istanza-tua { font-size: 12px; opacity: .8; margin-left: 4px; }
-  /* Bottone d'azione (🔄/👥) accanto a una riga di Memoria: fuori dal bottone
+  /* Bottone d'azione (➡️/👥/🤝) accanto a una riga di Memoria: fuori dal bottone
      principale apposta, vedi rigaSelezionabile() — due <button> innestati non sono
      validi. Largo quanto è alta una riga NORMALE (miniatura 40px + padding 12px +
      bordo 1.5px del bottone principale), quindi quadrato lì; alto sempre quanto la
@@ -497,7 +503,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 69)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 70)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -624,13 +630,16 @@
             all'oggetto.</li>
 
             <li>In <b>💽 Memoria</b> tocca una riga per rivedere foto
-            e messaggio. Alcuni oggetti si possono condividere con
-            altri utilizzatori: con <b>🔄</b> (scambia) lo
-            trasferisci, e scomparirà dalla tua Memoria, con <b>👥</b>
-            duplichi una copia identica. Un oggetto con 🎟️  è diverso
-            per ogni giocatore: puoi duplicare una copia diversa.</li>
+            e messaggio. Alcuni oggetti si possono passare ad altri
+            utilizzatori: con <b>➡️</b> (scambia) lo trasferisci, e
+            scomparirà dalla tua Memoria; con <b>👥</b> duplichi una
+            copia identica; con <b>🤝</b> lo baratti alla pari con un
+            oggetto 🤝 dell'altro. Un oggetto con 🎟️ è diverso per
+            ogni giocatore (un sigillo con un codice): ne passi una
+            copia, e un altro elemento può chiederne "almeno N
+            diversi".</li>
 
-            <li>Per passarlo: tu premi 🔄 o 👥 in Memoria; chi
+            <li>Per passarlo: tu premi ➡️ o 👥 in Memoria; chi
             riceve apre <b>📷 Foto</b>, attiva la fotocamera e
             inquadra il tuo schermo. Poi mettete i telefoni schermo
             contro schermo: le fotocamere anteriori si leggono a
@@ -651,6 +660,14 @@
             tuo telefono dice «Non ho letto la conferma», guarda
             l'altro schermo: rispondi <b>Sì</b> solo se è verde e
             mostra lo stesso codice.</li>
+
+            <li>Per barattare: entrambi premete <b>🤝</b> in Memoria
+            sull'oggetto che offrite, poi mettete i telefoni schermo
+            contro schermo. Ognuno riceve l'oggetto dell'altro e cede
+            il proprio, nello stesso momento: nessuno dei due deve
+            fidarsi. Se avete già l'oggetto offerto, non c'è niente da
+            barattare e il telefono lo dice. Anche qui vale la
+            schermata verde con il codice.</li>
 
             <li><b>✉️</b> sono i messaggi del master: si scaricano a
               ogni apertura dell'app.</li>
@@ -695,13 +712,14 @@
          solo gli attributi e i testi variabili (nome, codice, stato). -->
     <div id="p-scambio" hidden data-ruolo="cedente" data-tipo="scambio" data-fase="lettura">
       <p id="p-scambio-titolo">
-        <span class="se-cedente se-scambio">Scambia: </span><span class="se-cedente se-duplica">Condividi: </span><span class="se-ricevente">Stai ricevendo: </span><span class="nome"></span>
+        <span class="se-cedente se-scambio">Scambia: </span><span class="se-cedente se-duplica">Condividi: </span><span class="se-baratto">Baratta: </span><span class="se-ricevente">Stai ricevendo: </span><span class="nome"></span>
       </p>
       <!-- Le prime lettere del sessionId, uguali sui due telefoni: è ciò che il cedente
            confronta a occhio con lo schermo dell'amico nella domanda manuale qui sotto. -->
       <p id="p-scambio-codice"></p>
       <p class="hint se-cedente se-scambio">Se lo scambio va a buon fine, cederai questo oggetto.</p>
       <p class="hint se-cedente se-duplica">Il tuo amico riceverà una copia, tu mantieni la tua.</p>
+      <p class="hint se-baratto">Anche il tuo amico deve premere 🤝 in Memoria sull'oggetto che offre. Riceverai il suo e cederai questo.</p>
       <div class="viewfinder">
         <video id="p-scambio-video" playsinline muted autoplay></video>
       </div>
@@ -715,8 +733,13 @@
         <span class="ok se-fase-fatto se-cedente se-scambio">Fatto! Hai ceduto <span class="nome"></span>.</span>
         <span class="ok se-fase-fatto se-cedente se-duplica">Fatto! Hai condiviso <span class="nome"></span>.</span>
         <span class="ok se-fase-fatto se-ricevente">Ricevuto! Mostra questa schermata al tuo amico finché il suo telefono non dice "Fatto!".</span>
+        <span class="se-fase-attesa se-baratto">Hai ricevuto <span class="loro"></span>. Tieni gli schermi vicini finché anche il tuo amico non riceve <span class="nome"></span>…</span>
+        <span class="ok se-fase-fatto se-baratto">Fatto! Hai barattato <span class="nome"></span> con <span class="loro"></span>. Mostra questa schermata al tuo amico finché anche il suo telefono non dice "Fatto!".</span>
         <span class="ko se-fase-fallito se-cedente">Scambio non riuscito: l'oggetto è rimasto qui. Riavvicinate gli schermi e riprovate.</span>
         <span class="ko se-fase-fallito se-ricevente">Scambio non riuscito. Riavvicinate gli schermi e riprovate.</span>
+        <span class="ko se-fase-fallito se-baratto se-motivo-">Baratto non riuscito: il tuo oggetto è rimasto qui. Riavvicinate gli schermi e riprovate.</span>
+        <span class="ko se-fase-fallito se-baratto se-motivo-loro">Il tuo amico ha già <span class="nome"></span>: non c'è niente da barattare. Il tuo oggetto è rimasto qui.</span>
+        <span class="ko se-fase-rifiuto">Hai già <span class="loro"></span>: non c'è niente da barattare. Tieni questo schermo in vista finché il telefono del tuo amico non lo dice anche lui.</span>
         <span class="se-fase-incerto">Non ho letto la conferma, ma se il tuo amico vede la schermata verde con il codice <span class="codice"></span> ha ricevuto la copia lo stesso.</span>
       </p>
       <p id="p-scambio-errore" class="status" role="alert"></p>
@@ -725,8 +748,10 @@
            conferma finale ma il ricevente potrebbe già aver scritto. La fotocamera resta
            accesa sotto: se la lettura riesce nel frattempo, la domanda sparisce da sola. -->
       <div id="p-scambio-domanda">
-        <p>Non ho ancora letto la conferma. Guarda il telefono del tuo amico: mostra la
+        <p class="se-cedente">Non ho ancora letto la conferma. Guarda il telefono del tuo amico: mostra la
           schermata <b>verde</b> «Ricevuto» con il codice <b class="codice"></b>?</p>
+        <p class="se-baratto">Non ho ancora letto la conferma. Guarda il telefono del tuo amico: dice
+          «Hai ricevuto <b class="nome"></b>» (o è già <b>verde</b>) con il codice <b class="codice"></b>?</p>
         <div class="btnrow">
           <button id="p-scambio-no" class="btn" data-azione="scambio-no">No, tengo l'oggetto</button>
           <button id="p-scambio-si" class="btn primary" data-azione="scambio-si">Sì, l'ho controllato</button>
@@ -930,11 +955,15 @@
       <label class="check"><input type="checkbox" name="daValidare"> Validare</label>
       <label class="check"><input type="checkbox" name="richiedePosizione"> Posizione</label>
     </div>
+    <!-- Due assi indipendenti (vedi MODI_REGALO): COME circola (radio) × A ISTANZE o no
+         (spunta, nascosta via CSS se il regalo è "libero": un'istanza che non può passare
+         non si conta da nessuna parte). -->
     <div class="modi">
       <label class="check modo"><input type="radio" name="modo" value="libero"> 🎁 Libero (resta a chi lo trova)</label>
-      <label class="check modo"><input type="radio" name="modo" value="scambiabile"> 🔄 Scambiabile (passa a un amico, tu lo perdi)</label>
+      <label class="check modo"><input type="radio" name="modo" value="scambiabile"> ➡️ Scambiabile (passa a un amico, tu lo perdi)</label>
       <label class="check modo"><input type="radio" name="modo" value="duplicabile"> 👥 Duplicabile (una copia a un amico, tu lo tieni)</label>
-      <label class="check modo"><input type="radio" name="modo" value="istanze"> 🎟️ Duplicabile a istanze (un sigillo diverso per ogni giocatore)</label>
+      <label class="check modo"><input type="radio" name="modo" value="barattabile"> 🤝 Barattabile (alla pari con un altro barattabile, nello stesso incontro)</label>
+      <label class="check modo istanze"><input type="checkbox" name="istanze"> 🎟️ A istanze (un sigillo diverso per ogni giocatore; un altro elemento può chiederne "almeno N")</label>
     </div>
     <label>Indizio (aiuta a trovare e riconoscere questo elemento, prima di possederlo)<textarea name="testo"></textarea></label>
     <label>Messaggio (si vede quando lo trovi, e resta nel bottino)<textarea name="messaggio"></textarea></label>
@@ -1617,34 +1646,37 @@ function renderLinkList() {
   for (const id of ids) wrap.append(schedaNodo(id, ids));
 }
 
-// Un regalo (daValidare: false) è in UNO solo di questi modi — le flag nel file restano
-// tre booleani separati (scambiabile/duplicabile/istanze, vedi docs/MODELLO-DATI.md)
-// ma non hanno senso insieme: la UI le presenta come una scelta sola. Ordine di
-// precedenza per un file modificato a mano con più flag accese: istanze, poi
-// scambiabile, poi duplicabile (lo stesso che usa il bottone in Memoria).
+// Un regalo (daValidare: false) ha due assi indipendenti: COME circola — uno solo dei
+// booleani scambiabile/duplicabile/barattabile acceso (radio; "libero" = nessuno) — e se
+// è A ISTANZE (booleano istanze, spunta a sé: ogni telefono ne produce una propria, vedi
+// nuovaIstanza). Vedi docs/MODELLO-DATI.md. Precedenza per un file modificato a mano con
+// più flag accese: scambiabile, duplicabile, barattabile; un file di una versione
+// precedente con solo istanze acceso vale duplicabile (era l'unico modo a istanze).
 const MODI_REGALO = [
-  { modo: "libero",     icona: "🎁", testo: "Libero (resta a chi lo trova)" },
-  { modo: "scambiabile", icona: "🔄", testo: "Scambiabile (passa a un amico, tu lo perdi)" },
-  { modo: "duplicabile", icona: "👥", testo: "Duplicabile (una copia a un amico, tu lo tieni)" },
-  { modo: "istanze",    icona: "🎟️", testo: "Duplicabile a istanze (un sigillo diverso per ogni giocatore)" },
+  { modo: "libero",      icona: "🎁", tipo: null,      testo: "Libero (resta a chi lo trova)" },
+  { modo: "scambiabile", icona: "➡️", tipo: "scambio", testo: "Scambiabile (passa a un amico, tu lo perdi)" },
+  { modo: "duplicabile", icona: "👥", tipo: "duplica", testo: "Duplicabile (una copia a un amico, tu lo tieni)" },
+  { modo: "barattabile", icona: "🤝", tipo: "baratto", testo: "Barattabile (alla pari con un altro barattabile)" },
 ];
 function modoRegalo(n) {
   if (n.daValidare) return null;
-  if (n.istanze) return "istanze";
   if (n.scambiabile) return "scambiabile";
   if (n.duplicabile) return "duplicabile";
-  return "libero";
+  if (n.barattabile) return "barattabile";
+  return n.istanze ? "duplicabile" : "libero";
 }
 function impostaModoRegalo(n, modo) {
   n.scambiabile = modo === "scambiabile";
-  n.duplicabile = modo === "duplicabile" || modo === "istanze";
-  n.istanze = modo === "istanze";
+  n.duplicabile = modo === "duplicabile";
+  n.barattabile = modo === "barattabile";
+  if (modo === "libero") n.istanze = false;
 }
-// Icona (e titolo) di un nodo: 📷 [📍] se da validare, altrimenti 🎁 + il modo.
+const infoModo = n => MODI_REGALO.find(x => x.modo === modoRegalo(n));
+// Icona (e titolo) di un nodo: 📷 [📍] se da validare, altrimenti 🎁 + il modo [+ 🎟️].
 function iconaNodo(n) {
   if (n.daValidare) return { icona: "📷" + (n.richiedePosizione ? " 📍" : ""), titolo: "Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "") };
-  const m = MODI_REGALO.find(x => x.modo === modoRegalo(n));
-  return { icona: m.modo === "libero" ? "🎁" : "🎁 " + m.icona, titolo: "Regalo: " + m.testo };
+  const m = infoModo(n);
+  return { icona: (m.modo === "libero" ? "🎁" : "🎁 " + m.icona) + (n.istanze ? "🎟️" : ""), titolo: "Regalo: " + m.testo + (n.istanze ? ", a istanze" : "") };
 }
 
 // La scheda di un nodo, condivisa fra "Collega gli elementi" e il riquadro laterale
@@ -1683,10 +1715,11 @@ function creaSchedaNodo(n, id, ids, notify) {
   // docs/DECISIONI.md) — riaccendere "Validare" riporta il modo a "libero".
   const cbThumb = campo("conThumb"), cbValida = campo("daValidare"), cbPos = campo("richiedePosizione");
   cbThumb.checked = !!n.conThumb; cbValida.checked = !!n.daValidare; cbPos.checked = !!n.richiedePosizione;
-  const radios = [...el.querySelectorAll('[name="modo"]')];
+  const radios = [...el.querySelectorAll('[name="modo"]')], cbIstanze = campo("istanze");
   const gruppo = "modo-" + id + "-" + Math.random().toString(36).slice(2, 6); // due schede dello stesso nodo (Collega + Grafo) non devono condividere il gruppo
-  const aggiornaModo = () => { el.dataset.validare = n.daValidare ? "si" : "no"; const cur = modoRegalo(n); for (const r of radios) r.checked = r.value === cur; };
-  for (const r of radios) { r.name = gruppo; r.onchange = () => { if (r.checked) { impostaModoRegalo(n, r.value); salvaLocale(); notify(); } }; }
+  const aggiornaModo = () => { el.dataset.validare = n.daValidare ? "si" : "no"; const cur = modoRegalo(n); el.dataset.modo = cur || "libero"; for (const r of radios) r.checked = r.value === cur; cbIstanze.checked = !!n.istanze; };
+  for (const r of radios) { r.name = gruppo; r.onchange = () => { if (r.checked) { impostaModoRegalo(n, r.value); aggiornaModo(); salvaLocale(); notify(); } }; }
+  cbIstanze.onchange = () => { n.istanze = cbIstanze.checked; salvaLocale(); notify(); };
   cbThumb.onchange = () => { n.conThumb = cbThumb.checked; salvaLocale(); notify(); };
   // "Richiede posizione" implica sempre "Da validare": il controllo GPS vive solo
   // dentro lo scatto-e-verifica, non esiste un flusso di sola posizione.
@@ -2239,8 +2272,9 @@ const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
 /* ----- nodi "a istanze" (istanze: true) -----
    Un regalo a istanze non è un oggetto solo: ogni telefono che ne soddisfa i prerequisiti
    ne PRODUCE una istanza propria, con un id casuale (nuovaIstanza), una volta sola
-   (st.prodotti). Le istanze si condividono (sempre duplicabile, mai scambiabile): chi
-   riceve una copia la tiene accanto alla propria, e un nodo può richiedere "almeno N
+   (st.prodotti). Le istanze circolano come il modo del regalo dice (👥 copia, ➡️ o 🤝
+   cessione della riga, vedi cedi()): chi ne riceve una la tiene accanto alle proprie, e
+   un nodo può richiedere "almeno N
    istanze DIVERSE" di un altro (istanzeRichieste). È il modo di rendere obbligatorio
    l'incontro fra giocatori senza identità né database: nessuno può produrre due
    istanze, quindi la seconda deve arrivare da un altro telefono. Vedi docs/DECISIONI.md. */
@@ -2412,11 +2446,20 @@ function daTrovare(st) {
 // e lo segna per sempre in "ceduti", cosicché chiudi() non lo riassegni da solo in
 // futuro. Un nodo "duplicabile" (tipo "duplica") non passa mai di qui: chi condivide
 // non perde nulla, vedi scambioRiuscito().
-function cedi(st, id) {
-  st.trovati = st.trovati.filter(x => x !== id);
-  st.bottino = st.bottino.filter(r => r.nodo !== id);
-  if (!st.ceduti.includes(id)) st.ceduti.push(id);
-  if (memoriaScelta === id) memoriaScelta = null; // nodi normali: chiaveVoce == id
+// Con "istanza" (nodo a istanze) si cede solo QUELLA riga del bottino: il nodo resta in
+// trovati (= "lo conosco"; se chiudi() lo ricalcolasse come nuovo lo rifesteggerebbe
+// senza istanza) e non va in ceduti — riderivarlo è innocuo, perché è "prodotti" a
+// impedire di coniarne un'altra, e i conteggi "almeno N" leggono le righe rimaste.
+// Ciò che l'istanza aveva già sbloccato resta: consuma solo sé stessa (docs/ROADMAP.md).
+function cedi(st, id, istanza = "") {
+  if (istanza) {
+    st.bottino = st.bottino.filter(r => !(r.nodo === id && r.istanza === istanza));
+  } else {
+    st.trovati = st.trovati.filter(x => x !== id);
+    st.bottino = st.bottino.filter(r => r.nodo !== id);
+    if (!st.ceduti.includes(id)) st.ceduti.push(id);
+  }
+  if (memoriaScelta === id + (istanza ? "#" + istanza : "")) memoriaScelta = null; // = chiaveVoce della riga
   saveState(st);
 }
 const attuale = (st, todo) => todo.find(m => m.id === st.scelta) || todo[0] || null;
@@ -2540,16 +2583,16 @@ function renderMemoria(st) {
     // Il bottone di scambio dipende dal nodo VIVO nella caccia attuale (i flag possono
     // cambiare o il nodo può sparire), mai dal record salvato nel bottino.
     const nodoDef = game && game.nodi[r.nodo];
-    const modo = nodoDef ? modoRegalo(nodoDef) : null; // stessa precedenza del pannello master
+    const m = nodoDef ? infoModo(nodoDef) : null; // stessa precedenza del pannello master
     let azione = null;
-    if (modo && modo !== "libero") {
+    if (m && m.tipo) {
       azione = document.createElement("button");
       azione.className = "todo-action";
       azione.type = "button";
-      azione.textContent = modo === "scambiabile" ? "🔄" : "👥";
-      azione.title = modo === "scambiabile" ? "Scambia con un amico" : "Condividi con un amico";
-      // Su un nodo a istanze si condivide QUESTA istanza (la riga), non il nodo.
-      azione.dataset.azione = "avvia-scambio"; azione.dataset.tipo = modo === "scambiabile" ? "scambio" : "duplica";
+      azione.textContent = m.icona;
+      azione.title = { scambio: "Scambia con un amico", duplica: "Condividi con un amico", baratto: "Baratta con un amico" }[m.tipo];
+      // Su un nodo a istanze si cede/condivide/baratta QUESTA istanza (la riga), non il nodo.
+      azione.dataset.azione = "avvia-scambio"; azione.dataset.tipo = m.tipo;
       azione.dataset.nodo = r.nodo; azione.dataset.istanza = r.istanza || "";
     }
     rigaSelezionabile(list, {
@@ -2561,7 +2604,7 @@ function renderMemoria(st) {
 }
 Object.assign(AZIONI, {
   "scegli-memoria": b => { memoriaScelta = b.dataset.chiave; renderMemoria(stato()); },
-  "avvia-scambio": b => apriScambio({ ruolo: "cedente", tipo: b.dataset.tipo, nodo: b.dataset.nodo, istanza: b.dataset.istanza }),
+  "avvia-scambio": b => apriScambio({ ruolo: b.dataset.tipo === "baratto" ? "baratto" : "cedente", tipo: b.dataset.tipo, nodo: b.dataset.nodo, istanza: b.dataset.istanza }),
 });
 
 // Una riga di lista "todo"-stile: bottone con decorazioni facoltative prima/dopo il
@@ -2581,7 +2624,7 @@ function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, azione, da
   if (attiva) b.setAttribute("aria-current", "true");
   b.dataset.azione = azione; Object.assign(b.dataset, dati || {});
   // "dopo" resta fuori dal bottone principale, non annidato: in Memoria può essere un
-  // bottone d'azione a sé (🔄/👥, vedi renderMemoria), e due <button> innestati non
+  // bottone d'azione a sé (➡️/👥/🤝, vedi renderMemoria), e due <button> innestati non
   // sono validi né cliccabili in modo affidabile.
   if (dopo) li.append(dopo);
   list.append(li);
@@ -2714,8 +2757,13 @@ const QR_PREFISSO = "gc1:";
 // sotto), che restano comunque tradotti subito in "scambio"/"duplica" da
 // decodificaQr() — il resto del codice non vede mai questi codici. La MAIUSCOLA è lo
 // stesso tipo con il flag "fatto" (il ricevente ha già scritto): zero byte in più.
-const QR_TIPI_CODICE = { scambio: "s", duplica: "d" };
+const QR_TIPI_CODICE = { scambio: "s", duplica: "d", baratto: "b" };
 const QR_TIPI_DA_CODICE = { s: "scambio", d: "duplica", S: "scambio", D: "duplica" };
+// Baratto (vedi barattoTickCorpo): la lettera porta i due flag del lato che la mostra —
+// b = sto leggendo, B = ho acquisito il tuo, C = ho acquisito E ho ceduto il mio (fatto),
+// x = rifiuto (ho già il tuo: niente da barattare). Mai un terminatore: chi legge B deve
+// continuare a contare i fotogrammi crescenti dell'altro.
+const QR_BARATTO = { b: { acquisito: false, ceduto: false }, B: { acquisito: true, ceduto: false }, C: { acquisito: true, ceduto: true }, x: { rifiuto: true } };
 // Letture crescenti del cedente richieste al ricevente prima di scrivere: serve solo
 // a scartare letture sporadiche sbagliate e un QR statico/stampato (anche 1-2
 // basterebbero per quello), non è una soglia di sicurezza — era 5, abbassato perché
@@ -2766,6 +2814,16 @@ function nuovoSessionId() {
 function decodificaQr(testo) {
   if (typeof testo !== "string" || !testo.startsWith(QR_PREFISSO)) return null;
   const parti = testo.slice(QR_PREFISSO.length).split(":");
+  // Baratto: nessun sessionId condiviso (nessuno entra nella sessione dell'altro: aprono
+  // entrambi da Memoria), quindi mioId prende il suo posto, a 8 caratteri, e il campo
+  // "nodo" è ciò che quel lato OFFRE. 6 campi, 37 byte nel caso peggiore.
+  if (QR_BARATTO[parti[0]]) {
+    if (parti.length !== 6) return { errore: "illeggibile" };
+    const [lettera, mioId, nodo, seqTxt, ackTxt, istanza] = parti;
+    const seq = Number(seqTxt), ack = Number(ackTxt);
+    if (!mioId || !nodo || !Number.isFinite(seq) || !Number.isFinite(ack)) return { errore: "illeggibile" };
+    return { tipo: "baratto", mioId, nodo, seq, ack, istanza, ...QR_BARATTO[lettera] };
+  }
   // 7 campi; il settimo (istanza, vedi nuovaIstanza) è vuoto per i nodi normali. Un QR a
   // 6 campi arriva da una versione precedente dell'app: si accetta senza istanza.
   if (parti.length !== 6 && parti.length !== 7) return { errore: "illeggibile" };
@@ -2828,6 +2886,8 @@ function gestisciQrFoto(testo) {
   if (dati.errore === "illeggibile") { setStatus(status, "QR non leggibile, riprova.", "ko"); qrFotoUltimoStato = "errore"; return; }
   if (dati.errore === "tiposconosciuto") { setStatus(status, "QR non supportato da questa versione del gioco. Aggiorna l'app.", "ko"); qrFotoUltimoStato = "errore"; return; }
   if (!game || !game.nodi[dati.nodo]) { setStatus(status, "QR sconosciuto."); qrFotoUltimoStato = "sconosciuto"; return; }
+  // Un baratto non ha un "ricevente" che entra da Foto: si apre da Memoria su entrambi.
+  if (dati.tipo === "baratto") { setStatus(status, "È un baratto: apri anche tu Memoria e premi 🤝 sull'oggetto che offri."); qrFotoUltimoStato = "errore"; return; }
   // La schermata verde di un ricevente, inquadrata da un terzo telefono: non è un
   // invito, è la conferma di uno scambio già concluso fra altri due.
   if (dati.fatto) { setStatus(status, "Questo scambio è già concluso.", "ko"); qrFotoUltimoStato = "errore"; return; }
@@ -2859,14 +2919,20 @@ function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
     // Solo cedente: quando ha visto per la prima volta il ricevente a soglia (= il
     // momento in cui quello scrive) e se la domanda manuale è già a schermo.
     theirAckKAt: null, domanda: false,
-    // Solo ricevente, dopo aver scritto: cosa festeggiare quando si preme "Chiudi".
+    // Solo ricevente (e baratto), dopo aver scritto: cosa festeggiare quando si preme "Chiudi".
     esito: null,
+    // Solo baratto (vedi barattoTickCorpo): l'amico a cui mi sono agganciato e cosa offre,
+    // i due bit per lato del protocollo, e il momento della mia acquisizione (per la
+    // domanda manuale).
+    theirId: null, theirNodo: null, theirIstanza: "", acquisito: false, ceduto: false, theirAcquisito: false, rifiuto: false, acquisitoAt: null,
     committed: false, inizio: Date.now(), timer: null
   };
+  if (ruolo === "baratto") scambio.mioId = nuovoSessionId(); // 8 caratteri: fa da sessionId, non c'è nulla di condiviso
   $("p-content").hidden = true; $("p-tabbar").hidden = true;
   $("p-scambio").hidden = false;
-  Object.assign($("p-scambio").dataset, { ruolo, tipo, fase: "lettura", n: "0" }); // testi e bottoni li sceglie il CSS
+  Object.assign($("p-scambio").dataset, { ruolo, tipo, fase: "lettura", n: "0", motivo: "" }); // testi e bottoni li sceglie il CSS
   for (const el of $("p-scambio").querySelectorAll(".nome")) el.textContent = nome;
+  for (const el of $("p-scambio").querySelectorAll(".loro")) el.textContent = "";
   for (const el of $("p-scambio").querySelectorAll(".codice")) el.textContent = codiceScambio();
   for (const el of $("p-scambio").querySelectorAll(".k")) el.textContent = String(QR_K);
   $("p-scambio-codice").textContent = codiceScambio();
@@ -2877,7 +2943,13 @@ function apriScambio({ ruolo, tipo, nodo, sessionId, istanza = "" }) {
 // Le prime lettere del sessionId (condiviso, quindi uguale sui due telefoni), grandi
 // a schermo su entrambi: nella domanda manuale il cedente non deve fidarsi di "mi
 // sembra verde", ma confrontare un codice — vedi scambioDomanda().
-function codiceScambio() { return scambio ? scambio.sessionId.slice(0, 4) : ""; }
+function codiceScambio() {
+  if (!scambio) return "";
+  // Baratto: nessun sessionId condiviso; il codice si deriva dai due id ordinati, così è
+  // lo stesso sui due telefoni. Finché non mi sono agganciato a nessuno: puntini.
+  if (scambio.ruolo === "baratto") return scambio.theirId ? [scambio.mioId, scambio.theirId].sort().map(s => s.slice(0, 2)).join("") : "····";
+  return scambio.sessionId.slice(0, 4);
+}
 
 async function avviaScambioFotocamera() {
   try {
@@ -2900,7 +2972,7 @@ let scambioTickBusy = false;
 async function scambioTick() {
   if (!scambio || scambio.committed || scambioTickBusy) return;
   scambioTickBusy = true;
-  try { await scambioTickCorpo(); }
+  try { await (scambio.ruolo === "baratto" ? barattoTickCorpo() : scambioTickCorpo()); }
   finally { scambioTickBusy = false; }
 }
 
@@ -2978,12 +3050,115 @@ async function scambioTickCorpo() {
   }
 }
 
+/* ----- baratto: due acquisizioni non distruttive, poi due cessioni -----
+   Entrambi aprono da Memoria (ruolo "baratto", nessun ricevente): ciascuno OFFRE il nodo
+   che ha scelto e si aggancia al primo amico che legge (theirId). L'acquisizione
+   dell'oggetto dell'altro è simmetrica e non toglie nulla a nessuno, quindi ognuno la fa
+   liberamente alla stessa condizione del ricevente di oggi (QR_K fotogrammi crescenti
+   dell'altro + letto almeno una volta). La cessione del PROPRIO oggetto avviene solo se
+   (a) ho già acquisito il suo e (b) leggo nel suo QR che lui ha acquisito il mio (B o C).
+   Esiti: mai perdita; al più duplicazione (sessione interrotta dopo un'acquisizione).
+   Due trappole già viste a tavolino (docs/ROADMAP.md): il QR NON si congela
+   all'acquisizione — seq continua a salire finché non CEDO, altrimenti l'altro può non
+   arrivare mai ai suoi fotogrammi crescenti — e se il nodo offerto è già mio non acquisisco
+   (lettera x), altrimenti la regola di cessione mi farebbe perdere il mio per niente. */
+const giaMio = (st, nodo, istanza) => istanza ? st.bottino.some(r => r.nodo === nodo && r.istanza === istanza) : st.trovati.includes(nodo);
+async function barattoTickCorpo() {
+  const ora = Date.now(), s = scambio;
+  // Prima di acquisire non è successo nulla: fallire per tempo è sicuro (come il ricevente).
+  if (!s.acquisito && ora - s.inizio > QR_TIMEOUT_MS) { scambioFallito(); return; }
+
+  let testo;
+  try { testo = await leggiQr($("p-scambio-video")); }
+  catch { testo = null; }
+  if (!scambio || scambio.committed) return;
+
+  if (testo) {
+    const d = decodificaQr(testo);
+    // Il primo amico letto è quello con cui si baratta: gli altri (e i propri riflessi,
+    // mioId) si ignorano da lì in poi.
+    if (d && !d.errore && d.tipo === "baratto" && d.mioId !== s.mioId && (!s.theirId || d.mioId === s.theirId)) {
+      if (!s.theirId) {
+        s.theirId = d.mioId; s.theirNodo = d.nodo; s.theirIstanza = d.istanza || "";
+        const loro = game.nodi[d.nodo];
+        s.rifiuto = !loro || giaMio(stato(), d.nodo, s.theirIstanza);
+        const nomeLoro = (loro ? loro.nome : "questo oggetto") + (s.theirIstanza ? " " + s.theirIstanza : "");
+        for (const el of $("p-scambio").querySelectorAll(".loro")) el.textContent = nomeLoro;
+        for (const el of $("p-scambio").querySelectorAll(".codice")) el.textContent = codiceScambio();
+        $("p-scambio-codice").textContent = codiceScambio();
+      }
+      if (d.rifiuto) {
+        // L'amico ha già il mio: non acquisirà mai, quindi io non cederò mai. Se non ho
+        // ancora acquisito il suo, fallisco pulito; se l'ho già acquisito lo tengo
+        // (duplicazione, l'errore residuo accettato).
+        if (!s.acquisito) { $("p-scambio").dataset.motivo = "loro"; scambioFallito(); return; }
+      } else {
+        if (d.seq > s.lastSeqSeen) { s.lastSeqSeen = d.seq; s.myReadCount++; }
+        s.theirAck = d.ack;
+        if (d.acquisito) s.theirAcquisito = true;
+      }
+    }
+  }
+
+  if (!s.acquisito && !s.rifiuto && s.theirId && s.myReadCount >= QR_K && s.theirAck >= 1) barattoAcquisisci();
+  const cedo = s.acquisito && s.theirAcquisito && !s.ceduto;
+
+  s.mySeq++;
+  const lettera = s.rifiuto ? "x" : cedo ? "C" : s.acquisito ? "B" : "b";
+  const payload = QR_PREFISSO + [lettera, s.mioId, s.nodo, s.mySeq, s.myReadCount, s.istanza].join(":");
+  try {
+    const QRCode = await getQrEncode();
+    await QRCode.toCanvas($("p-scambio-qr"), payload, { margin: 1, width: 220 });
+  } catch { /* un fotogramma di QR saltato non è grave, il prossimo tick riprova */ }
+  if (!scambio || scambio.committed) return;
+
+  // Il QR "x" resta a schermo, fermo, perché l'amico lo legga: una schermata statica basta,
+  // non deve contare fotogrammi crescenti per fallire.
+  if (s.rifiuto) { clearInterval(s.timer); stopCamera(); $("p-scambio").dataset.fase = "rifiuto"; return; }
+  if (cedo) { barattoRiuscito(); return; }
+  aggiornaStatoScambio();
+
+  // Ho acquisito ma non leggo che l'amico ha acquisito: dopo un po' si chiede al giocatore
+  // di guardare lo schermo dell'altro (stessi tempi della domanda del cedente).
+  if (s.acquisito && !s.domanda) {
+    const daTocco = ora - s.inizio, daAcq = ora - s.acquisitoAt;
+    if ((daTocco >= QR_DOMANDA_MIN_MS && daAcq >= QR_DOMANDA_DOPO_K_MS) || daTocco >= QR_DOMANDA_MAX_MS) scambioDomanda();
+  }
+}
+
+// Acquisisce l'oggetto dell'amico (stessa scrittura del ricevente in scambioRiuscito),
+// senza chiudere nulla: il ciclo continua, finché non si cede il proprio.
+function barattoAcquisisci() {
+  const s = scambio, st = stato(), nodoDef = game.nodi[s.theirNodo];
+  if (s.theirIstanza && nodoDef) st.bottino.push(voceBottino(s.theirNodo, nodoDef, { istanza: s.theirIstanza, prodotta: false }));
+  const nuovi = chiudiEAggiorna(st, [s.theirNodo]);
+  for (const n of nuovi) if (n.id === s.theirNodo && s.theirIstanza) n.istanza = s.theirIstanza;
+  if (s.theirIstanza && nodoDef && !nuovi.some(n => n.id === s.theirNodo)) nuovi.unshift({ id: s.theirNodo, ...nodoDef, istanza: s.theirIstanza });
+  st.scelta = null; saveState(st);
+  s.esito = { nuovi, st, nodo: s.theirNodo };
+  s.acquisito = true; s.acquisitoAt = Date.now();
+  $("p-scambio").dataset.fase = "attesa";
+}
+
+// Cede il proprio oggetto: l'amico ha già il mio (letto B/C) e io ho già il suo. Il QR
+// "C" appena disegnato resta a schermo, fermo: è ciò che l'amico legge per cedere a sua
+// volta, e non gli servono altri fotogrammi crescenti (ha già acquisito).
+function barattoRiuscito() {
+  const s = scambio;
+  s.committed = true; s.ceduto = true;
+  clearInterval(s.timer);
+  stopCamera();
+  cedi(stato(), s.nodo, s.istanza);
+  if (s.esito) s.esito.st = stato();
+  $("p-scambio").dataset.fase = "fatto";
+}
+
 function aggiornaStatoScambio() {
   if (!scambio || scambio.committed || scambio.domanda) return;
-  // Il ricevente conta le proprie letture (è lui che deve arrivare a soglia); il
-  // cedente mostra quante ne ha viste fare all'amico (theirAck), perché è quel
-  // contatore, non il suo, a decidere quando l'amico scrive.
-  const n = Math.min(scambio.ruolo === "ricevente" ? scambio.myReadCount : scambio.theirAck, QR_K);
+  // Il ricevente (e chi baratta) conta le proprie letture (è lui che deve arrivare a
+  // soglia); il cedente mostra quante ne ha viste fare all'amico (theirAck), perché è
+  // quel contatore, non il suo, a decidere quando l'amico scrive.
+  const n = Math.min(scambio.ruolo === "cedente" ? scambio.theirAck : scambio.myReadCount, QR_K);
   $("p-scambio").dataset.n = String(n); $("p-scambio-n").textContent = String(n);
 }
 
@@ -2998,7 +3173,7 @@ function aggiornaStatoScambio() {
 // solo che se l'amico è verde è andata bene lo stesso.
 function scambioDomanda() {
   if (!scambio || scambio.committed || scambio.domanda) return;
-  if (scambio.myReadCount === 0) { scambioFallito(); return; }
+  if (scambio.myReadCount === 0 || (scambio.ruolo === "baratto" && !scambio.acquisito)) { scambioFallito(); return; }
   scambio.domanda = true;
   if (scambio.tipo === "duplica") {
     clearInterval(scambio.timer);
@@ -3021,7 +3196,7 @@ function scambioRiuscito() {
   if (ruolo === "cedente") {
     // Ultimo a scrivere per costruzione: nessun periodo di grazia, non c'è più nessuno
     // che debba leggere qualcosa da questo schermo.
-    if (tipo === "scambio") cedi(stato(), nodo);
+    if (tipo === "scambio") cedi(stato(), nodo, istanza);
   } else {
     // Scrivo subito, poi resto sulla schermata VERDE con il QR "fatto" (già sul
     // canvas, vedi scambioTickCorpo) finché il giocatore non preme "Chiudi": è la
@@ -3136,19 +3311,23 @@ function initPlayer() {
     // cieca: l'amico potrebbe aver scritto un istante fa. Passa dalla stessa domanda
     // del timeout (che chiude da sola, in sicurezza, se non l'ha mai letto).
     if (scambio && ruolo === "cedente" && scambio.tipo === "scambio" && !scambio.committed && scambio.myReadCount > 0) { scambioDomanda(); return; }
+    // Chi baratta e ha già acquisito il suo non può più annullare alla cieca: stessa domanda.
+    if (scambio && ruolo === "baratto" && !scambio.committed && scambio.acquisito) { scambioDomanda(); return; }
     chiudiScambio();
-    if (ruolo === "cedente") mostraTab("oggetti"); else { mostraTab("cerca"); mostraSubTab("foto"); }
+    if (ruolo === "ricevente") { mostraTab("cerca"); mostraSubTab("foto"); } else mostraTab("oggetti");
   },
-  "scambio-no": () => { chiudiScambio(); mostraTab("oggetti"); },
-  "scambio-si": () => { if (scambio && !scambio.committed) scambioRiuscito(); },
+  // "No" alla domanda: tengo il mio. In un baratto ho comunque già acquisito il suo (è la
+  // duplicazione accettata): lo festeggio lo stesso.
+  "scambio-no": () => { const esito = scambio && scambio.esito; chiudiScambio(); if (esito) { mostraTab("cerca"); showReward(esito.nuovi, esito.st, "scambio", esito.nodo); } else mostraTab("oggetti"); },
+  "scambio-si": () => { if (scambio && !scambio.committed) (scambio.ruolo === "baratto" ? barattoRiuscito : scambioRiuscito)(); },
   "scambio-riprova": () => {
     if (!scambio) return;
     const { ruolo, tipo, nodo, istanza } = scambio;
-    if (ruolo === "cedente") apriScambio({ ruolo, tipo, nodo, istanza });
-    else { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
+    if (ruolo === "ricevente") { chiudiScambio(); mostraTab("cerca"); mostraSubTab("foto"); }
+    else apriScambio({ ruolo, tipo, nodo, istanza });
   },
-  "scambio-chiudi": () => { chiudiScambio(); mostraTab("oggetti"); }, // cedente: fatto o incerto
-  "scambio-ok": () => {                                               // ricevente: dalla schermata verde alla festa
+  "scambio-chiudi": () => { chiudiScambio(); mostraTab("oggetti"); }, // cedente: fatto o incerto; baratto: rifiuto
+  "scambio-ok": () => {                                               // ricevente e baratto: dalla schermata verde alla festa
     const esito = scambio && scambio.esito;
     chiudiScambio();
     mostraTab("cerca");

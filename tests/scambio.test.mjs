@@ -4,8 +4,10 @@
 // (scambioTickCorpo) si fanno a mano, uno alla volta. Verifica l'asimmetria del
 // protocollo (il ricevente scrive per primo, il cedente solo dopo aver letto il QR
 // "fatto"), la domanda manuale del cedente e i suoi tempi, "Annulla", "duplica",
-// i timeout. NON verifica la convergenza ottica reale: quella si prova solo con due
-// telefoni veri (vedi CLAUDE.md).
+// i timeout, i regali a istanze, le istanze cedute (➡️🎟️) e il baratto 🤝 (acquisizione
+// simmetrica poi cessione, rifiuto "ce l'ho già", domanda manuale, a istanze).
+// NON verifica la convergenza ottica reale: quella si prova solo con due telefoni veri
+// (vedi CLAUDE.md).
 //
 // Come si lancia (serve playwright con chromium installato, es. `npm i playwright &&
 // npx playwright install chromium` in una cartella qualunque, poi da lì):
@@ -28,7 +30,7 @@ let html = readFileSync(join(repo, "index.html"), "utf8");
 html = html.replace("window.__avviato = true;", `
 window.__debug = {
   get scambio() { return scambio; },
-  apriScambio, scambioTickCorpo, scambioDomanda, decodificaQr, gestisciQrFoto, stato, saveState, chiudiEAggiorna, renderPlayer, mancanoIstanze,
+  apriScambio, scambioTickCorpo, barattoTickCorpo, scambioDomanda, decodificaQr, gestisciQrFoto, stato, saveState, chiudiEAggiorna, renderPlayer, mancanoIstanze,
   get game() { return game; },
   setLeggiQr(fn) { leggiQr = fn; },
   stubCamera() {
@@ -51,6 +53,12 @@ writeFileSync(join(dir, "caccia.json"), JSON.stringify({ formato: "caccia-3", cr
   obj2: nodo({ nome: "Saracinesca", richiede: [], daValidare: true }),
   sig: nodo({ nome: "Sigillo", messaggio: "un sigillo", richiede: ["obj2"], daValidare: false, duplicabile: true, istanze: true }),
   fin: nodo({ nome: "Tesoro", messaggio: "fine", richiede: ["sig"], istanzeRichieste: { sig: 2 }, daValidare: false }),
+  // Istanze SCAMBIABILI (➡️🎟️): ogni telefono produce la sua, cederla la consuma.
+  sigS: nodo({ nome: "Gettone", richiede: ["obj2"], daValidare: false, scambiabile: true, istanze: true }),
+  // Barattabili: bar1 da obj1, bar2 da obj2 (due giocatori con oggetti diversi), barI a istanze da obj2.
+  bar1: nodo({ nome: "Chiave di bronzo", richiede: ["obj1"], daValidare: false, barattabile: true }),
+  bar2: nodo({ nome: "Sigillo di cera", richiede: ["obj2"], daValidare: false, barattabile: true }),
+  barI: nodo({ nome: "Moneta", richiede: ["obj2"], daValidare: false, barattabile: true, istanze: true }),
 } }));
 writeFileSync(join(dir, "messaggi.json"), "[]");
 writeFileSync(join(dir, "cacce.json"), "[]");
@@ -86,7 +94,7 @@ async function telefono(browser, { possiede }) {
 const S = p => p.evaluate(() => { const s = window.__debug.scambio; return s && { ruolo: s.ruolo, tipo: s.tipo, mySeq: s.mySeq, myReadCount: s.myReadCount, theirAck: s.theirAck, committed: s.committed, domanda: s.domanda, theirAckKAt: s.theirAckKAt, sessionId: s.sessionId, inizio: s.inizio, istanza: s.istanza }; });
 const qr = p => p.evaluate(() => window.__lastQr);
 const feed = (p, t) => p.evaluate(t => { window.__feed = t; }, t);
-const tick = p => p.evaluate(() => window.__debug.scambioTickCorpo());
+const tick = p => p.evaluate(() => window.__debug.scambio && window.__debug.scambio.ruolo === "baratto" ? window.__debug.barattoTickCorpo() : window.__debug.scambioTickCorpo());
 const stato = p => p.evaluate(() => window.__debug.stato());
 const apri = (p, o) => p.evaluate(o => { window.__debug.apriScambio(o); }, o).then(() => p.waitForTimeout(50)).then(() => p.evaluate(() => window.__debug.fermaTimer()));
 const vis = (p, id) => p.evaluate(id => { const e = document.getElementById(id); return !!e && !e.hidden && e.offsetParent !== null; }, id);
@@ -333,7 +341,7 @@ const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato();
   // I8. Memoria: due righe Sigillo con badge, il 👥 della riga condivide QUELLA istanza
   await B.evaluate(() => window.__debug.renderPlayer());
   const righe = await B.evaluate(() => [...document.querySelectorAll("#p-inv-list li")].map(li => ({ testo: li.querySelector(".txt").textContent, badge: li.querySelector(".istanza") && li.querySelector(".istanza").textContent, tua: !!li.querySelector(".istanza-tua"), azione: li.querySelector(".todo-action") && li.querySelector(".todo-action").textContent })));
-  const rs = righe.filter(r => r.badge);
+  const rs = righe.filter(r => r.badge && r.testo === "Sigillo");
   ok(rs.length === 2 && rs.some(r => r.badge === ia && !r.tua && r.azione === "👥") && rs.some(r => r.badge === ib && r.tua), "[I8] Memoria: due righe Sigillo, badge, ★ tua solo sulla propria");
   await B.evaluate(ia => { [...document.querySelectorAll("#p-inv-list li")].find(li => li.querySelector(".istanza") && li.querySelector(".istanza").textContent === ia).querySelector(".todo-action").click(); }, ia);
   ok((await S(B)) && (await S(B)).ruolo === "cedente" && (await S(B)).istanza === ia && (await S(B)).tipo === "duplica", "[I8] il 👥 della riga apre la condivisione di quella istanza (copia di copia)");
@@ -362,6 +370,182 @@ const trova = (p, ids) => p.evaluate(ids => { const st = window.__debug.stato();
   await p.evaluate(t => window.__debug.gestisciQrFoto(t), "gc1:d:ABCDEFGH:sig:7:3:XY12");
   ok((await txt(p, "p-status")).includes("Aggiorna l'app") && !(await S(p)), "[I7] nodo a istanze senza istanza nel QR → 'Aggiorna l'app'");
   await p.context().close();
+}
+
+// ================= istanze scambiabili (➡️🎟️) =================
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await trova(A, ["obj2"]);
+  const ga = (await bottino(A, "sigS"))[0].istanza;
+  ok(ISTANZA_RE.test(ga) && (await stato(A)).prodotti.includes("sigS"), `[S1] A produce il Gettone ${ga}`);
+  await A.evaluate(() => window.__debug.renderPlayer());
+  const rigaG = await A.evaluate(() => { const li = [...document.querySelectorAll("#p-inv-list li")].find(li => li.querySelector(".txt").textContent === "Gettone"); const b = li.querySelector(".todo-action"); return { icona: b.textContent, tipo: b.dataset.tipo, istanza: b.dataset.istanza }; });
+  ok(rigaG.icona === "➡️" && rigaG.tipo === "scambio" && rigaG.istanza === ga, "[S1] Memoria: la riga del Gettone ha ➡️ con tipo scambio e la sua istanza");
+  await apri(A, { ruolo: "cedente", tipo: "scambio", nodo: "sigS", istanza: ga }); await tick(A);
+  await B.evaluate(t => window.__debug.gestisciQrFoto(t), await qr(A));
+  await B.waitForTimeout(50); await B.evaluate(() => window.__debug.fermaTimer());
+  let giri = 0;
+  while (giri++ < 20) { await feed(B, await qr(A)); await tick(B); await feed(A, await qr(B)); await tick(A); if ((await S(A)).committed) break; }
+  ok((await S(A)).committed && (await S(B)).committed, "[S2] scambio dell'istanza concluso");
+  const sA = await stato(A), sB = await stato(B);
+  ok(!sA.bottino.some(r => r.nodo === "sigS") && sA.trovati.includes("sigS") && !sA.ceduti.includes("sigS") && sA.prodotti.includes("sigS"), "[S2] A: riga del Gettone via, nodo ancora in trovati, non in ceduti, prodotti intatto");
+  ok(sB.bottino.some(r => r.nodo === "sigS" && r.istanza === ga && !r.prodotta) && sB.trovati.includes("sigS"), "[S2] B ha il Gettone di A (prodotta: false)");
+  const dopoA = await trova(A, []);
+  ok(!dopoA.length && !(await bottino(A, "sigS")).length, "[S3] una nuova chiusura su A non riconia né rifesteggia il Gettone");
+  // B lo restituisce ad A: A lo riceve (festeggiato) pur avendolo già "conosciuto"
+  await B.click("#p-scambio-ok");
+  await apri(B, { ruolo: "cedente", tipo: "scambio", nodo: "sigS", istanza: ga }); await tick(B);
+  await A.evaluate(t => window.__debug.gestisciQrFoto(t), await qr(B));
+  await A.waitForTimeout(50); await A.evaluate(() => window.__debug.fermaTimer());
+  ok((await S(A)) && (await S(A)).ruolo === "ricevente", "[S4] A accetta indietro la propria istanza (non la possiede più)");
+  giri = 0;
+  while (giri++ < 20) { await feed(A, await qr(B)); await tick(A); await feed(B, await qr(A)); await tick(B); if ((await S(B)).committed) break; }
+  const festa = await A.evaluate(() => window.__debug.scambio.esito.nuovi.map(n => n.id + ":" + (n.istanza || "")));
+  ok((await bottino(A, "sigS")).length === 1 && !(await bottino(B, "sigS")).length && festa.includes("sigS:" + ga), "[S4] il Gettone è tornato ad A e viene festeggiato; B non ce l'ha più");
+  await A.context().close(); await B.context().close();
+}
+
+// ================= baratto (🤝) =================
+const B_RE = /^gc1:([bBCx]):([A-Z2-9]{8}):([^:]+):(\d+):(\d+):([^:]*)$/;
+const lettera = async p => ((await qr(p)) || "").split(":")[1];
+const SB = p => p.evaluate(() => { const s = window.__debug.scambio; return s && { acquisito: s.acquisito, ceduto: s.ceduto, theirAcquisito: s.theirAcquisito, theirId: s.theirId, theirNodo: s.theirNodo, myReadCount: s.myReadCount, mySeq: s.mySeq, committed: s.committed, rifiuto: s.rifiuto, domanda: s.domanda, fase: document.getElementById("p-scambio").dataset.fase }; });
+const giro = async (A, B) => { await feed(B, await qr(A)); await tick(B); await feed(A, await qr(B)); await tick(A); };
+
+// ---- B0. formato
+{
+  const p = await telefono(browser, { possiede: false });
+  const r = await p.evaluate(() => ["gc1:b:ABCDEFGH:bar1:7:3:", "gc1:B:ABCDEFGH:bar1:7:3:K7X", "gc1:C:ABCDEFGH:bar1:7:3:", "gc1:x:ABCDEFGH:bar1:7:3:"].map(window.__debug.decodificaQr));
+  ok(r[0].tipo === "baratto" && !r[0].acquisito && r[1].acquisito && !r[1].ceduto && r[1].istanza === "K7X" && r[2].ceduto && r[3].rifiuto, "[B0] decodificaQr: b/B/C/x del baratto");
+  await p.evaluate(t => window.__debug.gestisciQrFoto(t), "gc1:b:ABCDEFGH:bar1:7:3:");
+  ok((await txt(p, "p-status")).includes("premi 🤝") && !(await S(p)), "[B0] un QR di baratto letto da Foto: 'apri anche tu Memoria', nessuno scambio aperto");
+  await p.context().close();
+}
+
+// ---- B1. percorso felice: A offre bar1, B offre bar2; entrambi acquisiscono, poi cedono
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await trova(B, ["obj2"]);
+  ok((await stato(A)).trovati.includes("bar1") && (await stato(B)).trovati.includes("bar2"), "[B1] A ha la Chiave, B il Sigillo");
+  await B.evaluate(() => window.__debug.renderPlayer());
+  const bt = await B.evaluate(() => { const li = [...document.querySelectorAll("#p-inv-list li")].find(li => li.querySelector(".txt").textContent === "Sigillo di cera"); return li.querySelector(".todo-action").textContent + "/" + li.querySelector(".todo-action").dataset.tipo; });
+  ok(bt === "🤝/baratto", "[B1] Memoria: il Sigillo ha il bottone 🤝");
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" }); await apri(B, { ruolo: "baratto", tipo: "baratto", nodo: "bar2" });
+  ok((await txt(A, "p-scambio-codice")) === "····" && (await txt(A, "p-scambio-titolo")).replace(/\s+/g, " ").trim() === "Baratta: Chiave di bronzo", "[B1] prima dell'aggancio: codice a puntini, titolo 'Baratta:'");
+  await tick(A);
+  ok(B_RE.test(await qr(A)) && (await lettera(A)) === "b" && (await qr(A)).length <= 42, `[B1] il QR di A è un baratto 'b' a 6 campi (${(await qr(A)).length} byte)`);
+  let sa, sb, giri = 0;
+  while (giri++ < 20) {
+    await giro(A, B);
+    sa = await SB(A); sb = await SB(B);
+    if (sa.committed && sb.committed) break;
+  }
+  ok(sa.committed && sb.committed && sa.ceduto && sb.ceduto, `[B1] entrambi hanno ceduto in ${giri} giri`);
+  ok((await txt(A, "p-scambio-codice")) === (await txt(B, "p-scambio-codice")) && /^[A-Z2-9]{4}$/.test(await txt(A, "p-scambio-codice")), "[B1] codice a 4 lettere uguale sui due telefoni, derivato dai due id");
+  const stA = await stato(A), stB = await stato(B);
+  ok(!stA.trovati.includes("bar1") && stA.ceduti.includes("bar1") && stA.trovati.includes("bar2"), "[B1] A ha ceduto la Chiave e ha il Sigillo");
+  ok(!stB.trovati.includes("bar2") && stB.ceduti.includes("bar2") && stB.trovati.includes("bar1"), "[B1] B ha ceduto il Sigillo e ha la Chiave");
+  ok((await lettera(A)) === "C" && (await lettera(B)) === "C", "[B1] gli ultimi QR di entrambi sono 'C' (acquisito e ceduto)");
+  ok(await vis(A, "p-scambio-ok") && !(await vis(A, "p-scambio-chiudi")) && !(await vis(A, "p-scambio-annulla")), "[B1] A: solo il bottone Chiudi (verde)");
+  ok((await txt(A, "p-scambio-status")).includes("Hai barattato Chiave di bronzo con Sigillo di cera"), "[B1] A: 'Hai barattato X con Y'");
+  await A.click("#p-scambio-ok");
+  ok(await vis(A, "p-reward") && (await A.evaluate(() => document.getElementById("p-reward").dataset.festa + "|" + document.querySelector("#p-reward-main .nome").textContent)) === "scambio|Sigillo di cera", "[B1] A: festa 'Ricevuto!' con il Sigillo come principale");
+  await A.context().close(); await B.context().close();
+}
+
+// ---- B2. trappola 1: chi acquisisce per primo continua a far salire seq finché non cede
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await trova(B, ["obj2"]);
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" }); await apri(B, { ruolo: "baratto", tipo: "baratto", nodo: "bar2" });
+  await tick(A);
+  // A legge B a ogni giro, B legge A solo ogni 3 giri: A acquisisce molto prima di B.
+  let g = 0, sa, sb;
+  for (; g < 12; g++) { await feed(A, await qr(B)); await tick(A); await feed(B, g % 3 === 0 ? await qr(A) : null); await tick(B); sa = await SB(A); sb = await SB(B); if (sa.acquisito) break; }
+  ok(sa.acquisito && !sb.acquisito && !sa.ceduto, `[B2] A ha acquisito al giro ${g + 1}, B non ancora`);
+  ok((await lettera(A)) === "B" && sa.fase === "attesa" && (await txt(A, "p-scambio-status")).includes("Hai ricevuto Sigillo di cera"), "[B2] A mostra 'B' e la fase di attesa");
+  ok((await stato(A)).trovati.includes("bar2") && (await stato(A)).trovati.includes("bar1"), "[B2] A ha già il Sigillo e ha ancora la Chiave (acquisizione non distruttiva)");
+  const seqPrima = sa.mySeq;
+  for (let i = 0; i < 3; i++) { await feed(A, null); await tick(A); }
+  ok((await SB(A)).mySeq === seqPrima + 3 && (await lettera(A)) === "B", "[B2] dopo l'acquisizione seq continua a salire (QR non congelato)");
+  ok(await vis(A, "p-scambio-annulla"), "[B2] in attesa 'Annulla' resta visibile");
+  await A.click("#p-scambio-annulla");
+  ok((await SB(A)).domanda && await vis(A, "p-scambio-domanda") && (await A.evaluate(() => document.querySelector("#p-scambio-domanda .se-baratto").innerText)).includes("Hai ricevuto Chiave di bronzo"), "[B2] Annulla dopo l'acquisizione → domanda del baratto (dice «Hai ricevuto Chiave»)");
+  // nel frattempo B arriva a soglia e acquisisce: legge B di A → cede
+  for (let i = 0; i < 6 && !(await SB(B)).committed; i++) { await feed(B, await qr(A)); await tick(B); }
+  ok((await SB(B)).acquisito && (await SB(B)).ceduto && (await stato(B)).ceduti.includes("bar2"), "[B2] B acquisisce e, leggendo 'B' di A, cede");
+  // la lettura automatica sotto la domanda: A legge il C di B → cede da sola
+  await feed(A, await qr(B)); await tick(A);
+  ok((await SB(A)).committed && (await stato(A)).ceduti.includes("bar1") && !(await vis(A, "p-scambio-domanda")), "[B2] A, leggendo 'C' sotto la domanda, cede e la domanda sparisce");
+  await A.context().close(); await B.context().close();
+}
+
+// ---- B3. domanda manuale: Sì cede, No tiene (ma festeggia comunque ciò che ha acquisito)
+for (const risposta of ["si", "no"]) {
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: false });
+  await trova(B, ["obj2"]);
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" }); await apri(B, { ruolo: "baratto", tipo: "baratto", nodo: "bar2" });
+  await tick(A);
+  // B legge A una volta sola (ack=1, basta perché A acquisisca) e poi più nulla: non
+  // arriva mai a soglia, quindi A non leggerà mai il suo "B".
+  await feed(B, await qr(A)); await tick(B); await feed(B, null);
+  for (let g = 0; g < 8 && !(await SB(A)).acquisito; g++) { await feed(A, await qr(B)); await tick(A); await tick(B); }
+  ok((await SB(A)).acquisito && !(await SB(B)).acquisito, `[B3 ${risposta}] A ha acquisito, B no`);
+  await feed(A, null);
+  await backdate(A, 31000); await tick(A);
+  ok(!(await SB(A)).domanda, `[B3 ${risposta}] a 31s dal tocco ma <10s dall'acquisizione: nessuna domanda`);
+  await A.evaluate(() => { window.__debug.scambio.acquisitoAt -= 11000; }); await tick(A);
+  ok((await SB(A)).domanda && await vis(A, "p-scambio-domanda"), `[B3 ${risposta}] a 10s dall'acquisizione: domanda`);
+  if (risposta === "si") {
+    await A.click("#p-scambio-si");
+    ok((await SB(A)).committed && (await stato(A)).ceduti.includes("bar1") && (await stato(A)).trovati.includes("bar2") && await vis(A, "p-scambio-ok"), "[B3 si] A cede e va in verde");
+  } else {
+    await A.click("#p-scambio-no");
+    const st = await stato(A);
+    ok(st.trovati.includes("bar1") && st.trovati.includes("bar2") && !(await S(A)) && await vis(A, "p-reward"), "[B3 no] A tiene la Chiave, ha comunque il Sigillo (duplicazione accettata) e lo festeggia");
+  }
+  await A.context().close(); await B.context().close();
+}
+
+// ---- B4. "ce l'ho già": entrambi offrono la stessa Chiave → rifiuto su entrambi, nessuno perde niente
+{
+  const A = await telefono(browser, { possiede: true }), B = await telefono(browser, { possiede: true });
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" }); await apri(B, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" });
+  await tick(A);
+  await feed(B, await qr(A)); await tick(B);
+  ok((await SB(B)).rifiuto && (await SB(B)).fase === "rifiuto" && (await lettera(B)) === "x" && (await txt(B, "p-scambio-status")).includes("Hai già Chiave di bronzo"), "[B4] B: rifiuto, QR 'x', messaggio 'Hai già'");
+  ok(await vis(B, "p-scambio-chiudi") && !(await vis(B, "p-scambio-annulla")), "[B4] B: Torna a Memoria");
+  await feed(A, await qr(B)); await tick(A);
+  ok((await SB(A)).fase === "fallito" && !(await SB(A)).acquisito && (await txt(A, "p-scambio-status")).includes("ha già Chiave di bronzo"), "[B4] A legge 'x' e fallisce: 'Il tuo amico ha già…'");
+  ok((await stato(A)).trovati.includes("bar1") && (await stato(B)).trovati.includes("bar1"), "[B4] nessuno ha perso la Chiave");
+  await A.context().close(); await B.context().close();
+}
+
+// ---- B5. timeout prima di acquisire → fallito, nulla scritto; Riprova riapre il baratto
+{
+  const A = await telefono(browser, { possiede: true });
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "bar1" });
+  await backdate(A, 41000); await tick(A);
+  ok((await SB(A)).fase === "fallito" && await vis(A, "p-scambio-riprova") && (await stato(A)).trovati.includes("bar1"), "[B5] timeout: fallito, Chiave ancora qui");
+  await A.click("#p-scambio-riprova"); await A.waitForTimeout(50); await A.evaluate(() => window.__debug.fermaTimer());
+  ok((await SB(A)) && (await SB(A)).fase === "lettura" && !(await SB(A)).theirId, "[B5] Riprova riapre il baratto da zero");
+  await A.context().close();
+}
+
+// ---- B6. baratto a istanze: A e B si scambiano le proprie Monete
+{
+  const A = await telefono(browser, { possiede: false }), B = await telefono(browser, { possiede: false });
+  await trova(A, ["obj2"]); await trova(B, ["obj2"]);
+  const ma = (await bottino(A, "barI"))[0].istanza, mb = (await bottino(B, "barI"))[0].istanza;
+  if (ma === mb) console.log("   (collisione casuale 1/6760: i controlli seguenti potrebbero fallire, rilanciare)");
+  await apri(A, { ruolo: "baratto", tipo: "baratto", nodo: "barI", istanza: ma }); await apri(B, { ruolo: "baratto", tipo: "baratto", nodo: "barI", istanza: mb });
+  await tick(A);
+  ok((await qr(A)).endsWith(":" + ma), "[B6] il QR di A porta l'istanza offerta");
+  let giri = 0;
+  while (giri++ < 20) { await giro(A, B); if ((await SB(A)).committed && (await SB(B)).committed) break; }
+  const ba = await bottino(A, "barI"), bb = await bottino(B, "barI");
+  ok(ba.length === 1 && ba[0].istanza === mb && !ba[0].prodotta && bb.length === 1 && bb[0].istanza === ma && !bb[0].prodotta, "[B6] le Monete si sono scambiate: A ha quella di B e viceversa");
+  ok((await stato(A)).prodotti.includes("barI") && !(await stato(A)).ceduti.includes("barI"), "[B6] A: prodotti intatto, nodo non in ceduti (è la riga ad essere ceduta)");
+  await A.context().close(); await B.context().close();
 }
 
 await browser.close();
