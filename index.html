@@ -260,6 +260,7 @@
   #p-scambio:is([data-ruolo="ricevente"], [data-ruolo="baratto"]) #p-scambio-qr { order: 1; }
   #p-scambio > .status, #p-scambio > #p-scambio-domanda, #p-scambio > .btnrow { order: 3; } /* più specifici di "#p-scambio > p" */
   #p-scambio-errore:empty { display: none; }
+  #p-settings .versione { margin-top: 18px; opacity: .7; }
   #p-scambio-diag { font: 12px/1.3 ui-monospace, monospace; color: var(--giallo); text-align: left; white-space: pre-wrap; word-break: break-all; margin-top: 6px; }
   /* Solo l'anteprima mostrata a schermo: il fotogramma vero letto da jsQR arriva dal
      <video> sorgente, non da questo rendering, quindi specchiarla non tocca la
@@ -510,7 +511,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 73)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 74)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -602,9 +603,15 @@
 
         <div id="p-settings" class="inbox">
           <h2>Impostazioni</h2>
+          <!-- Chiede in un colpo solo fotocamera e posizione e sblocca l'audio, così i
+               permessi non arrivano durante il gioco (vedi preparaTelefono()). -->
+          <button id="p-prepara" class="btn" data-azione="prepara">Prepara il telefono (fotocamera, posizione, suoni)</button>
+          <p id="p-prepara-status" class="status" role="status"></p>
+          <label class="check"><input type="checkbox" id="p-suoni"> Suoni durante lo scambio</label>
           <button id="p-change-hunt" class="btn" data-azione="cambia-caccia">Cambia caccia</button>
           <button id="p-reset" class="btn" data-azione="ricomincia">Ricomincia la caccia</button>
           <button id="p-settings-close" class="link" data-azione="sub" data-sub="indizio">Chiudi</button>
+          <p class="hint versione"></p>
         </div>
 
         <!-- Istruzioni per il giocatore: pannello a sé, aperto dal bottone "❓" (data-sub
@@ -679,7 +686,12 @@
             <li><b>✉️</b> sono i messaggi del master: si scaricano a
               ogni apertura dell'app.</li>
 
-            <li><b>⚙️</b> sono le impostazioni: <b>Cambia
+            <li><b>⚙️</b> sono le impostazioni: <b>Prepara il
+            telefono</b> chiede fotocamera e posizione e sblocca i
+            suoni una volta sola, prima di partire; <b>Suoni</b>
+            accende i segnali durante uno scambio (bip gravi
+            continui = fermo, tre note che salgono = sta leggendo,
+            un "plin" = fatto); <b>Cambia
             caccia</b> torna alla scelta della caccia; <b>Ricomincia
             la caccia</b> cancella la Memoria e i progressi di
             questa caccia su questo telefono.</li>
@@ -695,6 +707,7 @@
           <div id="p-mem-empty" class="empty">
             <h1 class="title">Nessun ricordo ancora</h1>
             <p>Quello che trovi resta qui, rivedibile in qualunque momento.</p>
+            <p class="hint">Prima di partire, da ⚙️ Impostazioni puoi <button class="link" data-azione="prepara">preparare il telefono</button>: fotocamera, posizione e suoni una volta sola, non durante il gioco.</p>
           </div>
 
           <div id="p-mem-card" class="schermo-card" hidden>
@@ -1022,6 +1035,9 @@ function activeSlug() {
 const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
 // "?diag" nell'indirizzo: riga di diagnostica nella schermata di scambio (vedi diagScambio).
 const inDiag = () => location.search.includes("diag");
+// La versione la dice il banner di avvio (nascosto appena il JS parte): la si ricopia
+// negli elementi .versione (Impostazioni), così resta leggibile durante il gioco.
+for (const el of document.querySelectorAll(".versione")) el.textContent = (document.getElementById("boot") || { textContent: "" }).textContent.replace(/^.*\(/, "").replace(/\)$/, "");
 
 // L'unico modo di leggere un file JSON pubblicato accanto a index.html (caccia*.json,
 // lavoro*.json, messaggi.json, cacce.json): sempre senza cache, con i tre esiti che
@@ -1080,6 +1096,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
    finisce in console, non fallisce in silenzio. */
 const AZIONI = {};
 document.addEventListener("click", ev => {
+  sbloccaAudio(); // dentro un tocco: l'unico momento in cui i browser mobili lo permettono
   const el = ev.target.closest("[data-azione]");
   if (!el) return;
   const fn = AZIONI[el.dataset.azione];
@@ -1093,6 +1110,68 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
   del(k) { try { localStorage.removeItem(k); } catch {} }
 };
+
+/* ---------- suoni dello scambio (Web Audio, nessun file, nessun permesso) ----------
+   Tre segnali durante uno scambio/baratto, per non dover guardare lo schermo mentre si
+   tengono i telefoni allineati: FERMO (nessuna lettura nuova da SUONO_FERMO_MS: bip
+   continui a 200 Hz, 80 ms sì / 80 ms no), PROCEDE (una lettura valida dell'altro: 300,
+   320, 340 Hz per la prima, seconda, terza), FATTO (un "plin"). Il contesto audio si
+   sblocca solo dentro un tocco (regola dei browser mobili): lo fa il listener dei clic
+   qui sotto. Se non è sbloccato, i suoni non si sentono e nient'altro cambia. Spunta
+   "Suoni" in Impostazioni (chiave localStorage "suoni", default acceso). */
+const SUONO_FERMO_MS = 3000;
+let audioCtx = null, fermoTimer = null;
+const suoniAttivi = () => { try { return localStorage.getItem("suoni") !== "off"; } catch { return true; } };
+function sbloccaAudio() {
+  if (!suoniAttivi() || !("AudioContext" in window || "webkitAudioContext" in window)) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch { audioCtx = null; }
+}
+// Un tono a "freq" Hz per "ms" millisecondi (sinusoide con attacco/rilascio brevi).
+function bip(freq, ms, tipo = "sine", volume = 0.25) {
+  if (!audioCtx || audioCtx.state !== "running" || !suoniAttivi()) return;
+  const t0 = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = tipo; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(volume, t0 + 0.01);
+  g.gain.setValueAtTime(volume, t0 + ms / 1000 - 0.01); g.gain.linearRampToValueAtTime(0, t0 + ms / 1000);
+  o.connect(g).connect(audioCtx.destination); o.start(t0); o.stop(t0 + ms / 1000 + 0.02);
+}
+function suonoProcede(n) { bip(300 + 20 * (Math.min(Math.max(n, 1), 3) - 1), 120); }
+function suonoFatto() {
+  if (!audioCtx || audioCtx.state !== "running" || !suoniAttivi()) return;
+  const t0 = audioCtx.currentTime;
+  for (const [f, v] of [[1319, 0.3], [2637, 0.08]]) {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = f; g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
+    o.connect(g).connect(audioCtx.destination); o.start(t0); o.stop(t0 + 0.65);
+  }
+}
+function suonoFermo(acceso) {
+  if (acceso && !fermoTimer) fermoTimer = setInterval(() => bip(200, 80, "square", 0.12), 160);
+  if (!acceso && fermoTimer) { clearInterval(fermoTimer); fermoTimer = null; }
+}
+// Chiamata a ogni giro dello scambio/baratto: decide se siamo "fermi".
+function suoniGiro() {
+  if (!scambio) { suonoFermo(false); return; }
+  const ultima = scambio.ultimaLetturaAt || scambio.inizio;
+  suonoFermo(Date.now() - ultima > SUONO_FERMO_MS);
+}
+
+// Chiede fotocamera e posizione (e sblocca l'audio) una volta sola, dal bottone in
+// Impostazioni: così i permessi non compaiono nel mezzo di uno scatto o di uno scambio.
+async function preparaTelefono() {
+  const st = $("p-prepara-status"); const esiti = [];
+  sbloccaAudio(); esiti.push(audioCtx && audioCtx.state === "running" ? "suoni ok" : "suoni non disponibili");
+  setStatus(st, "Chiedo la fotocamera…");
+  try { const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); s.getTracks().forEach(x => x.stop()); esiti.push("fotocamera ok"); }
+  catch { esiti.push("fotocamera negata"); }
+  setStatus(st, "Chiedo la posizione…");
+  try { await getPosition(); esiti.push("posizione ok"); }
+  catch { esiti.push("posizione non disponibile"); }
+  setStatus(st, "Pronto: " + esiti.join(", ") + ".", esiti.some(e => /negata|non/.test(e)) ? "ko" : "ok");
+}
 
 /* ---------- fotocamera ---------- */
 let stream = null;
@@ -3024,7 +3103,7 @@ async function scambioTickCorpo() {
         // a quel punto non legge più) — ed è l'unica cosa che lo fa cancellare.
         if (scambio.ruolo === "cedente") { scambioRiuscito(); return; }
       } else {
-        if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; }
+        if (dati.seq > scambio.lastSeqSeen) { scambio.lastSeqSeen = dati.seq; scambio.myReadCount++; scambio.ultimaLetturaAt = ora; suonoProcede(scambio.myReadCount); }
         scambio.theirAck = dati.ack;
         if (scambio.ruolo === "cedente" && dati.ack >= QR_K && !scambio.theirAckKAt) scambio.theirAckKAt = ora;
       }
@@ -3052,7 +3131,7 @@ async function scambioTickCorpo() {
   if (!scambio || scambio.committed) return; // può essere stato chiuso durante gli "await" sopra
 
   if (scrivo) { scambioRiuscito(); return; }
-  aggiornaStatoScambio(); diagScambio();
+  aggiornaStatoScambio(); diagScambio(); suoniGiro();
 
   if (scambio.ruolo === "cedente" && !scambio.domanda) {
     // Il fallback umano non compare mai prima di QR_DOMANDA_MIN_MS dal tocco, e mai
@@ -3110,7 +3189,7 @@ async function barattoTickCorpo() {
         // (duplicazione, l'errore residuo accettato).
         if (!s.acquisito) { $("p-scambio").dataset.motivo = "loro"; scambioFallito(); return; }
       } else {
-        if (d.seq > s.lastSeqSeen) { s.lastSeqSeen = d.seq; s.myReadCount++; }
+        if (d.seq > s.lastSeqSeen) { s.lastSeqSeen = d.seq; s.myReadCount++; s.ultimaLetturaAt = ora; suonoProcede(s.myReadCount); }
         s.theirAck = d.ack;
         if (d.acquisito) s.theirAcquisito = true;
       }
@@ -3131,9 +3210,9 @@ async function barattoTickCorpo() {
 
   // Il QR "x" resta a schermo, fermo, perché l'amico lo legga: una schermata statica basta,
   // non deve contare fotogrammi crescenti per fallire.
-  if (s.rifiuto) { clearInterval(s.timer); stopCamera(); $("p-scambio").dataset.fase = "rifiuto"; return; }
+  if (s.rifiuto) { clearInterval(s.timer); suonoFermo(false); stopCamera(); $("p-scambio").dataset.fase = "rifiuto"; return; }
   if (cedo) { barattoRiuscito(); return; }
-  aggiornaStatoScambio(); diagScambio();
+  aggiornaStatoScambio(); diagScambio(); suoniGiro();
 
   // Ho acquisito ma non leggo che l'amico ha acquisito: dopo un po' si chiede al giocatore
   // di guardare lo schermo dell'altro (stessi tempi della domanda del cedente).
@@ -3163,7 +3242,7 @@ function barattoAcquisisci() {
 function barattoRiuscito() {
   const s = scambio;
   s.committed = true; s.ceduto = true;
-  clearInterval(s.timer);
+  clearInterval(s.timer); suonoFermo(false); suonoFatto();
   stopCamera();
   cedi(stato(), s.nodo, s.istanza);
   if (s.esito) s.esito.st = stato();
@@ -3209,7 +3288,7 @@ function scambioDomanda(forzata = false) {
   if (scambio.myReadCount === 0 || (scambio.ruolo === "baratto" && !scambio.acquisito)) { scambioFallito(); return; }
   scambio.domanda = true;
   if (scambio.tipo === "duplica") {
-    clearInterval(scambio.timer);
+    clearInterval(scambio.timer); suonoFermo(false);
     stopCamera();
     $("p-scambio").dataset.fase = "incerto";
     return;
@@ -3221,7 +3300,7 @@ function scambioDomanda(forzata = false) {
 
 function scambioRiuscito() {
   scambio.committed = true;
-  clearInterval(scambio.timer);
+  clearInterval(scambio.timer); suonoFermo(false); suonoFatto();
   const { ruolo, tipo, nodo, istanza } = scambio;
   const nodoDef = game.nodi[nodo];
   stopCamera();
@@ -3251,7 +3330,7 @@ function scambioRiuscito() {
 
 function scambioFallito() {
   if (!scambio || scambio.committed) return;
-  clearInterval(scambio.timer);
+  clearInterval(scambio.timer); suonoFermo(false);
   stopCamera();
   $("p-scambio").dataset.fase = "fallito";
 }
@@ -3260,6 +3339,7 @@ function scambioFallito() {
 // "Annulla" sia, di riflesso, ogni volta che si torna a "Cerca"/"Memoria").
 function chiudiScambio() {
   if (scambio && scambio.timer) clearInterval(scambio.timer);
+  suonoFermo(false);
   scambio = null;
   stopCamera();
   $("p-scambio").hidden = true;
@@ -3321,6 +3401,8 @@ function initPlayer() {
   // "Caccia": quello resta solo nella schermata di scelta, dove non se n'è ancora
   // scelta una.
   $("p-brand").textContent = slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "Caccia";
+  $("p-suoni").checked = suoniAttivi();
+  $("p-suoni").onchange = () => { try { localStorage.setItem("suoni", $("p-suoni").checked ? "on" : "off"); } catch {} if ($("p-suoni").checked) sbloccaAudio(); };
   memoriaScelta = null;
 
   game = null;
@@ -3354,6 +3436,7 @@ function initPlayer() {
   "scambio-no": () => { const esito = scambio && scambio.esito; chiudiScambio(); if (esito) { mostraTab("cerca"); showReward(esito.nuovi, esito.st, "scambio", esito.nodo); } else mostraTab("oggetti"); },
   // "Annulla" nella domanda: non è una risposta, chiude il riquadro e si continua a leggere
   // (la lettura automatica non si era mai fermata); la domanda ricompare dopo un po'.
+  prepara: preparaTelefono,
   "scambio-torna": () => {
     if (!scambio || scambio.committed) return;
     scambio.domanda = false; scambio.domandaNonPrima = Date.now() + QR_DOMANDA_DOPO_K_MS;
