@@ -250,8 +250,14 @@
   #p-scambio > * { order: 2; }
   #p-scambio > p { order: 0; }
   #p-scambio .viewfinder { order: 1; }
-  #p-scambio[data-ruolo="ricevente"] .viewfinder { order: 2; }
-  #p-scambio[data-ruolo="ricevente"] #p-scambio-qr { order: 1; }
+  /* La fotocamera anteriore sta sul bordo ALTO del telefono e, con gli schermi vicini,
+     vede soprattutto la parte alta dello schermo di fronte: il QR del ricevente sta in
+     alto perché è lì che la fotocamera del cedente lo trova. Nel baratto entrambi devono
+     leggersi allo stesso modo, quindi entrambi hanno il QR in alto — con il QR in basso
+     su tutti e due, ogni fotocamera guardava l'anteprima dell'altro e nessuno leggeva
+     nulla (visto sul campo, versione 70). */
+  #p-scambio:is([data-ruolo="ricevente"], [data-ruolo="baratto"]) .viewfinder { order: 2; }
+  #p-scambio:is([data-ruolo="ricevente"], [data-ruolo="baratto"]) #p-scambio-qr { order: 1; }
   #p-scambio > .status, #p-scambio > #p-scambio-domanda, #p-scambio > .btnrow { order: 3; } /* più specifici di "#p-scambio > p" */
   #p-scambio-errore:empty { display: none; }
   /* Solo l'anteprima mostrata a schermo: il fotogramma vero letto da jsQR arriva dal
@@ -503,7 +509,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 70)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 71)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -719,7 +725,7 @@
       <p id="p-scambio-codice"></p>
       <p class="hint se-cedente se-scambio">Se lo scambio va a buon fine, cederai questo oggetto.</p>
       <p class="hint se-cedente se-duplica">Il tuo amico riceverà una copia, tu mantieni la tua.</p>
-      <p class="hint se-baratto">Anche il tuo amico deve premere 🤝 in Memoria sull'oggetto che offre. Riceverai il suo e cederai questo.</p>
+      <p class="hint se-baratto">Anche il tuo amico preme 🤝 sull'oggetto che offre: riceverai il suo, cederai questo.</p>
       <div class="viewfinder">
         <video id="p-scambio-video" playsinline muted autoplay></video>
       </div>
