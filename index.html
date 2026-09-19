@@ -292,6 +292,19 @@
   }
   .unlocked-item h3 { font: 700 20px/1.15 var(--display); color: var(--testo-chiaro); margin: 0 0 4px; }
   .unlocked-item p { margin: 0; color: var(--testo-chiaro); }
+  /* Il nodo principale della festa: stessa riga, ma in colonna e con la medaglia grande. */
+  .unlocked-main { text-align: center; margin-bottom: 8px; }
+  .unlocked-main .unlocked-item { flex-direction: column; gap: 0; }
+  .unlocked-main .unlocked-item .medal {
+    width: 136px; height: 136px; margin: 12px auto 18px; animation: pop .5s cubic-bezier(.2, 1.4, .4, 1) both;
+    box-shadow: inset 0 0 0 7px rgba(255,255,255,.4), inset 0 0 0 9px var(--smalto), 0 4px 0 rgba(0,0,0,.25);
+  }
+  .unlocked-main .unlocked-item h3 { font-size: 24px; }
+  /* Titolo per tipo di festa; "Hai ricevuto:" solo se c'è un principale E almeno un regalo sotto. */
+  #p-reward:not([data-festa="foto"]) .se-foto, #p-reward:not([data-festa="scambio"]) .se-scambio,
+  #p-reward:not([data-festa="regalo"]) .se-regalo { display: none; }
+  #p-reward[data-festa="regalo"] .ricevuto, #p-reward:has(#p-reward-list:empty) .ricevuto { display: none; }
+  .ricevuto { font-size: 17px; color: var(--testo-chiaro); opacity: .85; margin: 14px 0 10px; }
 
   /* Thumb quadrata (foto vera o colore calcolato da medaglia()) per le righe della
      lista "Memoria": stessa forma di .todo-thumb (Traccia), ma è un contenitore —
@@ -484,7 +497,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 67)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 69)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -520,8 +533,14 @@
           <button id="sub-help-btn" class="subtab icon" aria-label="Istruzioni" data-azione="sub" data-sub="istruzioni">❓</button>
         </div>
 
-        <div id="p-reward" class="reward">
-          <p class="done">Sbloccato!</p>
+        <!-- Festa di sblocco. data-festa (foto/scambio/regalo) sceglie il titolo; il nodo
+             principale (l'oggetto fotografato, o il regalo appena ricevuto da un amico)
+             sta in #p-reward-main con la medaglia grande, i regali derivati a cascata
+             sotto "Hai ricevuto:", che il CSS nasconde se la lista è vuota. -->
+        <div id="p-reward" class="reward" data-festa="foto">
+          <p class="done"><span class="se-foto">Trovato!</span><span class="se-scambio">Ricevuto!</span><span class="se-regalo">Hai ricevuto:</span></p>
+          <div id="p-reward-main" class="unlocked unlocked-main"></div>
+          <p class="done ricevuto">Hai ricevuto:</p>
           <div id="p-reward-list" class="unlocked"></div>
           <button id="p-continue" class="btn primary" data-azione="continua">Continua</button>
         </div>
@@ -961,8 +980,6 @@ function activeSlug() {
 // a QUESTO telefono, questo è un fetch vero e funziona ovunque.
 const inBozza = () => location.hash === "#b" || location.hash.startsWith("#b-");
 
-// Array grezzo di slug da cacce.json (mai un fetch fallito o un contenuto malformato:
-// sempre almeno []), condiviso da leggiElencoCacce() e registraCaccia().
 // L'unico modo di leggere un file JSON pubblicato accanto a index.html (caccia*.json,
 // lavoro*.json, messaggi.json, cacce.json): sempre senza cache, con i tre esiti che
 // contano distinti — "ok" (dati), "404" (il file non esiste ancora: normale prima
@@ -976,19 +993,30 @@ async function leggiJson(file) {
   } catch { return { stato: "errore" }; }
 }
 
-async function leggiCacceGrezzo() {
-  const r = await leggiJson("cacce.json");
+// Array grezzo di slug da un elenco pubblicato (cacce.json o lavori.json; mai un fetch
+// fallito o un contenuto malformato: sempre almeno []), condiviso con registraSlug().
+async function leggiElencoGrezzo(file) {
+  const r = await leggiJson(file);
   return r.stato === "ok" && Array.isArray(r.dati) ? r.dati : [];
 }
 
-// Elenco di TUTTE le cacce, "caccia" (slug vuoto, sempre presente) compresa e sempre
-// per prima: unica fonte di verità sia per il menu del pannello master sia per la
-// schermata di scelta del giocatore. "caccia" è un nome riservato: filtrato qui per
-// restare robusti anche a un cacce.json modificato a mano fuori dall'app.
+// Slug con nome, deduplicati, senza "caccia": nome riservato, filtrato qui per restare
+// robusti anche a un elenco modificato a mano fuori dall'app.
+const slugConNome = elenco => [...new Set(elenco.filter(s => s && s !== "caccia"))];
+
+// Elenco di TUTTE le cacce pubblicate, "caccia" (slug vuoto, sempre presente) compresa
+// e sempre per prima: unica fonte di verità sia per il menu del pannello master sia per
+// la schermata di scelta del giocatore.
 async function leggiElencoCacce() {
-  const slug = [...new Set((await leggiCacceGrezzo()).filter(s => s && s !== "caccia"))];
+  const slug = slugConNome(await leggiElencoGrezzo("cacce.json"));
   return [{ slug: "", nome: "caccia" }, ...slug.map(s => ({ slug: s, nome: s }))];
 }
+
+// Slug delle cacce con nome che hanno una bozza sul server (lavoro-<slug>.json), da
+// lavori.json: sta a lavoro-*.json come cacce.json sta a caccia-*.json. Letto SOLO dal
+// pannello master, per ritrovare da un altro dispositivo una caccia mai pubblicata; il
+// giocatore non lo legge mai, le bozze restano invisibili nella schermata di scelta.
+async function leggiElencoLavori() { return slugConNome(await leggiElencoGrezzo("lavori.json")); }
 
 const FRAME_OGGETTO = 20, FRAME_DINTORNI = 10, RAGGIO_M = 100;
 
@@ -1375,10 +1403,15 @@ async function loadDraftServer(slug) {
   return (g && g.formato === FORMATO && g.nodi) ? g : null;
 }
 
-// Cache in memoria di leggiElencoCacce(), per ridisegnare il menu senza rileggere
-// cacce.json ogni volta — sempre {slug, nome}[], "caccia" compresa e per prima.
-let cacceConosciute = [];
-async function caricaElencoCacce() { cacceConosciute = await leggiElencoCacce(); }
+// Cache in memoria di leggiElencoCacce() e leggiElencoLavori(), per ridisegnare il
+// menu senza rileggere i due file ogni volta — cacceConosciute è sempre {slug, nome}[],
+// "caccia" compresa e per prima; lavoriConosciuti solo slug.
+let cacceConosciute = [], lavoriConosciuti = [];
+async function caricaElencoCacce() { [cacceConosciute, lavoriConosciuti] = await Promise.all([leggiElencoCacce(), leggiElencoLavori()]); }
+// Una caccia "esiste" per il master se è pubblicata O ha una bozza sul server: è il
+// controllo di "+ Nuova caccia", per non partire da zero (e poi sovrascrivere la bozza)
+// su un nome già in uso da un altro dispositivo.
+const cacciaNota = slug => cacceConosciute.some(c => c.slug === slug) || lavoriConosciuti.includes(slug);
 
 function aggiornaMenuCacce() {
   const sel = $("m-hunt-select");
@@ -1386,23 +1419,29 @@ function aggiornaMenuCacce() {
   const opt = (value, testo) => { const o = document.createElement("option"); o.value = value; o.textContent = testo; sel.append(o); };
   opt("__new__", "+ Nuova caccia");
   for (const c of cacceConosciute) opt(c.slug, c.nome);
-  // Se sto modificando una caccia appena creata, non ancora pubblicata (quindi non
-  // ancora in cacce.json), aggiungo comunque una voce per non perdere la selezione.
-  if (L.slug && !cacceConosciute.some(c => c.slug === L.slug)) opt(L.slug, `${L.slug} (non ancora pubblicata)`);
+  // Cacce con una bozza sul server ma mai pubblicate (in lavori.json, non in cacce.json):
+  // è così che il computer ritrova la caccia iniziata sul telefono.
+  for (const s of lavoriConosciuti) if (!cacceConosciute.some(c => c.slug === s)) opt(s, `${s} (bozza, non pubblicata)`);
+  // Se sto modificando una caccia appena creata, non ancora salvata da nessuna parte,
+  // aggiungo comunque una voce per non perdere la selezione.
+  if (L.slug && !cacciaNota(L.slug)) opt(L.slug, `${L.slug} (non ancora salvata)`);
   sel.value = L.slug;
 }
 
-// Scrive lo slug in cacce.json se non c'è già: chiamata dopo ogni pubblicazione riuscita
-// di una caccia con nome (la caccia di sempre, slug vuoto, non ci va: è implicita, vedi
-// leggiElencoCacce()).
-async function registraCaccia(slug) {
-  if (!slug || cacceConosciute.some(c => c.slug === slug)) return;
-  let elenco = await leggiCacceGrezzo();
-  if (elenco.includes(slug)) { await caricaElencoCacce(); return; }
-  elenco = [...elenco, slug];
-  const ok = await ghPutFile("cacce.json", JSON.stringify(elenco, null, 2), `Aggiungi "${slug}" all'elenco delle cacce`, $("m-hunt-status"));
-  if (ok) { await caricaElencoCacce(); aggiornaMenuCacce(); }
+// Scrive lo slug in un elenco pubblicato (cacce.json o lavori.json) se non c'è già; la
+// caccia di sempre, slug vuoto, non ci va mai: è implicita, vedi leggiElencoCacce().
+async function registraSlug(file, slug, giaNoto, messaggio) {
+  if (!slug || giaNoto) return;
+  const elenco = await leggiElencoGrezzo(file);
+  if (!elenco.includes(slug)) {
+    if (!await ghPutFile(file, JSON.stringify([...elenco, slug], null, 2), messaggio, $("m-hunt-status"))) return;
+  }
+  await caricaElencoCacce(); aggiornaMenuCacce();
 }
+// Dopo ogni pubblicazione riuscita di una caccia con nome.
+const registraCaccia = slug => registraSlug("cacce.json", slug, cacceConosciute.some(c => c.slug === slug), `Aggiungi "${slug}" all'elenco delle cacce`);
+// Dopo ogni "Salva bozza sul server" riuscito di una caccia con nome.
+const registraLavoro = slug => registraSlug("lavori.json", slug, lavoriConosciuti.includes(slug), `Aggiungi "${slug}" all'elenco delle bozze`);
 
 // Carica nel pannello master la copia di lavoro della caccia "slug" (una delle due vie
 // per arrivarci: scelta dal menu, o all'avvio con lo slug della bozza locale se c'è).
@@ -2012,7 +2051,7 @@ function initMaster() {
     const ok = await ghPutFile(draftFile(L.slug), JSON.stringify(g, null, 2), `Salva bozza di lavoro (${Object.keys(g.nodi).length} elementi)`, $("m-save-draft-status"));
     // Da qui in poi la copia locale deriva da QUESTA bozza: un altro dispositivo che la
     // carica la vedrà più recente della sua (vedi caricaCopiaLavoro()).
-    if (ok) { L.base = g.salvato; salvaLocale(g.salvato); setStatus($("m-draft-status"), `Bozza salvata sul server alle ${oraBreve(g.salvato)}: da un altro dispositivo, riapri il pannello per riprenderla.`); }
+    if (ok) { L.base = g.salvato; salvaLocale(g.salvato); setStatus($("m-draft-status"), `Bozza salvata sul server alle ${oraBreve(g.salvato)}: da un altro dispositivo, riapri il pannello per riprenderla.`); await registraLavoro(L.slug); }
   } });
 
   // "+ Nuova caccia": chiede un nome (diventa lo slug: file e link), avvisa se la copia
@@ -2024,7 +2063,7 @@ function initMaster() {
     const slug = slugify(scelta);
     if (!slug) { alert("Nome non valido: usa almeno una lettera o un numero."); aggiornaMenuCacce(); return; }
     if (slug === "caccia") { alert('"Caccia" è il nome riservato alla caccia di sempre: scegline un altro.'); aggiornaMenuCacce(); return; }
-    if (cacceConosciute.some(c => c.slug === slug) || slug === L.slug) { alert(`Esiste già una caccia "${slug}": selezionala dal menu per modificarla.`); aggiornaMenuCacce(); return; }
+    if (cacciaNota(slug) || slug === L.slug) { alert(`Esiste già una caccia "${slug}": selezionala dal menu per modificarla.`); aggiornaMenuCacce(); return; }
     if (Object.keys(L.nodi || {}).length && !confirm(`Iniziare "${slug}" abbandonando le modifiche non salvate della caccia attuale?`)) { aggiornaMenuCacce(); return; }
     L.slug = slug; L.nodi = {};
     M.base = null; M.baseLoaded = true;
@@ -2317,7 +2356,7 @@ function festeggiaAutomatici() {
   const st = stato();
   const nuovi = chiudiEAggiorna(st);
   if (!nuovi.length) return false;
-  saveState(st); mostraTab("cerca"); showReward(nuovi, st);
+  saveState(st); mostraTab("cerca"); showReward(nuovi, st, "regalo");
   return true;
 }
 
@@ -2627,22 +2666,28 @@ function renderPlayer() {
 
 // Il possesso si festeggia sempre: tutti i nodi appena sbloccati da un solo scatto
 // (anche a cascata) si mostrano insieme nella stessa schermata, non più in coda.
-function showReward(nuovi, st) {
+// "tipo" dice cos'è successo — "foto" (l'oggetto fotografato è il principale, gli altri
+// sono regali derivati), "scambio" (il principale è il nodo ricevuto dall'amico, id in
+// "principale"), "regalo" (solo regali automatici: avvio, dono iniziale) — e finisce in
+// data-festa su #p-reward: il CSS sceglie il titolo e nasconde "Hai ricevuto:" se vuoto.
+function showReward(nuovi, st, tipo = "foto", principale = null) {
   // Dopo aver trovato qualcosa si riparte da "Indizio", non si resta su "Foto": lo si
   // sceglie di nuovo solo quando si è pronti per il prossimo oggetto.
   subTabAttivo = "indizio";
   $("view-player").dataset.sub = "festa"; // il CSS nasconde le altre schede e le novità
   segnaCorrente({ "sub-indizio-btn": "indizio", "sub-foto-btn": "foto", "sub-msg-btn": "messaggi", "sub-settings-btn": "impostazioni", "sub-help-btn": "istruzioni" }, "");
-  const wrap = $("p-reward-list");
-  wrap.replaceChildren();
-  for (const n of nuovi) {
+  const main = tipo === "foto" ? nuovi.find(n => n.daValidare) : tipo === "scambio" ? nuovi.find(n => n.id === principale) : null;
+  $("p-reward").dataset.festa = main ? tipo : "regalo";
+  const riga = n => {
     const item = clona("tpl-festa");
     medaglia(item.querySelector(".medal"), n);
     const h3 = item.querySelector(".nome"); h3.textContent = n.nome;
     const badge = badgeIstanza(n); if (badge) h3.append(badge);
     item.querySelector(".msg").textContent = n.messaggio || "";
-    wrap.append(item);
-  }
+    return item;
+  };
+  $("p-reward-main").replaceChildren(...(main ? [riga(main)] : []));
+  $("p-reward-list").replaceChildren(...nuovi.filter(n => n !== main).map(riga));
   aggiornaProgresso(st);
   renderMemoria(st);
 }
@@ -2992,7 +3037,7 @@ function scambioRiuscito() {
     // era già posseduto), ma va festeggiata lo stesso: è lei l'evento.
     if (istanza && nodoDef && !nuovi.some(n => n.id === nodo)) nuovi.unshift({ id: nodo, ...nodoDef, istanza });
     st.scelta = null; saveState(st);
-    scambio.esito = { nuovi, st };
+    scambio.esito = { nuovi, st, nodo };
   }
 }
 
@@ -3107,7 +3152,7 @@ function initPlayer() {
     const esito = scambio && scambio.esito;
     chiudiScambio();
     mostraTab("cerca");
-    if (esito) showReward(esito.nuovi, esito.st);
+    if (esito) showReward(esito.nuovi, esito.st, "scambio", esito.nodo);
   },
   ricomincia: () => {
     if (!confirm("Ricominciare la caccia? Il bottino verrà azzerato.")) return;

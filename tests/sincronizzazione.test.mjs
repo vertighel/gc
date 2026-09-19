@@ -2,6 +2,8 @@
 // computer) attraverso "Salva bozza sul server" e "Pubblica": fra bozza locale, bozza sul
 // server e caccia pubblicata deve vincere la più recente, e le modifiche locali non
 // salvate non vanno mai scartate senza chiedere (vedi caricaCopiaLavoro() in index.html).
+// In coda: una caccia con nome mai pubblicata, iniziata sul telefono, deve comparire nel
+// menu del computer tramite lavori.json, e "+ Nuova caccia" con lo stesso nome va rifiutata.
 //
 // A tavolino: due contesti Playwright fanno da telefono e da computer; l'API di GitHub è
 // finta (il PUT scrive davvero il file nella cartella servita, così l'altro dispositivo lo
@@ -36,8 +38,8 @@ async function dispositivo(nome) {
   await ctx.addInitScript(() => { try { if (!localStorage.getItem("gh-config")) localStorage.setItem("gh-config", JSON.stringify({ owner: "o", repo: "r", branch: "main", path: "caccia.json", token: "t" })); } catch {} });
   const pg = await ctx.newPage(); pg.nome = nome;
   pg.on("pageerror", e => console.log(nome, "PAGEERROR", e.message));
-  pg.dialogs = []; pg.rispostaDialog = true;
-  pg.on("dialog", d => { pg.dialogs.push(d.message()); pg.rispostaDialog ? d.accept() : d.dismiss(); });
+  pg.dialogs = []; pg.rispostaDialog = true; pg.rispostaPrompt = undefined;
+  pg.on("dialog", d => { pg.dialogs.push(d.message()); pg.rispostaDialog ? d.accept(pg.rispostaPrompt) : d.dismiss(); });
   return pg;
 }
 const apri = async (pg) => { await pg.goto("about:blank"); await pg.goto(`http://localhost:${PORT}/index.html#master-collega`); await pg.waitForFunction(() => document.getElementById("m-base-status").textContent && !/Leggo/.test(document.getElementById("m-base-status").textContent)); await pg.waitForTimeout(400); };
@@ -84,6 +86,25 @@ ok((await nomi(pc))[0] === "GUSTO (modifica PC non salvata)", "conflitto, Annull
 console.log("   stato PC:", await stato(pc));
 pc.rispostaDialog = true; pc.dialogs = []; await apri(pc);
 ok(pc.dialogs.length === 1 && (await nomi(pc))[0] === "Il gusto", "conflitto, OK: carica la bozza del server");
+// --- Problema 4: caccia nuova con nome, mai pubblicata. Il telefono la inizia e salva la
+// bozza; il PC deve trovarla nel menu (lavori.json) e non poterla ricreare da zero.
+await setLocale(tel, { formato: "caccia-3", slug: "boccadasse", nodi: { x: nodo("Faro") }, salvato: new Date().toISOString(), base: "" });
+await apri(tel); ok((await nomi(tel)).join() === "Faro", "telefono: caccia nuova 'boccadasse' con un oggetto, mai pubblicata");
+await salvaBozza(tel);
+ok(existsSync(WWW + "lavoro-boccadasse.json") && JSON.parse(readFileSync(WWW + "lavori.json")).includes("boccadasse"), "telefono: Salva bozza scrive lavoro-boccadasse.json e la registra in lavori.json");
+ok(!JSON.parse(readFileSync(WWW + "cacce.json")).includes("boccadasse"), "cacce.json non la contiene: per il giocatore resta invisibile");
+await pc.evaluate(() => localStorage.removeItem("m-lavoro")); await apri(pc);
+const voci = await pc.evaluate(() => [...document.querySelectorAll("#m-hunt-select option")].map(o => [o.value, o.textContent]));
+ok(voci.some(([v, s]) => v === "boccadasse" && /bozza, non pubblicata/.test(s)), "4) PC: il menu elenca 'boccadasse (bozza, non pubblicata)' — " + JSON.stringify(voci));
+await pc.evaluate(() => { location.hash = "#master"; }); await pc.waitForTimeout(300);
+pc.dialogs = []; await pc.selectOption("#m-hunt-select", "boccadasse"); await pc.waitForTimeout(600);
+await pc.evaluate(() => { location.hash = "#master-collega"; }); await pc.waitForTimeout(300);
+ok((await nomi(pc)).join() === "Faro", "4) PC: selezionandola dal menu carica la bozza del telefono");
+console.log("   stato PC:", await stato(pc));
+await pc.evaluate(() => { location.hash = "#master"; }); await pc.waitForTimeout(300);
+pc.dialogs = []; pc.rispostaPrompt = "Boccadasse"; await pc.selectOption("#m-hunt-select", "__new__"); await pc.waitForTimeout(400);
+ok(pc.dialogs.some(d => /Esiste già una caccia "boccadasse"/.test(d)), "4) PC: '+ Nuova caccia' con lo stesso nome viene rifiutata — " + JSON.stringify(pc.dialogs));
+ok(await pc.evaluate(() => document.getElementById("m-hunt-select").value) === "boccadasse", "4) PC: il menu resta su boccadasse");
 console.log(fail ? `${fail} FAIL` : "TUTTO OK");
 await b.close(); srv.kill();
 process.exit(fail ? 1 : 0);
