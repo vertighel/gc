@@ -26,7 +26,9 @@ const PORT = 8000 + Math.floor(Math.random() * 1000);
 const srv = spawn("python3", ["-m", "http.server", String(PORT)], { cwd: WWW, stdio: "ignore" });
 await new Promise(r => setTimeout(r, 800));
 let fail = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fail++; };
-const nodo = (nome) => ({ nome, testo: "", messaggio: "", immagine: null, pos: [], neg: [], soglia: 0.5, luogo: null, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] });
+// Con la foto (un embedding finto): un nodo da validare senza "pos" è un segnaposto e "Pubblica" lo rifiuta.
+const v = { m: 0.2, q: "AQIDBA==" };
+const nodo = (nome) => ({ nome, testo: "", messaggio: "", immagine: null, pos: [v], neg: [v], soglia: 0.5, luogo: null, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] });
 const b = await chromium.launch();
 async function dispositivo(nome) {
   const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });

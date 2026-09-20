@@ -418,6 +418,7 @@
   .edge-preview { fill: none; stroke: var(--giallo); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
 
   #m-panel-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 4px 20px; align-items: start; }
+  #m-panel-list .todo-thumb-wrap { margin-right: 4px; }
   #m-link-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
@@ -472,9 +473,13 @@
   .current h2 { font: 700 22px/1 var(--display); color: var(--smalto); margin: 0; }
   .current .status { margin-top: 8px; }
   .baselist { list-style: none; margin: 6px 0 0; padding: 0; }
+  .cap-bersaglio { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .cap-bersaglio .link { padding: 0; }
+  /* Segnaposto (nodo senza foto): nel pannello e nel Grafo si riconosce dal bordo tratteggiato. */
+  #m-panel-list li[data-foto="no"] .todo-thumb-wrap { border: 2px dashed #8A96A3; box-sizing: border-box; background: transparent; }
+  .grafonode[data-foto="no"] { border-style: dashed; }
   .baselist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid #DDE2E7; }
   .baselist .link { color: var(--rosso); flex: none; padding: 0; }
-  #m-panel-list li { justify-content: flex-start; align-items: center; }
   .testbar { background: var(--giallo); color: var(--smalto-scuro); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
   .testbar .link { color: var(--smalto-scuro); padding: 0; }
   .boot { font-weight: 600; color: var(--smalto); background: #fff; border-radius: 8px; padding: 12px; }
@@ -520,7 +525,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 76)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 77)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -833,7 +838,10 @@
     </div>
 
     <div class="current">
-      <h2>Registra un nuovo elemento</h2>
+      <!-- Con un bersaglio (M.bersaglio, scelto toccando un elemento della lista qui sotto)
+           la cattura scrive la foto dentro quel nodo invece di crearne uno: il titolo e
+           il bottone "Aggiungi" lo dicono. -->
+      <h2 class="cap-bersaglio"><span id="m-cap-registra">Registra un nuovo elemento</span> <button id="m-bersaglio-x" class="link" type="button" hidden data-azione="bersaglio-annulla">Annulla</button></h2>
       <div class="viewfinder" id="m-vf">
         <video id="m-video" playsinline muted autoplay></video>
         <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
@@ -852,6 +860,9 @@
       </div>
       <p id="m-test-status" class="status" role="status"></p>
       <p id="m-add-status" class="status" role="status"></p>
+      <!-- Un segnaposto è un nodo senza foto: il grafo si può costruire prima (anche dal
+           computer), la foto arriva sul campo toccando l'elemento nella lista "Elementi". -->
+      <button id="m-add-placeholder" class="btn" disabled data-azione="aggiungi-segnaposto">Aggiungi un segnaposto (senza foto)</button>
       <button id="m-save-draft" class="btn" disabled data-azione="salva-bozza">Salva bozza sul server</button>
       <p id="m-save-draft-status" class="status" role="status"></p>
       <p id="m-draft-link-hint" class="hint"></p>
@@ -861,7 +872,8 @@
       <h2>Elementi</h2>
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
       <p id="m-draft-status" class="status" role="status"></p>
-      <ul id="m-panel-list" class="baselist"></ul>
+      <p class="hint">Tocca un elemento per fargli (o rifargli) la foto con la fotocamera qui sopra. I segnaposti senza foto stanno in cima.</p>
+      <ul id="m-panel-list" class="todo"></ul>
       <button id="m-base-retry" class="link" hidden data-azione="ricarica-base">Riprova</button>
     </div>
 
@@ -970,9 +982,6 @@
 </template>
 <template id="tpl-inbox">
   <li><span class="when"></span><span class="testo"></span></li>
-</template>
-<template id="tpl-pubblicato">
-  <li><span class="thumb"></span><span class="nome"></span></li>
 </template>
 <template id="tpl-grafonode">
   <div class="grafonode"><span class="thumb"></span><div class="grafonode-info"><span class="grafonode-nome"></span><span class="grafonode-icone"></span></div></div>
@@ -1371,7 +1380,14 @@ function hslToRgb(h, s, l) {
    ================================================================= */
 // base = la caccia già pubblicata sul sito; L.nodi è la copia di lavoro (modificabile,
 // condivisa fra il pannello "Caccia pubblicata" e la pagina "Collega gli elementi")
-const M = { base: null, baseLoaded: false, loading: false, pos: [], neg: [], cal: null, luogo: null, immagine: null, busy: false };
+const M = { base: null, baseLoaded: false, loading: false, pos: [], neg: [], cal: null, luogo: null, immagine: null, busy: false, bersaglio: null };
+// Segnaposto: un nodo senza foto (pos vuoto). Nessun flag: la mancanza della foto È lo
+// stato. Il master può costruire il grafo prima (anche dal computer) e fotografare dopo,
+// sul campo, toccando l'elemento nella lista "Elementi" (M.bersaglio). Un regalo può
+// restare senza foto per sempre (la miniatura usa coloreNodo()); un nodo da validare no:
+// elementiSenzaFoto() blocca "Pubblica" e "Prova" come trovaCiclo()/biviImpossibili().
+const senzaFoto = n => !n.pos || !n.pos.length;
+const elementiSenzaFoto = nodi => Object.values(nodi || {}).filter(n => n.daValidare && senzaFoto(n)).map(n => n.nome);
 const clone = o => JSON.parse(JSON.stringify(o));
 const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const inCaccia3 = g => !!(g && g.formato === "caccia-3" && g.nodi);
@@ -1392,6 +1408,13 @@ function masterRefresh() {
   $("m-local").disabled = !esportabile;
   $("m-rec-pos").disabled = !stream || M.busy;
   $("m-rec-neg").disabled = !stream || M.busy || !M.pos.length;
+  $("m-add-placeholder").disabled = !esportabile;
+  // Il bersaglio della cattura si legge in due posti: titolo della sezione e bottone.
+  const b = M.bersaglio && L.nodi && L.nodi[M.bersaglio];
+  if (!b) M.bersaglio = null; // nodo rimosso o copia di lavoro ricaricata
+  $("m-cap-registra").textContent = b ? `Foto per: ${b.nome}` : "Registra un nuovo elemento";
+  $("m-add").textContent = b ? `Salva la foto su ${b.nome}` : "Aggiungi";
+  $("m-bersaglio-x").hidden = !b;
 }
 
 /* ---------- pubblicazione diretta su GitHub: concetto separato dal "pubblicare
@@ -1492,14 +1515,23 @@ const testoConteggio = n => n === 0 ? "Nessun oggetto ancora." : n === 1 ? "1 og
 
 /* ---------- pannello "Caccia pubblicata": solo un elenco di sola lettura.
    Nome, foto, flag e testi si modificano in "Collega gli elementi". ---------- */
+// La lista "Elementi" del pannello master: una riga per nodo (tpl-riga, come Traccia e
+// Memoria), toccabile per farne il bersaglio della cattura (M.bersaglio: la prossima foto
+// finisce lì, anche al posto di una foto esistente). I segnaposti senza foto stanno in
+// testa: sul campo sono la lista delle cose da fare. Il bersaglio vive solo in memoria di
+// sessione, mai nella bozza: è una scelta del momento, e un bersaglio dimenticato che
+// cattura la foto sbagliata sarebbe peggio di doverlo ritoccare.
 function renderPanelList() {
   const list = $("m-panel-list");
   list.replaceChildren();
-  for (const n of Object.values(L.nodi || {})) {
-    const li = clona("tpl-pubblicato");
-    li.querySelector(".thumb").replaceWith(thumbEl(n.immagine));
-    li.querySelector(".nome").textContent = n.nome;
-    list.append(li);
+  const voci = Object.entries(L.nodi || {});
+  voci.sort(([, a], [, b]) => (senzaFoto(b) ? 1 : 0) - (senzaFoto(a) ? 1 : 0));
+  for (const [id, n] of voci) {
+    const wrap = document.createElement("span"); wrap.className = "todo-thumb-wrap"; medaglia(wrap, n);
+    const ic = iconaNodo(n);
+    const icona = document.createElement("span"); icona.textContent = ic.icona; icona.title = ic.titolo;
+    const li = rigaSelezionabile(list, { prima: [wrap], testo: n.nome, badge: icona, attiva: M.bersaglio === id, azione: "bersaglio-foto", dati: { id } });
+    if (senzaFoto(n)) li.dataset.foto = "no";
   }
 }
 
@@ -1738,6 +1770,8 @@ async function publishGame(statusEl) {
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
   const bivio = biviImpossibili(L.nodi);
   if (bivio) { setStatus(statusEl, bivio + " Correggi prima di pubblicare.", "ko"); return false; }
+  const vuoti = elementiSenzaFoto(L.nodi);
+  if (vuoti.length) { setStatus(statusEl, `Senza foto: ${vuoti.join(", ")}. Registrale prima di pubblicare (nel pannello master tocca l'elemento, poi Oggetto e Dintorni).`, "ko"); return false; }
   const g = currentGame();
   const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) {
@@ -1799,7 +1833,7 @@ const infoModo = n => MODI_REGALO.find(x => x.modo === modoRegalo(n));
 const EMOJI_BIVIO = ["", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
 // Icona (e titolo) di un nodo: 📷 [📍] [1️⃣] se da validare, altrimenti 🎁 + il modo [+ 🎟️].
 function iconaNodo(n) {
-  if (n.daValidare) return { icona: "📷" + (n.richiedePosizione ? " 📍" : "") + (n.bivio ? " " + EMOJI_BIVIO[n.bivio] : ""), titolo: "Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "") + (n.bivio ? `, bivio ${n.bivio}: alternativo agli altri con lo stesso numero` : "") };
+  if (n.daValidare) return { icona: "📷" + (senzaFoto(n) ? "❓" : "") + (n.richiedePosizione ? " 📍" : "") + (n.bivio ? " " + EMOJI_BIVIO[n.bivio] : ""), titolo: "Da validare con la fotocamera" + (senzaFoto(n) ? " — SENZA FOTO: da registrare sul campo" : "") + (n.richiedePosizione ? " e la posizione" : "") + (n.bivio ? `, bivio ${n.bivio}: alternativo agli altri con lo stesso numero` : "") };
   const m = infoModo(n);
   return { icona: (m.modo === "libero" ? "🎁" : "🎁 " + m.icona) + (n.istanze ? "🎟️" : ""), titolo: "Regalo: " + m.testo + (n.istanze ? ", a istanze" : "") };
 }
@@ -1819,6 +1853,7 @@ Object.assign(AZIONI, {
     if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
     if (!confirm(`Rimuovere "${n.nome}"?`)) return;
     delete L.nodi[id];
+    if (M.bersaglio === id) M.bersaglio = null;
     salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); renderLinkList();
     if (grafoPanelId === id) chiudiPannelloGrafo();
@@ -2086,6 +2121,7 @@ function disegnaGrafo() {
     const fo = document.createElementNS(SVGNS, "foreignObject");
     fo.setAttribute("x", x); fo.setAttribute("y", y); fo.setAttribute("width", GNODE_W); fo.setAttribute("height", GNODE_H);
     const card = clona("tpl-grafonode"); card.dataset.id = id;
+    if (senzaFoto(n)) card.dataset.foto = "no";
     card.querySelector(".thumb").replaceWith(thumbEl(n.immagine));
     card.querySelector(".grafonode-nome").textContent = n.nome;
     const ic = iconaNodo(n), icone = card.querySelector(".grafonode-icone");
@@ -2196,26 +2232,46 @@ function initMaster() {
     M.busy = false; masterRefresh();
   },
 
+  // La cattura appena fatta (M.pos/neg/cal/immagine/luogo): dentro il bersaglio, se c'è
+  // (anche al posto di una foto esistente, con conferma), altrimenti in un nodo nuovo.
   "aggiungi-oggetto": () => {
     if (!L.nodi) L.nodi = {};
-    const id = newId("n");
-    const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
-    L.nodi[id] = {
-      nome, testo: "", messaggio: "",
+    const foto = {
       immagine: M.immagine,
       pos: M.pos, neg: M.neg, soglia: +M.cal.soglia.toFixed(4),
       luogo: M.luogo ? { lat: M.luogo.lat, lon: M.luogo.lon, raggio: RAGGIO_M } : null,
-      daValidare: true, conThumb: true, richiedePosizione: false,
-      scambiabile: false, duplicabile: false,
-      richiede: []
     };
+    let esito;
+    const b = M.bersaglio && L.nodi[M.bersaglio];
+    if (b) {
+      if (!senzaFoto(b) && !confirm(`Sostituire la foto di "${b.nome}"?`)) return;
+      Object.assign(b, foto);
+      M.bersaglio = null;
+      esito = `Foto salvata su "${b.nome}".`;
+    } else {
+      const id = newId("n");
+      const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
+      L.nodi[id] = { nome, testo: "", messaggio: "", ...foto, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] };
+      esito = `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`;
+    }
     M.pos = []; M.neg = []; M.cal = null; M.luogo = null; M.immagine = null;
     setStatus($("m-train-status"), "");
     setStatus($("m-test-status"), "");
-    setStatus($("m-add-status"), `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`, "ok");
+    setStatus($("m-add-status"), esito, "ok");
     salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   },
+  // Un nodo vuoto, da riempire di foto sul campo: si crea anche senza fotocamera.
+  "aggiungi-segnaposto": () => {
+    if (!L.nodi) L.nodi = {};
+    const nome = "Elemento-" + (Object.keys(L.nodi).length + 1);
+    L.nodi[newId("n")] = { nome, testo: "", messaggio: "", immagine: null, pos: [], neg: [], soglia: null, luogo: null, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] };
+    setStatus($("m-add-status"), `"${nome}" aggiunto senza foto: rinominalo e collegalo in "Collega gli elementi"; la foto gliela fai toccandolo qui sotto.`, "ok");
+    salvaLocale();
+    renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
+  },
+  "bersaglio-foto": btn => { M.bersaglio = M.bersaglio === btn.dataset.id ? null : btn.dataset.id; renderPanelList(); masterRefresh(); },
+  "bersaglio-annulla": () => { M.bersaglio = null; renderPanelList(); masterRefresh(); },
   });
 
   // Scrive draftFile(slug), mai caccia*.json: resta invisibile ai giocatori finché non
@@ -2264,6 +2320,8 @@ function initMaster() {
   $("m-msg-text").oninput = () => { $("m-msg-send").disabled = !$("m-msg-text").value.trim(); };
   Object.assign(AZIONI, {
   "prova-in-locale": () => {
+    const vuoti = elementiSenzaFoto(L.nodi);
+    if (vuoti.length) { setStatus($("m-link-status"), `Senza foto: ${vuoti.join(", ")}. Un elemento da validare senza foto non si può trovare: registrala prima di provare.`, "ko"); return; }
     const g = currentGame();
     const ok = store.set("gioco-prova", g) &&
       store.set("stato-prova", freshState(g)) &&
@@ -3459,6 +3517,8 @@ async function shoot() {
   $("p-score").textContent = "";
   try {
     if (!obj) { setStatus(status, "Questo oggetto non è più nella caccia. Riapri l'app per aggiornarla.", "ko"); return; }
+    // Solo da una bozza (#b-): la pubblicazione e la prova non passano con un segnaposto.
+    if (senzaFoto(obj)) { setStatus(status, "Questo elemento non ha ancora una foto: il master deve registrarla.", "ko"); return; }
     setStatus(status, "Guardo l'immagine…");
     flash($("p-vf"));
     const r = await verify($("p-video"), obj);
