@@ -375,10 +375,14 @@
   .scheda-nodo .richiede-cap { margin: 8px 0 4px; }
   /* Il modo del regalo ha senso solo se non è da validare (vedi tpl-nodo). */
   .scheda-nodo[data-validare="si"] .modi { display: none; }
+  /* Il bivio è una scelta del giocatore, e una scelta è una foto: solo se da validare. */
+  .scheda-nodo[data-validare="no"] .bivio { display: none; }
+  .scheda-nodo .bivio { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 15px; }
+  .scheda-nodo .bivio select { width: auto; margin: 0; }
   .scheda-nodo[data-modo="libero"] .modo.istanze { display: none; }
   /* "almeno N" solo per un prerequisito a istanze con la spunta accesa; "Nessun altro
      elemento" solo se non c'è nessuna riga. */
-  .linkreq label:not(.istanze) .linkreq-n, .linkreq label:not(:has([name="richiede"]:checked)) .linkreq-n { display: none; }
+  .linkreq label:not(.istanze) .linkreq-n, .linkreq label:not(:has([name="richiede"]:checked)) .linkreq-n, .linkuno .linkreq-n { display: none; }
   .linkreq:has(label) .none { display: none; }
   .flags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
   .flags label.check { margin-top: 0; }
@@ -410,6 +414,7 @@
   .edge-line { fill: none; stroke: #4A5A6A; stroke-width: 2; }
   .edge-label { font: 700 13px var(--display); fill: #4A5A6A; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; pointer-events: none; }
   .edge-hit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; }
+  .edge-uno .edge-line { stroke-dasharray: 6 4; }
   .edge-preview { fill: none; stroke: var(--giallo); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
 
   #m-panel-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 4px 20px; align-items: start; }
@@ -436,6 +441,10 @@
   .todo button .txtcol .txt { width: 100%; }
   .todo button .badge { flex: none; white-space: nowrap; }
   .todo button .badge .istanza { margin-left: 0; }
+  /* Il numero del bivio (1️⃣…) sta nel markup della riga di Traccia, ma per ora al giocatore
+     non si mostra: la scelta resta "silenziosa" (docs/DECISIONI.md). Per mostrarlo basta
+     togliere questa regola. */
+  #p-todo-list li[data-bivio] .badge { display: none; }
   .todo-thumb { flex: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
   .new { flex: none; font: 600 15px/1 var(--display); background: var(--giallo); color: var(--smalto-scuro); padding: 5px 8px; border-radius: 4px; align-self: center; }
   /* Id di un'istanza (es. "K7X"): sempre monospaziato, così I/1 e O/0 si distinguono;
@@ -511,7 +520,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 75)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 76)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -980,6 +989,9 @@
       <label class="check"><input type="checkbox" name="daValidare"> Validare</label>
       <label class="check"><input type="checkbox" name="richiedePosizione"> Posizione</label>
     </div>
+    <!-- Bivio: gli elementi con lo stesso numero sono alternativi, il primo fotografato
+         blocca gli altri. Solo su un elemento da validare (CSS, data-validare). -->
+    <label class="bivio">Bivio <select name="bivio"><option value="">nessuno</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option></select> <span class="hint">(gli elementi con lo stesso numero sono alternativi: il primo fotografato esclude gli altri)</span></label>
     <!-- Due assi indipendenti (vedi MODI_REGALO): COME circola (radio) × A ISTANZE o no
          (spunta, nascosta via CSS se il regalo è "libero": un'istanza che non può passare
          non si conta da nessuna parte). -->
@@ -994,6 +1006,8 @@
     <label>Messaggio (si vede quando lo trovi, e resta nel bottino)<textarea name="messaggio"></textarea></label>
     <p class="hint richiede-cap">Richiede:</p>
     <div class="linkreq"><span class="none">Nessun altro elemento.</span></div>
+    <p class="hint richiede-cap">Richiede almeno uno di (per far convergere più rami):</p>
+    <div class="linkreq linkuno"><span class="none">Nessun altro elemento.</span></div>
   </div>
 </template>
 <template id="tpl-richiede">
@@ -1690,7 +1704,7 @@ function trovaCiclo(nodi) {
   const pila = [];
   function visita(id) {
     stato[id] = 1; pila.push(id);
-    for (const r of (nodi[id].richiede || [])) {
+    for (const r of prerequisitiDi(nodi[id])) {
       if (!nodi[r]) continue;
       if (stato[r] === 1) {
         const i = pila.indexOf(r);
@@ -1705,9 +1719,25 @@ function trovaCiclo(nodi) {
   return null;
 }
 
+// Due nodi dello stesso bivio di cui uno è antenato dell'altro (via richiede o
+// richiedeUno): per arrivare al secondo bisogna validare il primo, che lo blocca — è
+// irraggiungibile per costruzione. Controllo di pubblicazione, come trovaCiclo(). Ritorna
+// un messaggio o null. Si presume il grafo aciclico (trovaCiclo() gira prima).
+function biviImpossibili(nodi) {
+  const antenati = {};
+  const calc = id => antenati[id] || (antenati[id] = new Set(prerequisitiDi(nodi[id]).filter(r => nodi[r]).flatMap(r => [r, ...calc(r)])));
+  for (const [id, n] of Object.entries(nodi)) {
+    if (!n.bivio) continue;
+    for (const a of calc(id)) if (nodi[a].bivio === n.bivio) return `"${nodi[a].nome}" e "${n.nome}" sono nello stesso bivio ${EMOJI_BIVIO[n.bivio]}, ma "${n.nome}" richiede "${nodi[a].nome}": non si potrà mai raggiungere.`;
+  }
+  return null;
+}
+
 async function publishGame(statusEl) {
   const ciclo = trovaCiclo(L.nodi);
   if (ciclo) { setStatus(statusEl, `Collegamento circolare fra: ${ciclo.join(" → ")}. Correggi prima di pubblicare.`, "ko"); return false; }
+  const bivio = biviImpossibili(L.nodi);
+  if (bivio) { setStatus(statusEl, bivio + " Correggi prima di pubblicare.", "ko"); return false; }
   const g = currentGame();
   const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) {
@@ -1765,9 +1795,11 @@ function impostaModoRegalo(n, modo) {
   if (modo === "libero") n.istanze = false;
 }
 const infoModo = n => MODI_REGALO.find(x => x.modo === modoRegalo(n));
-// Icona (e titolo) di un nodo: 📷 [📍] se da validare, altrimenti 🎁 + il modo [+ 🎟️].
+// Numero di bivio come emoji (1-9: la tendina della scheda si ferma lì per questo).
+const EMOJI_BIVIO = ["", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
+// Icona (e titolo) di un nodo: 📷 [📍] [1️⃣] se da validare, altrimenti 🎁 + il modo [+ 🎟️].
 function iconaNodo(n) {
-  if (n.daValidare) return { icona: "📷" + (n.richiedePosizione ? " 📍" : ""), titolo: "Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "") };
+  if (n.daValidare) return { icona: "📷" + (n.richiedePosizione ? " 📍" : "") + (n.bivio ? " " + EMOJI_BIVIO[n.bivio] : ""), titolo: "Da validare con la fotocamera" + (n.richiedePosizione ? " e la posizione" : "") + (n.bivio ? `, bivio ${n.bivio}: alternativo agli altri con lo stesso numero` : "") };
   const m = infoModo(n);
   return { icona: (m.modo === "libero" ? "🎁" : "🎁 " + m.icona) + (n.istanze ? "🎟️" : ""), titolo: "Regalo: " + m.testo + (n.istanze ? ", a istanze" : "") };
 }
@@ -1783,7 +1815,7 @@ function iconaNodo(n) {
 Object.assign(AZIONI, {
   "rimuovi-nodo": btn => {
     const id = btn.closest(".scheda-nodo").dataset.id, n = L.nodi[id];
-    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && (o.richiede || []).includes(id));
+    const usatoDa = Object.entries(L.nodi).filter(([oid, o]) => oid !== id && prerequisitiDi(o).includes(id));
     if (usatoDa.length) { alert(`Non posso rimuoverlo: è richiesto da ${usatoDa.map(([, o]) => o.nome).join(", ")}.`); return; }
     if (!confirm(`Rimuovere "${n.nome}"?`)) return;
     delete L.nodi[id];
@@ -1820,8 +1852,13 @@ function creaSchedaNodo(n, id, ids, notify) {
     if (!cbValida.checked && cbPos.checked) { cbValida.checked = true; return; }
     n.daValidare = cbValida.checked;
     if (n.daValidare) impostaModoRegalo(n, "libero");
+    else { delete n.bivio; selBivio.value = ""; } // un regalo non è una scelta: niente bivio
     aggiornaModo(); salvaLocale(); notify();
   };
+  // Bivio (solo da validare, vedi CSS): un numero, o niente. Nel file "bivio" c'è solo se impostato.
+  const selBivio = campo("bivio");
+  selBivio.value = n.bivio ? String(n.bivio) : "";
+  selBivio.onchange = () => { const v = parseInt(selBivio.value, 10); if (v) n.bivio = v; else delete n.bivio; salvaLocale(); notify(); };
   cbPos.onchange = () => {
     n.richiedePosizione = cbPos.checked;
     if (cbPos.checked && !cbValida.checked) { cbValida.checked = true; n.daValidare = true; aggiornaModo(); }
@@ -1837,30 +1874,36 @@ function creaSchedaNodo(n, id, ids, notify) {
   // "Richiede": una riga per ogni altro nodo (tpl-richiede). Per un prerequisito a
   // istanze, "almeno N istanze diverse" (istanzeRichieste[oid], default 1) — il campo lo
   // mostra il CSS solo a spunta accesa.
-  const req = el.querySelector(".linkreq");
-  for (const oid of ids.filter(x => x !== id)) {
-    const o = L.nodi[oid];
-    const riga = clona("tpl-richiede");
-    riga.classList.toggle("istanze", !!o.istanze);
-    riga.querySelector(".nome").textContent = o.nome;
-    const cb = riga.querySelector('[name="richiede"]'), num = riga.querySelector('[name="almeno"]');
-    cb.checked = (n.richiede || []).includes(oid);
-    cb.onchange = () => {
-      n.richiede = n.richiede || [];
-      if (cb.checked) { if (!n.richiede.includes(oid)) n.richiede.push(oid); }
-      else n.richiede = n.richiede.filter(x => x !== oid);
-      salvaLocale(); notify();
-    };
-    num.value = String(istanzeRichieste(L.nodi, n, oid));
-    num.onchange = () => {
-      const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
-      n.istanzeRichieste = n.istanzeRichieste || {};
-      if (v > 1) n.istanzeRichieste[oid] = v; else delete n.istanzeRichieste[oid];
-      if (!Object.keys(n.istanzeRichieste).length) delete n.istanzeRichieste;
-      salvaLocale(); notify();
-    };
-    req.append(riga);
-  }
+  // Lo stesso elenco due volte: "richiede" (AND) e "richiedeUno" (almeno uno di, per far
+  // convergere più rami); il campo "almeno N" ha senso solo nel primo (CSS, .linkuno).
+  const elenco = (chiave, cont) => {
+    for (const oid of ids.filter(x => x !== id)) {
+      const o = L.nodi[oid];
+      const riga = clona("tpl-richiede");
+      riga.classList.toggle("istanze", !!o.istanze);
+      riga.querySelector(".nome").textContent = o.nome;
+      const cb = riga.querySelector('[name="richiede"]'), num = riga.querySelector('[name="almeno"]');
+      cb.checked = (n[chiave] || []).includes(oid);
+      cb.onchange = () => {
+        n[chiave] = n[chiave] || [];
+        if (cb.checked) { if (!n[chiave].includes(oid)) n[chiave].push(oid); }
+        else n[chiave] = n[chiave].filter(x => x !== oid);
+        if (chiave !== "richiede" && !n[chiave].length) delete n[chiave]; // "richiede" resta sempre, com'è nei file di oggi
+        salvaLocale(); notify();
+      };
+      num.value = String(istanzeRichieste(L.nodi, n, oid));
+      num.onchange = () => {
+        const v = Math.min(9, Math.max(1, parseInt(num.value, 10) || 1)); num.value = String(v);
+        n.istanzeRichieste = n.istanzeRichieste || {};
+        if (v > 1) n.istanzeRichieste[oid] = v; else delete n.istanzeRichieste[oid];
+        if (!Object.keys(n.istanzeRichieste).length) delete n.istanzeRichieste;
+        salvaLocale(); notify();
+      };
+      cont.append(riga);
+    }
+  };
+  elenco("richiede", el.querySelector(".linkreq:not(.linkuno)"));
+  elenco("richiedeUno", el.querySelector(".linkuno"));
   return el;
 }
 
@@ -1924,7 +1967,7 @@ function livelliNodi(nodi) {
     if (liv[id] !== undefined) return liv[id];
     if (path.has(id)) return 0;
     path.add(id);
-    const reqs = (nodi[id].richiede || []).filter(r => nodi[r]);
+    const reqs = prerequisitiDi(nodi[id]).filter(r => nodi[r]);
     const v = reqs.length ? 1 + Math.max(...reqs.map(r => calc(r, path))) : 0;
     path.delete(id);
     liv[id] = v;
@@ -1978,7 +2021,11 @@ function disegnaGrafo() {
     svgEl.setAttribute("width", 0); svgEl.setAttribute("height", 0);
     return;
   }
-  cicloBox.hidden = true;
+  // Un bivio impossibile non impedisce di disegnare (il grafo serve proprio a vederlo),
+  // ma si segnala qui come alla pubblicazione.
+  const bivio = biviImpossibili(L.nodi || {});
+  cicloBox.hidden = !bivio;
+  if (bivio) cicloBox.textContent = bivio;
   grafoLinkSrc = null; svgEl.classList.remove("linking");
 
   if (!ids.length) { svgEl.setAttribute("width", 0); svgEl.setAttribute("height", 0); return; }
@@ -2004,26 +2051,27 @@ function disegnaGrafo() {
   defs.innerHTML = `<marker id="grafo-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4A5A6A"></path></marker>`;
   svgEl.append(defs);
 
-  // Frecce: una per ogni "richiede", dal prerequisito verso chi lo richiede.
+  // Frecce: una per ogni "richiede" (piena) e "richiedeUno" (tratteggiata), dal
+  // prerequisito verso chi lo richiede.
   for (const id of ids) {
-    for (const rid of (L.nodi[id].richiede || [])) {
+    for (const [tipo, lista] of [["richiede", L.nodi[id].richiede], ["richiedeUno", L.nodi[id].richiedeUno]]) for (const rid of (lista || [])) {
       if (!pos[rid]) continue;
       const a = pos[rid], b = pos[id];
       const x1 = a.x + GNODE_W / 2, y1 = a.y + GNODE_H;
       const x2 = b.x + GNODE_W / 2, y2 = b.y;
       const my = (y1 + y2) / 2;
       const d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
-      const g = document.createElementNS(SVGNS, "g"); g.classList.add("edge");
+      const g = document.createElementNS(SVGNS, "g"); g.classList.add("edge"); if (tipo === "richiedeUno") g.classList.add("edge-uno");
       const hit = document.createElementNS(SVGNS, "path"); hit.setAttribute("d", d); hit.setAttribute("class", "edge-hit");
       const vis = document.createElementNS(SVGNS, "path"); vis.setAttribute("d", d); vis.setAttribute("class", "edge-line"); vis.setAttribute("marker-end", "url(#grafo-arrow)");
       g.append(hit, vis);
       // Prerequisito a istanze con "almeno N": etichetta ×N a metà freccia.
-      const quante = istanzeRichieste(L.nodi, L.nodi[id], rid);
+      const quante = tipo === "richiede" ? istanzeRichieste(L.nodi, L.nodi[id], rid) : 1;
       if (quante > 1) {
         const t = document.createElementNS(SVGNS, "text"); t.setAttribute("x", (x1 + x2) / 2); t.setAttribute("y", my); t.setAttribute("class", "edge-label"); t.textContent = "×" + quante;
         g.append(t);
       }
-      g.dataset.azione = "togli-collegamento"; g.dataset.da = rid; g.dataset.a = id;
+      g.dataset.azione = "togli-collegamento"; g.dataset.da = rid; g.dataset.a = id; g.dataset.tipo = tipo;
       svgEl.append(g);
     }
   }
@@ -2089,9 +2137,11 @@ function apriPannelloGrafo(id) {
 // pallino non annulla il collegamento in corso.
 Object.assign(AZIONI, {
   "togli-collegamento": g => {
-    const { da: rid, a: id } = g.dataset;
+    const { da: rid, a: id, tipo } = g.dataset;
     if (!confirm(`Togliere il collegamento "${L.nodi[rid].nome}" → "${L.nodi[id].nome}"?`)) return;
-    L.nodi[id].richiede = (L.nodi[id].richiede || []).filter(x => x !== rid);
+    const chiave = tipo === "richiedeUno" ? "richiedeUno" : "richiede";
+    L.nodi[id][chiave] = (L.nodi[id][chiave] || []).filter(x => x !== rid);
+    if (chiave === "richiedeUno" && !L.nodi[id][chiave].length) delete L.nodi[id][chiave];
     salvaLocale();
     renderLinkList(); disegnaGrafo();
     if (grafoPanelId) apriPannelloGrafo(grafoPanelId);
@@ -2362,6 +2412,31 @@ function loadGame(g) {
 // funzioni sotto, così le due non possono più disallinearsi come è successo una volta.
 const richiedeSoddisfatto = (nodi, ok) => r => !nodi[r] || ok.has(r);
 
+/* ----- bivi (bivio: N) e convergenza (richiedeUno) -----
+   Gli oggetti da fotografare con lo stesso numero di "bivio" sono alternativi: il primo
+   che il giocatore valida BLOCCA gli altri, che non compaiono più in Traccia; ciò che
+   dipende solo da loro non si raggiunge più, da sé, perché i suoi richiede non si
+   soddisfano. Nessuno stato in più: "bloccato" si ricalcola dai posseduti, e un nodo già
+   posseduto non si perde (chiudi() salta ciò che è già in ok). Gli alternativi possono
+   stare ovunque nel grafo: vince il primo validato, anche senza che il giocatore abbia
+   mai visto l'altro (scelta "silenziosa", voluta — docs/DECISIONI.md). La scelta è
+   sempre una foto: la scheda del master mostra "Bivio" solo con "Validare" acceso.
+   "richiedeUno" è un gruppo OR in AND con "richiede": serve a far convergere più rami
+   sullo stesso nodo (stesso finale). Id inesistenti ignorati, come in richiede. */
+const bloccato = (nodi, id, ok) => {
+  const b = nodi[id] && nodi[id].bivio;
+  if (!b || ok.has(id)) return false; // un nodo posseduto non è mai bloccato
+  for (const [oid, o] of Object.entries(nodi)) if (oid !== id && o.bivio === b && ok.has(oid)) return true;
+  return false;
+};
+const unoSoddisfatto = (nodi, n, ok) => {
+  const ids = (n.richiedeUno || []).filter(r => nodi[r]);
+  return !ids.length || ids.some(r => ok.has(r));
+};
+// Tutti i prerequisiti di un nodo, AND e OR, in una lista sola: per chi percorre il
+// grafo (cicli, livelli del Grafo, "è richiesto da").
+const prerequisitiDi = n => [...(n.richiede || []), ...(n.richiedeUno || [])];
+
 /* ----- nodi "a istanze" (istanze: true) -----
    Un regalo a istanze non è un oggetto solo: ogni telefono che ne soddisfa i prerequisiti
    ne PRODUCE una istanza propria, con un id casuale (nuovaIstanza), una volta sola
@@ -2390,7 +2465,8 @@ const istanzeRichieste = (nodi, n, r) => nodi[r] && nodi[r].istanze ? Math.max(1
 // Tutti i "richiede" di n soddisfatti: posseduto, e per i nodi a istanze in numero
 // sufficiente. conteggi = conteggiIstanze(st).
 const prerequisitiSoddisfatti = (nodi, n, ok, conteggi = {}) =>
-  (n.richiede || []).every(r => !nodi[r] || (ok.has(r) && (conteggi[r] || 0) + (nodi[r].istanze ? 0 : 1) >= istanzeRichieste(nodi, n, r)));
+  (n.richiede || []).every(r => !nodi[r] || (ok.has(r) && (conteggi[r] || 0) + (nodi[r].istanze ? 0 : 1) >= istanzeRichieste(nodi, n, r)))
+  && unoSoddisfatto(nodi, n, ok);
 
 // Chiusura a punto fisso: un nodo con daValidare:true entra nell'insieme "posseduto"
 // solo dopo la validazione reale (foto/GPS), passata dal chiamante dentro "posseduti";
@@ -2407,7 +2483,7 @@ function chiudi(nodi, posseduti, ceduti = [], conteggi = {}) {
   while (cambiato) {
     cambiato = false;
     for (const [id, n] of Object.entries(nodi)) {
-      if (ok.has(id) || n.daValidare || via.has(id)) continue;
+      if (ok.has(id) || n.daValidare || via.has(id) || bloccato(nodi, id, ok)) continue;
       if (prerequisitiSoddisfatti(nodi, n, ok, conteggi)) { ok.add(id); cambiato = true; }
     }
   }
@@ -2466,8 +2542,8 @@ function mancanoIstanze(st) {
   const ok = chiudi(game.nodi, st.trovati, st.ceduti, conteggi);
   const manca = {};
   for (const [id, n] of Object.entries(game.nodi)) {
-    if (ok.has(id) || n.daValidare || st.ceduti.includes(id)) continue;
-    if (!(n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok))) continue;
+    if (ok.has(id) || n.daValidare || st.ceduti.includes(id) || bloccato(game.nodi, id, ok)) continue;
+    if (!(n.richiede || []).every(richiedeSoddisfatto(game.nodi, ok)) || !unoSoddisfatto(game.nodi, n, ok)) continue;
     for (const r of n.richiede || []) {
       const mancanti = istanzeRichieste(game.nodi, n, r) - (conteggi[r] || 0);
       if (game.nodi[r] && game.nodi[r].istanze && mancanti > 0) manca[r] = Math.max(manca[r] || 0, mancanti);
@@ -2531,8 +2607,26 @@ function daTrovare(st) {
   const conteggi = conteggiIstanze(st);
   const ok = chiudi(game.nodi, st.trovati, st.ceduti, conteggi);
   return Object.entries(game.nodi)
-    .filter(([id, n]) => n.daValidare && !ok.has(id) && prerequisitiSoddisfatti(game.nodi, n, ok, conteggi))
+    .filter(([id, n]) => n.daValidare && !ok.has(id) && !bloccato(game.nodi, id, ok) && prerequisitiSoddisfatti(game.nodi, n, ok, conteggi))
     .map(([id, n]) => ({ id, ...n }));
+}
+
+// Nodi ancora raggiungibili da questo giocatore, per il denominatore di "Trovati N di M":
+// punto fisso come chiudi(), ma qui una foto si dà per fattibile e le istanze per
+// ottenibili — conta solo il grafo e i bivi già decisi (bloccato guarda i posseduti
+// veri, non l'insieme che cresce: un'alternativa non ancora scelta è viva). Si parte da
+// trovati ∪ ceduti: un regalo ceduto è stato raggiunto, e ciò che ha sbloccato resta.
+function raggiungibili(nodi, ok) {
+  const r = new Set(ok);
+  let cambiato = true;
+  while (cambiato) {
+    cambiato = false;
+    for (const [id, n] of Object.entries(nodi)) {
+      if (r.has(id) || bloccato(nodi, id, ok)) continue;
+      if ((n.richiede || []).every(richiedeSoddisfatto(nodi, r)) && unoSoddisfatto(nodi, n, r)) { r.add(id); cambiato = true; }
+    }
+  }
+  return r;
 }
 
 // Cede un nodo posseduto tramite scambio (tipo "scambio"): lo toglie da trovati/bottino
@@ -2721,6 +2815,7 @@ function rigaSelezionabile(list, { prima, testo, badge, dopo, attiva, azione, da
   // sono validi né cliccabili in modo affidabile.
   if (dopo) li.append(dopo);
   list.append(li);
+  return li;
 }
 
 // Scheda "Traccia": un elenco con TUTTI gli oggetti raggiungibili, ciascuno con il
@@ -2734,11 +2829,15 @@ function renderTodo(st, todo, cur) {
     const imgs = immaginiIndizio(m).map(src => { const img = document.createElement("img"); img.className = "todo-thumb"; img.src = src; return img; });
     let nuovo = null;
     if (!st.visti.includes(m.id)) { nuovo = document.createElement("span"); nuovo.className = "new"; nuovo.textContent = "Nuovo"; }
-    rigaSelezionabile(list, {
-      prima: imgs, testo: etichettaOggetto(m.id), dopo: nuovo,
+    // Un'alternativa di un bivio porta il numero (data-bivio + badge) solo se ne vede
+    // almeno un'altra insieme: da sola non è una scelta. Il CSS per ora lo nasconde.
+    const alternative = m.bivio && todo.some(o => o.id !== m.id && o.bivio === m.bivio);
+    const li = rigaSelezionabile(list, {
+      prima: imgs, testo: etichettaOggetto(m.id), dopo: nuovo, badge: alternative ? EMOJI_BIVIO[m.bivio] : null,
       attiva: cur && m.id === cur.id,
       azione: "scegli-traccia", dati: { id: m.id },
     });
+    if (alternative) li.dataset.bivio = m.bivio;
   }
 }
 Object.assign(AZIONI, {
@@ -2756,7 +2855,10 @@ function contaTrovati(st) {
   return st.trovati.filter(id => game.nodi[id] && game.nodi[id].daValidare).length;
 }
 function aggiornaProgresso(st) {
-  const tot = Object.values(game.nodi).filter(n => n.daValidare).length;
+  // Il totale conta solo ciò che questo giocatore può ancora raggiungere: dopo un bivio
+  // il ramo escluso esce dal conto, altrimenti "Hai trovato tutto" direbbe "2 di 4".
+  const vivi = raggiungibili(game.nodi, new Set([...st.trovati, ...st.ceduti]));
+  const tot = Object.entries(game.nodi).filter(([id, n]) => n.daValidare && vivi.has(id)).length;
   $("p-progress").textContent = `Trovati ${contaTrovati(st)} di ${tot}`;
 }
 
