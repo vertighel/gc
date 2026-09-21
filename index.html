@@ -58,7 +58,7 @@
      le schede possono affiancarsi in una griglia invece di stare tutte impilate. */
   @media (min-width: 700px) {
     main { max-width: 640px; }
-    body:is([data-view$="collega"], [data-view$="grafo"]) main { max-width: 1180px; }
+    body:is([data-view$="collega"], [data-view$="edita"], [data-view$="grafo"]) main { max-width: 1180px; }
   }
 
   /* Modalità giocatore: schermo pieno e fisso come una app (barra in alto, contenuto
@@ -78,8 +78,38 @@
      "Memoria" (ricordo + oggetti trovati) — condivisa, non due copie. */
   /* Viste: una sola alla volta, scelta da body[data-view] (vedi route()). */
   body:not([data-view="player"]) #view-player, body:not([data-view="chooser"]) #view-chooser,
-  body:not([data-view="master"]) #view-master, body:not([data-view="master-collega"]) #view-collega,
-  body:not([data-view="master-grafo"]) #view-grafo { display: none; }
+  body:not([data-view^="master"]) #view-master { display: none; }
+  /* Pannello del master: cinque schede (.mpan) in una pagina, una sola visibile, scelta
+     da body[data-view] (route() vi copia l'hash; #master-collega è l'alias storico di
+     Edita). Testata (Avventura + schede) e piè (Bozza/Pubblica/Prova) restano fissi
+     anche sul computer: Edita e Grafico sono lunghi, i bottoni devono restare a portata. */
+  .mpan { display: none; } /* senza #view-master: le regole sotto devono vincere per specificità */
+  body[data-view="master"] .mpan[data-pan="foto"], body:is([data-view="master-edita"], [data-view="master-collega"]) .mpan[data-pan="edita"],
+  body[data-view="master-grafo"] .mpan[data-pan="grafo"], body[data-view="master-messaggi"] .mpan[data-pan="messaggi"],
+  body[data-view="master-impostazioni"] .mpan[data-pan="impostazioni"] { display: block; }
+  /* Il piè sta in fondo anche con poco contenuto (Grafico su un computer): la colonna
+     del master è alta almeno quanto lo schermo e il piè si spinge giù da solo. */
+  body[data-view^="master"] main { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; padding-bottom: 0; }
+  body[data-view^="master"] #view-master { display: flex; flex-direction: column; flex: 1; }
+  .mtesta { position: sticky; top: 0; z-index: 3; background: var(--cemento); margin: 0 -16px 16px; padding: 0 16px 8px; }
+  .mtesta .bar { margin-bottom: 10px; }
+  .mtesta .avventura { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; }
+  .mtesta .avventura select { flex: 1; margin: 0; min-width: 0; }
+  .mtesta .status:empty, .mtesta .hint:empty { display: none; }
+  .mtesta .status { margin: 6px 0 0; font-size: 14px; }
+  #m-tabbar[data-config="no"] .ptab.icon { position: relative; }
+  #m-tabbar[data-config="no"] .ptab.icon::after { content: ""; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--rosso); }
+  #m-tabbar { display: flex; gap: 4px; margin-top: 10px; }
+  #m-tabbar .ptab { color: var(--grigio); text-align: center; text-decoration: none; white-space: nowrap; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 4px; }
+  #m-tabbar .ptab[aria-current="true"] { background: var(--smalto); color: var(--bianco); }
+  #m-tabbar .ptab.icon { flex: 0 0 44px; }
+  #m-tabbar .ic { font-size: 18px; line-height: 1; }
+  /* Sul telefono icona sopra e nome sotto, piccolo: cinque schede in 360px. */
+  @media (max-width: 599px) { #m-tabbar .ptab { flex-direction: column; gap: 2px; } #m-tabbar .lb { font-size: 11px; } }
+  .mpie { position: sticky; bottom: 0; z-index: 3; background: var(--cemento); margin: auto -16px 0; /* auto sopra: in fondo anche con poco contenuto */ padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1.5px solid #C9D0D7; }
+  .mpie .status { margin: 6px 0 0; font-size: 14px; }
+  .mpie .btnrow .btn { padding-left: 4px; padding-right: 4px; white-space: nowrap; }
+  .mpie .status:empty { display: none; }
   /* Schede del giocatore: data-tab / data-sub su #view-player (mostraTab/mostraSubTab). */
   #view-player:not([data-tab="cerca"]) #tab-cerca, #view-player:not([data-tab="oggetti"]) #tab-oggetti,
   #view-player:not([data-sub="indizio"]) #sub-indizio, #view-player:not([data-sub="foto"]) #sub-foto,
@@ -419,6 +449,10 @@
 
   #m-panel-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 4px 20px; align-items: start; }
   #m-panel-list .todo-thumb-wrap { margin-right: 4px; }
+  /* .todo è disegnata per il tema scuro del giocatore: qui, nel pannello chiaro, la riga
+     è bianca e il bersaglio è blu smalto. */
+  #m-panel-list button { background: #fff; color: var(--grafite); border-color: #C9D0D7; padding: 8px 10px; }
+  #m-panel-list button[aria-current="true"] { background: var(--smalto); border-color: var(--smalto); color: var(--bianco); }
   #m-link-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
 
   .newsbar { background: var(--smalto); color: var(--bianco); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-weight: 600; }
@@ -525,7 +559,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 77)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 78)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -823,21 +857,35 @@
   </section>
 
   <!-- ================= MASTER ================= -->
+  <!-- Pannello del master: UNA pagina con cinque schede (Foto, Edita, Grafico, Messaggi,
+       ⚙️), testata e piè fissi. Quale scheda è aperta lo dice l'hash (#master,
+       #master-edita, #master-grafo, #master-messaggi, #master-impostazioni; #master-collega
+       resta come alias di Edita) copiato in body[data-view] da route(): il CSS mostra un
+       solo .mpan e allarga la colonna per Edita e Grafico. Il JS non sa delle schede:
+       stessi id di sempre, solo spostati. -->
   <section id="view-master">
-    <header class="bar">
-      <span class="brand">Caccia</span>
-      <span class="tag">Master</span>
-    </header>
-
-    <div class="current">
-      <h2>Avventura</h2>
-      <p class="hint">Ogni caccia è un file a sé. Scegline una da modificare, o creane una nuova: il nome scelto è anche il link da dare ai giocatori di quella caccia.</p>
-      <select id="m-hunt-select"></select>
-      <p id="m-link-hint" class="hint"></p>
+    <div class="mtesta">
+      <header class="bar">
+        <span class="brand">Caccia</span>
+        <span class="tag">Master</span>
+      </header>
+      <!-- Ogni caccia è un file a sé: il nome scelto è anche il link da dare ai giocatori. -->
+      <label class="avventura">Avventura <select id="m-hunt-select"></select></label>
+      <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
+      <p id="m-draft-status" class="status" role="status"></p>
+      <button id="m-base-retry" class="link" hidden data-azione="ricarica-base">Riprova</button>
       <p id="m-hunt-status" class="status" role="status"></p>
+      <nav id="m-tabbar" aria-label="Sezioni del pannello">
+        <a class="ptab" href="#master" data-pan="foto"><span class="ic">📷</span><span class="lb">Foto</span></a>
+        <a class="ptab" href="#master-edita" data-pan="edita"><span class="ic">✏️</span><span class="lb">Edita</span></a>
+        <a class="ptab" href="#master-grafo" data-pan="grafo"><span class="ic">🕸️</span><span class="lb">Grafico</span></a>
+        <a class="ptab" href="#master-messaggi" data-pan="messaggi"><span class="ic">📣</span><span class="lb">Messaggi</span></a>
+        <a class="ptab icon" href="#master-impostazioni" data-pan="impostazioni" title="Impostazioni"><span class="ic">⚙️</span></a>
+      </nav>
     </div>
 
-    <div class="current">
+    <!-- Foto: la cattura e la lista degli elementi (il telefono sul campo). -->
+    <div class="mpan current" data-pan="foto">
       <!-- Con un bersaglio (M.bersaglio, scelto toccando un elemento della lista qui sotto)
            la cattura scrive la foto dentro quel nodo invece di crearne uno: il titolo e
            il bottone "Aggiungi" lo dicono. -->
@@ -863,28 +911,33 @@
       <!-- Un segnaposto è un nodo senza foto: il grafo si può costruire prima (anche dal
            computer), la foto arriva sul campo toccando l'elemento nella lista "Elementi". -->
       <button id="m-add-placeholder" class="btn" disabled data-azione="aggiungi-segnaposto">Aggiungi un segnaposto (senza foto)</button>
-      <button id="m-save-draft" class="btn" disabled data-azione="salva-bozza">Salva bozza sul server</button>
-      <p id="m-save-draft-status" class="status" role="status"></p>
-      <p id="m-draft-link-hint" class="hint"></p>
-    </div>
 
-    <div class="current">
       <h2>Elementi</h2>
-      <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
-      <p id="m-draft-status" class="status" role="status"></p>
       <p class="hint">Tocca un elemento per fargli (o rifargli) la foto con la fotocamera qui sopra. I segnaposti senza foto stanno in cima.</p>
       <ul id="m-panel-list" class="todo"></ul>
-      <button id="m-base-retry" class="link" hidden data-azione="ricarica-base">Riprova</button>
     </div>
 
-    <div class="current">
-      <h2>Collega gli elementi</h2>
-      <p class="hint">Modifica Nome, foto, flag, testi e collegamenti di ogni elemento.</p>
-      <a class="btn" href="#master-collega">Apri "Collega gli elementi"</a>
+    <!-- Edita: una scheda per elemento (nome, foto, flag, testi, collegamenti). -->
+    <div class="mpan current" data-pan="edita">
+      <p class="hint">Collega gli oggetti fra loro con "Richiede" per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più oggetti che ne sbloccano un altro), modifica nome, flag e testi di ciascuno. Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
+      <div id="m-link-list"></div>
     </div>
 
-    <div class="current">
-      <h2>Messaggi</h2>
+    <!-- Grafico: gli stessi collegamenti disegnati. -->
+    <div class="mpan current" data-pan="grafo">
+      <p class="hint">Clicca il pallino di un elemento e poi quello di un altro per collegarli: il primo che scegli è il prerequisito, il secondo è quello che lo richiede. Clicca una freccia per toglierla. Clicca il corpo di una scheda per aprirne i dettagli qui a fianco. Pensata per un computer.</p>
+      <p id="m-grafo-cycle" class="status ko" hidden></p>
+      <div class="grafolayout">
+        <div id="m-grafo-wrap"><svg id="m-grafo-svg"></svg></div>
+        <aside id="m-grafo-panel" class="grafopanel" hidden>
+          <div id="m-grafo-panel-scheda"></div>
+          <button id="m-grafo-panel-chiudi" class="btn" type="button" data-azione="chiudi-pannello-grafo">Chiudi</button>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Messaggi: un annuncio pubblico per tutti i giocatori. -->
+    <div class="mpan current" data-pan="messaggi">
       <p class="hint">Invia un messaggio pubblico visto da tutti i giocatori.</p>
       <ul id="m-msg-list" class="baselist"></ul>
       <textarea id="m-msg-text" placeholder="Scrivi un annuncio per tutti…"></textarea>
@@ -892,14 +945,19 @@
       <p id="m-msg-status" class="status" role="status"></p>
     </div>
 
-      <details id="m-cfg">
+    <!-- ⚙️: i link di questa caccia e la configurazione della pubblicazione su GitHub
+         (messaggi e caccia). -->
+    <div class="mpan current" data-pan="impostazioni">
+      <h2>Link</h2>
+      <p id="m-link-hint" class="hint"></p>
+      <p id="m-draft-link-hint" class="hint"></p>
+      <details id="m-cfg" open>
         <summary id="m-cfg-summary">Configura la pubblicazione su GitHub</summary>
         <p class="hint">Serve una sola volta per telefono. Crea su
         GitHub, in Settings → Developer settings → Fine-grained
         tokens, un token limitato a questo repository con permesso
         Contents: Read and write. Resta salvato solo su questo
-        telefono. Vale sia per i messaggi qui sopra sia per pubblicare
-        la caccia da "Collega gli elementi".</p>
+        telefono. Vale sia per i messaggi sia per pubblicare la caccia.</p>
         <label>Utente o organizzazione GitHub
           <input type="text" id="cfg-owner" placeholder="vertighel" autocapitalize="off" autocorrect="off">
         </label>
@@ -916,51 +974,18 @@
         <button id="cfg-clear" class="link" data-azione="dimentica-config">Dimentica il token da questo telefono</button>
         <p id="cfg-status" class="status" role="status"></p>
       </details>
-    
-  </section>
-
-  <!-- ================= COLLEGA GLI ELEMENTI ================= -->
-  <section id="view-collega">
-    <header class="bar">
-      <span class="brand">Caccia</span>
-      <span class="tag">Collega</span>
-    </header>
-    <a class="link" href="#master">← Torna al pannello master</a>
-    <a class="link" href="#master-grafo">Vedi il grafo dei collegamenti →</a>
-
-    <div class="current">
-      <h2>Collega gli elementi</h2>
-      <p class="hint">Collega gli oggetti fra loro con "Richiede" per creare flussi più complessi di una singola missione lineare (es. un indizio che porta a più oggetti, o più oggetti che ne sbloccano un altro), modifica nome, flag e testi di ciascuno, e da qui pubblica la caccia. Pensata per essere usata da un computer: non è ottimizzata per il telefono.</p>
-
-      <div id="m-link-list"></div>
-
-      <p class="hint">Per cambiare caccia, o crearne una nuova, usa il menu in cima al pannello master.</p>
-
-      <button id="m-link-publish" class="btn primary" disabled data-azione="pubblica-caccia">Pubblica</button>
-      <p id="m-link-status" class="status" role="status"></p>
-
-      <button id="m-local" class="btn" disabled data-azione="prova-in-locale">Prova su questo telefono</button>
     </div>
-  </section>
 
-  <section id="view-grafo">
-    <header class="bar">
-      <span class="brand">Caccia</span>
-      <span class="tag">Grafo</span>
-    </header>
-    <a class="link" href="#master-collega">← Torna a Collega gli elementi</a>
-
-    <div class="current">
-      <h2>Grafo dei collegamenti</h2>
-      <p class="hint">Clicca il pallino di un elemento e poi quello di un altro per collegarli: il primo che scegli è il prerequisito, il secondo è quello che lo richiede. Clicca una freccia per toglierla. Clicca il corpo di una scheda per aprirne i dettagli qui a fianco. Pensata per un computer.</p>
-      <p id="m-grafo-cycle" class="status ko" hidden></p>
-      <div class="grafolayout">
-        <div id="m-grafo-wrap"><svg id="m-grafo-svg"></svg></div>
-        <aside id="m-grafo-panel" class="grafopanel" hidden>
-          <div id="m-grafo-panel-scheda"></div>
-          <button id="m-grafo-panel-chiudi" class="btn" type="button" data-azione="chiudi-pannello-grafo">Chiudi</button>
-        </aside>
+    <!-- Piè fisso, uguale in ogni scheda: le tre azioni sulla copia di lavoro e la loro
+         riga di stato. -->
+    <div class="mpie">
+      <div class="btnrow">
+        <button id="m-save-draft" class="btn" disabled data-azione="salva-bozza" title="Salva la bozza sul server: la riprendi da un altro dispositivo">Bozza</button>
+        <button id="m-link-publish" class="btn primary" disabled data-azione="pubblica-caccia">Pubblica</button>
+        <button id="m-local" class="btn" disabled data-azione="prova-in-locale" title="Prova su questo telefono, senza pubblicare">Prova qui</button>
       </div>
+      <p id="m-link-status" class="status" role="status"></p>
+      <p id="m-save-draft-status" class="status" role="status"></p>
     </div>
   </section>
 </main>
@@ -1418,13 +1443,16 @@ function masterRefresh() {
 }
 
 /* ---------- pubblicazione diretta su GitHub: concetto separato dal "pubblicare
-   la caccia" (che vive in "Collega gli elementi") — questa è solo la configurazione
+   la caccia" (il bottone nel piè del pannello) — questa è solo la configurazione
    e il meccanismo di scrittura, condivisi anche dai messaggi. ---------- */
 function ghConfig() { return store.get("gh-config") || null; }
 
 function ghConfigStatus() {
   const c = ghConfig();
-  $("m-link-publish").textContent = c ? "Pubblica" : "Pubblica (configura prima)";
+  // Etichetta corta (sta nel piè con altri due bottoni); senza configurazione lo dicono
+  // il title e il pallino sulla ⚙️ della barra delle schede (data-config).
+  $("m-link-publish").title = c ? "Pubblica la caccia su GitHub" : "Prima configura GitHub in ⚙️";
+  $("m-tabbar").dataset.config = c ? "si" : "no";
 }
 
 // Scrive un file nel repository tramite l'API di GitHub (crea o aggiorna).
@@ -1436,7 +1464,8 @@ async function ghPutFile(path, content, commitMsg, statusEl, cfgId = "m-cfg") {
   const c = ghConfig();
   if (!c || !c.owner || !c.repo || !c.token) {
     if ($(cfgId)) $(cfgId).open = true;
-    setStatus(statusEl, "Configura prima la pubblicazione su GitHub dal pannello master.", "ko");
+    if ((document.body.dataset.view || "").startsWith("master")) location.hash = "#master-impostazioni"; // la scheda ⚙️, il piè con lo stato resta visibile
+    setStatus(statusEl, "Configura prima la pubblicazione su GitHub (⚙️ qui sopra).", "ko");
     return false;
   }
   const branch = c.branch || "main";
@@ -1771,7 +1800,7 @@ async function publishGame(statusEl) {
   const bivio = biviImpossibili(L.nodi);
   if (bivio) { setStatus(statusEl, bivio + " Correggi prima di pubblicare.", "ko"); return false; }
   const vuoti = elementiSenzaFoto(L.nodi);
-  if (vuoti.length) { setStatus(statusEl, `Senza foto: ${vuoti.join(", ")}. Registrale prima di pubblicare (nel pannello master tocca l'elemento, poi Oggetto e Dintorni).`, "ko"); return false; }
+  if (vuoti.length) { setStatus(statusEl, `Senza foto: ${vuoti.join(", ")}. Registrale prima di pubblicare (nella scheda Foto tocca l'elemento, poi Oggetto e Dintorni).`, "ko"); return false; }
   const g = currentGame();
   const ok = await ghPutFile(gameFile(L.slug), JSON.stringify(g, null, 2), `Aggiorna la caccia (${contaOggetti(g)} oggetti)`, statusEl);
   if (ok) {
@@ -1797,7 +1826,7 @@ function renderLinkList() {
   wrap.innerHTML = "";
   const ids = Object.keys(L.nodi);
   if (!ids.length) {
-    const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessun elemento ancora: registrane uno dal pannello master.";
+    const p = document.createElement("p"); p.className = "hint"; p.textContent = "Nessun elemento ancora: registrane uno dalla scheda Foto.";
     wrap.append(p); return;
   }
   for (const id of ids) wrap.append(schedaNodo(id, ids));
@@ -2052,7 +2081,7 @@ function disegnaGrafo() {
   svgEl.innerHTML = "";
   if (ciclo) {
     cicloBox.hidden = false;
-    cicloBox.textContent = `Collegamento circolare fra: ${ciclo.join(" → ")}. Il grafo non si disegna finché non lo correggi (qui o in "Collega gli elementi").`;
+    cicloBox.textContent = `Collegamento circolare fra: ${ciclo.join(" → ")}. Il grafo non si disegna finché non lo correggi (qui o in "Edita").`;
     svgEl.setAttribute("width", 0); svgEl.setAttribute("height", 0);
     return;
   }
@@ -2252,7 +2281,7 @@ function initMaster() {
       const id = newId("n");
       const nome = "Oggetto-" + (Object.keys(L.nodi).length + 1);
       L.nodi[id] = { nome, testo: "", messaggio: "", ...foto, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] };
-      esito = `"${nome}" aggiunto: modificalo in "Collega gli elementi" (nome, foto, flag, testi, collegamenti).`;
+      esito = `"${nome}" aggiunto: modificalo in "Edita" (nome, flag, testi, collegamenti).`;
     }
     M.pos = []; M.neg = []; M.cal = null; M.luogo = null; M.immagine = null;
     setStatus($("m-train-status"), "");
@@ -2266,7 +2295,7 @@ function initMaster() {
     if (!L.nodi) L.nodi = {};
     const nome = "Elemento-" + (Object.keys(L.nodi).length + 1);
     L.nodi[newId("n")] = { nome, testo: "", messaggio: "", immagine: null, pos: [], neg: [], soglia: null, luogo: null, daValidare: true, conThumb: true, richiedePosizione: false, scambiabile: false, duplicabile: false, richiede: [] };
-    setStatus($("m-add-status"), `"${nome}" aggiunto senza foto: rinominalo e collegalo in "Collega gli elementi"; la foto gliela fai toccandolo qui sotto.`, "ok");
+    setStatus($("m-add-status"), `"${nome}" aggiunto senza foto: rinominalo e collegalo in "Edita"; la foto gliela fai toccandolo qui sotto.`, "ok");
     salvaLocale();
     renderPanelList(); aggiornaContatorePanel(); linkRefresh(); masterRefresh();
   },
@@ -2728,7 +2757,7 @@ async function syncGame() {
     const r = await leggiJson(file);
     if (r.stato === "404") {
       if (!game) showEmpty(inBozza()
-        ? "Nessuna bozza salvata per questa caccia. Dal pannello master, premi \"Salva bozza sul server\"."
+        ? "Nessuna bozza salvata per questa caccia. Dal pannello master, premi \"Bozza\"."
         : "Il master non ha ancora pubblicato una caccia. Riprova più tardi.", true);
       return;
     }
@@ -3729,11 +3758,14 @@ async function avvioGiocatore() {
 function route() {
   stopCamera();
   const h = location.hash;
-  if (h === "#master" || h === "#master-collega" || h === "#master-grafo") {
-    // body[data-view] = "master" | "master-collega" | "master-grafo": il CSS ne deriva
-    // vista, larghezza "wide" e tema chiaro (il tema scuro è per tutto ciò che vede il
+  if (["#master", "#master-edita", "#master-collega", "#master-grafo", "#master-messaggi", "#master-impostazioni"].includes(h)) {
+    // body[data-view] = "master" | "master-edita" | … : il CSS ne deriva la scheda aperta,
+    // la larghezza "wide" e il tema chiaro (il tema scuro è per tutto ciò che vede il
     // giocatore, scelta della caccia inclusa — mai per lo strumento di lavoro del master).
+    // "#master-collega" è l'alias storico di Edita (link vecchi, README).
     document.body.dataset.view = h.slice(1);
+    const scheda = h === "#master-collega" ? "#master-edita" : h;
+    for (const a of document.querySelectorAll("#m-tabbar .ptab")) { if (a.getAttribute("href") === scheda) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
     initMaster();
   } else if (inBozza()) {
     mostraGiocatore();
