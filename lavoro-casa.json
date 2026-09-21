@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "salvato": "2026-09-21T08:16:16.989Z",
+  "salvato": "2026-09-21T08:18:59.810Z",
   "nodi": {
     "nmu8j7f13w2x": {
       "nome": "supporto",
@@ -304,7 +304,10 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmu8j85je4xl"
+      ],
+      "bivio": 1
     },
     "nmuaz0mt24v1": {
       "nome": "Elemento-4",
@@ -320,7 +323,10 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmu8j85je4xl"
+      ],
+      "bivio": 1
     },
     "nmuaz0my7kep": {
       "nome": "Elemento-5",
@@ -336,7 +342,65 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmuaz0g5bmrr"
+      ]
+    },
+    "nmuaz23fl153": {
+      "nome": "Elemento-6",
+      "testo": "",
+      "messaggio": "",
+      "immagine": null,
+      "pos": [],
+      "neg": [],
+      "soglia": null,
+      "luogo": null,
+      "daValidare": true,
+      "conThumb": true,
+      "richiedePosizione": false,
+      "scambiabile": false,
+      "duplicabile": false,
+      "richiede": [
+        "nmuaz23ori1i"
+      ]
+    },
+    "nmuaz23k54n6": {
+      "nome": "Elemento-7",
+      "testo": "",
+      "messaggio": "",
+      "immagine": null,
+      "pos": [],
+      "neg": [],
+      "soglia": null,
+      "luogo": null,
+      "daValidare": true,
+      "conThumb": true,
+      "richiedePosizione": false,
+      "scambiabile": false,
+      "duplicabile": false,
+      "richiede": [
+        "nmuaz0mt24v1"
+      ]
+    },
+    "nmuaz23ori1i": {
+      "nome": "Elemento-8",
+      "testo": "",
+      "messaggio": "",
+      "immagine": null,
+      "pos": [],
+      "neg": [],
+      "soglia": null,
+      "luogo": null,
+      "daValidare": true,
+      "conThumb": true,
+      "richiedePosizione": false,
+      "scambiabile": false,
+      "duplicabile": false,
+      "richiede": [],
+      "richiedeUno": [
+        "nmuaz0my7kep",
+        "nmuaz23k54n6"
+      ]
     }
   }
 }
