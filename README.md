@@ -61,7 +61,6 @@ Il sistema è composto da quattro strati.
   - [Convenzioni dell'interfaccia](#convenzioni-dellinterfaccia)
 - [Sviluppo e test](#sviluppo-e-test)
 - [Limiti noti e roadmap](#limiti-noti-e-roadmap)
-- [Screenshot](#screenshot)
 
 ## Caso d'uso: la caccia al tesoro
 
@@ -69,13 +68,20 @@ L'istanza pubblica del sistema è una caccia al tesoro per le vie di Genova: un 
 
 Il master gira per la città, fotografa oggetti reali (portoni, maniglie, orologi, cartelli…) e li collega fra loro in una trama. I giocatori aprono un indirizzo web sul telefono, leggono l'indizio, cercano l'oggetto e lo inquadrano: il riconoscimento avviene sul telefono stesso, confrontando *embedding* calcolati nel browser — nessuna foto lascia mai il dispositivo. Una tappa può anche richiedere di trovarsi entro 100 m dal punto in cui il master ha registrato l'oggetto (GPS, controllato solo dopo che la foto è valida).
 
+<img align="right" width="16%" src="img/giocatore-memoria.png" alt="Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con ➡️/👥/🤝 e un'istanza K7X marcata ★ tua" title="Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con ➡️/👥/🤝 e un'istanza K7X marcata ★ tua">
+
 Trovare un oggetto può sbloccare dei *regali*: elementi che si ottengono da soli quando i loro prerequisiti sono soddisfatti. Un regalo può essere **scambiabile** (passa a un amico, chi lo cede lo perde), **duplicabile** (l'amico riceve una copia) o **barattabile** (si scambia alla pari con un altro regalo barattabile, nello stesso incontro); ognuno di questi può inoltre essere **a istanze** (ogni telefono ne produce una copia diversa, e un altro elemento può richiederne "almeno N diverse": l'unico modo per averle è incontrare altri giocatori). Il passaggio avviene telefono-a-telefono, leggendosi a vicenda un QR con le fotocamere anteriori, senza server. Il master può inoltre inviare messaggi a tutti i giocatori.
 
 ## Come si gioca
 
+<img align="right" width="16%" src="img/giocatore-istruzioni.png" alt="Il pannello ❓ con le istruzioni" title="Il pannello ❓ con le istruzioni">
+
 Le stesse istruzioni si leggono nel gioco toccando ❓.
 
 Questa pagina necessita dei permessi per usare fotocamere e GPS, ma **non** trasmette a terzi né immagini né posizione: tutto resta nel tuo telefono. Le interazioni fra utilizzatori **non** sono mediate da un server e **non** scambiano alcuna informazione personale.
+
+<img align="right" width="16%" src="img/giocatore-foto.png" alt="Cerca › Foto con la fotocamera attiva e "Scatta e verifica" pronto" title="Cerca › Foto con la fotocamera attiva e "Scatta e verifica" pronto">
+<img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso" title="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso">
 
 In basso hai due schede: **🔍 Cerca** per trovare gli oggetti, **💽 Memoria** per rivedere quelli trovati.
 
@@ -94,9 +100,15 @@ Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra blocc
 
 Il pannello del master è lo stesso `index.html` aperto con `#master` in fondo all'indirizzo: una sola pagina con cinque schede — 📷 **Foto** (`#master`), ✏️ **Edita** (`#master-edita`; `#master-collega` resta come alias), 🕸️ **Grafico** (`#master-grafo`), 📣 **Messaggi** (`#master-messaggi`) e ⚙️ (`#master-impostazioni`) — sotto una testata fissa uguale per tutte (il menu **Avventura** delle cacce, le righe di stato della copia di lavoro, la barra delle schede) e sopra un piè fisso, anche sul computer, con i tre bottoni **Bozza**, **Pubblica** e **Prova qui**.
 
+<img align="right" width="33%" src="img/master-pannello.png" alt="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi" title="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi">
+
 **Avventura e Foto (`#master`).** Nella testata, il menu delle cacce: la prima voce "+ Nuova caccia" chiede un nome, che diventa lo *slug* (minuscole, spazi e simboli trasformati in `-`) e quindi il nome del file e il link da mandare ai giocatori; poi "caccia" (quella di sempre, senza `#` nel link) e ogni caccia con nome elencata in `cacce.json`; in fondo, marcate "(bozza, non pubblicata)", quelle che hanno solo una bozza sul server (`lavori.json`). Sotto, "Registra un nuovo elemento": si attiva la fotocamera e si registra un oggetto sul posto, sempre con la stessa sequenza — **Oggetto** (20 fotogrammi mentre ci si muove per circa 6 secondi, più uno scatto compresso per la miniatura), **Dintorni** (10 fotogrammi dell'ambiente intorno, usati come negativi), la posizione GPS del master in quel momento. La soglia di riconoscimento si calcola da sola (`calibrate()`) e un messaggio avvisa se l'oggetto è troppo simile ai dintorni. **Prova** verifica subito il riconoscimento con la fotocamera; **Aggiungi** mette il nodo nella copia di lavoro (nome di default "Oggetto-N"), senza pubblicare. Si può anche fare il contrario, **prima il grafo e poi le foto**: "Aggiungi un segnaposto (senza foto)" crea un nodo vuoto ("Elemento-N"), anche dal computer, da nominare e collegare come gli altri; sul campo si tocca l'elemento nella lista **Elementi** (i segnaposto stanno in testa, con `📷❓`) e la stessa sequenza Oggetto → Dintorni → Aggiungi scrive la foto dentro quel nodo — lo stesso gesto su un elemento già fotografato sostituisce la foto. Un regalo può restare senza foto; un elemento da validare senza foto blocca "Pubblica" e "Prova qui". Le miniature dell'elenco si ingrandiscono in una lightbox.
 
+<img align="right" width="33%" src="img/master-collega.png" alt="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede" title="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede">
+
 **Edita (`#master-edita`).** Pensata per un computer. Una scheda per nodo con: foto, nome modificabile, le tre spunte **Thumb** (la foto fa da indizio mentre l'elemento è ancora da trovare), **Validare** (serve la foto del giocatore per possederlo; spenta, l'elemento diventa un regalo che si ottiene da solo quando i prerequisiti sono soddisfatti) e **Posizione** (in più alla foto, il giocatore deve essere entro 100 m; spuntarla accende anche Validare); solo con Validare acceso, la tendina **Bivio** (1–9: gli elementi con lo stesso numero sono alternativi, il primo fotografato esclude gli altri e il loro ramo). Solo sui regali compare il **modo**, su due assi indipendenti: come circola — 🎁 Libero, ➡️ Scambiabile, 👥 Duplicabile, 🤝 Barattabile — e la spunta 🎟️ **A istanze**, disponibile per i tre modi che circolano. Poi i due testi, **Indizio** (visibile prima, mentre lo si cerca) e **Messaggio** (visibile alla schermata di sblocco e poi in Memoria), e due elenchi di spunte verso ogni altro nodo: **Richiede** (in AND; se il prerequisito è a istanze compare il campo "almeno N") e **Richiede almeno uno di** (in OR, per far convergere più rami sullo stesso elemento). "Rimuovi" è bloccato se un altro nodo lo richiede ancora.
+
+<img align="right" width="33%" src="img/master-grafo.png" alt="Scheda Grafico sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili" title="Scheda Grafico sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili">
 
 **Grafico (`#master-grafo`).** Gli stessi collegamenti disegnati: layout automatico verticale per livello di dipendenza, un'icona per nodo (📷 da validare, 📍 con posizione, 🎁 regalo più l'icona del modo, `×N` sulle frecce a istanze). Si collega cliccando il pallino di un nodo e poi quello di un altro (il primo è il prerequisito), si scollega cliccando una freccia, si apre la stessa scheda di "Edita" cliccando il corpo di un nodo. Se c'è un ciclo il grafo non si disegna e un messaggio elenca i nodi coinvolti.
 
@@ -105,6 +117,8 @@ Il pannello del master è lo stesso `index.html` aperto con `#master` in fondo a
 **Bozza e pubblicazione (il piè).** La copia di lavoro si salva in due modi: in automatico nel `localStorage` del telefono del master a ogni modifica (chiave `m-lavoro`), e sul server premendo **Bozza**, che scrive `lavoro.json` (o `lavoro-<slug>.json`). Quest'ultimo file non è mai letto dal giocatore normale, ma si può provare da qualunque browser col link `#b` (o `#b-<slug>`); al primo salvataggio di una caccia con nome lo slug finisce in `lavori.json`, così da un altro dispositivo la si ritrova nel menu senza doverla ricreare (e "+ Nuova caccia" con lo stesso nome viene rifiutata: niente rischio di sovrascrivere la bozza con una vuota). All'apertura il pannello ricarica la copia di lavoro scegliendo la più recente per data fra bozza locale, bozza sul server e caccia pubblicata (vuota se non c'è nulla); modifiche locali mai salvate non vengono scartate senza chiedere. Solo **Pubblica** scrive `caccia.json` (o `caccia-<slug>.json`) — dopo un controllo che i collegamenti non formino un ciclo, che nessun elemento stia nello stesso bivio di un proprio antenato e che nessun elemento da validare sia senza foto — e alla prima pubblicazione di una caccia con nome la aggiunge a `cacce.json`. **Prova qui** apre il giocatore su questo stesso telefono in uno spazio separato, segnalato da una striscia gialla, senza toccare la caccia pubblicata.
 
 Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`: `GET` per lo sha corrente, `PUT` per scrivere, un tentativo in più su conflitto 409). Il pannello "Configura la pubblicazione su GitHub" salva utente, repository, ramo e un token *fine-grained* con permesso "Contents: Read and write" limitato a questo repository. Il token resta solo nel `localStorage` di quel telefono. I giocatori vedono il file aggiornato entro circa un minuto.
+
+<img align="right" width="16%" src="img/giocatore-scelta.png" alt="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo" title="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo">
 
 **Più cacce.** Ogni caccia è un file a sé: `caccia.json` per quella di sempre, `caccia-<slug>.json` per le altre, elencate in `cacce.json`. Il giocatore che apre il link senza `#` sceglie da una lista e la scelta viene ricordata; un link diretto `#c-<slug>` salta la scelta e va dritto a quella caccia. I messaggi (`messaggi.json`) sono invece globali, condivisi da tutte le cacce.
 
@@ -152,6 +166,9 @@ Formato `caccia-3`: un solo tipo di nodo. La foto di un nodo viene sempre dalla 
 
 ### Scambio senza server
 
+<img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto" title="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto">
+<img align="right" width="16%" src="img/giocatore-scambio.png" alt="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture" title="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture">
+
 Un regalo `scambiabile` o `duplicabile` (e ogni istanza di un regalo a istanze) passa da un telefono all'altro con un handshake dal vivo: i due telefoni si mettono schermo contro schermo e ognuno legge, con la fotocamera anteriore, il QR che l'altro mostra e ridisegna alcune volte al secondo. Il QR contiene solo `gc1:tipo:sessionId:nodo:seq:ack:mioId:istanza` (44 byte al massimo, versione QR 3, così i moduli restano grandi e leggibili). Le prime quattro lettere del `sessionId` sono il codice mostrato grande su entrambi gli schermi.
 
 Il problema di fondo — due dispositivi che devono accordarsi su un trasferimento scambiandosi messaggi che possono perdersi, senza un terzo che ricordi l'esito — è il **Problema dei Due Generali**, che non ha soluzione perfetta. Il gioco non lo risolve: sceglie quale dei due errori possibili resta ammesso. Il **protocollo è asimmetrico**: il ricevente scrive per primo, appena ha letto `QR_K` (3) fotogrammi crescenti del cedente e sa di essere stato letto almeno una volta, e mostra una schermata verde persistente col codice; il cedente cancella l'oggetto **solo** dopo aver letto quel QR "fatto" (e a quel punto diventa verde anche lui: è l'unico dei due ad avere la certezza), oppure dopo che il giocatore ha guardato con i propri occhi lo schermo verde dell'amico e confrontato il codice (domanda manuale, che compare dopo 30 s dal tocco e 10 s da quando l'amico può aver scritto, comunque entro 60 s). Così la **perdita** (cancellato da chi cede, mai arrivato a chi riceve) è impossibile per costruzione; l'unico errore residuo, accettato, è la **duplicazione**, e solo se il cedente risponde "No" mentre l'amico è già verde. La freschezza si misura con contatori locali crescenti, mai confrontando gli orologi dei due telefoni; un QR stampato non supera mai la soglia, perché non può rispondere in tempo reale. Chi cede un nodo lo vede segnato per sempre in `ceduti`, così la chiusura automatica dei regali non glielo restituisce alla foto successiva; chi cede un'istanza perde solo quella riga, e non può coniarne un'altra (`prodotti`).
@@ -196,47 +213,6 @@ Il banner di avvio mostra `Avvio del gioco… (versione N)` finché il JS non è
 
 Strade già provate e scartate, da non riproporre: **GitLab dell'INAF** come hosting (certificato https non valido sui siti Pages, che impedisce alla fotocamera di funzionare, oltre a un controllo di accesso che bloccava i giocatori) e **Netlify Drop** (funzionante, ma scomodo per pubblicazioni ricorrenti senza CLI).
 
-## Screenshot
-
-![Scelta della caccia](img/giocatore-scelta.png)
-
-Schermata di scelta: si apre la prima volta senza `#` nell'indirizzo; la caccia di sempre più quelle elencate in `cacce.json`.
-
-![Cerca › Traccia](img/giocatore-traccia.png)
-
-Cerca › Traccia: la targa con l'indizio dell'elemento scelto e, sotto, l'elenco di tutto ciò che si può cercare adesso.
-
-![Cerca › Foto](img/giocatore-foto.png)
-
-Cerca › Foto con la fotocamera attiva (qui quella finta di Chromium) e "Scatta e verifica" pronto.
-
-![Memoria](img/giocatore-memoria.png)
-
-Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con i bottoni ➡️/👥/🤝 e un'istanza `K7X` marcata "★ tua".
-
-![Istruzioni](img/giocatore-istruzioni.png)
-
-Il pannello ❓ con le istruzioni riportate sopra.
-
-![Scambio, lato cedente](img/giocatore-scambio.png)
-
-Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture.
-
-![Scambio, lato ricevente](img/giocatore-scambio-verde.png)
-
-Lato ricevente a scambio concluso: la schermata verde persistente con codice e QR "fatto", da tenere in vista finché il cedente non ha letto (anche il cedente diventa verde quando l'ha letta).
-
-![Pannello master](img/master-pannello.png)
-
-Scheda Foto (`#master`, screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento (Oggetto/Dintorni, Prova/Aggiungi), elenco degli elementi.
-
-![Scheda Edita, screenshot precedente alla versione a schede](img/master-collega.png)
-
-Scheda Edita (`#master-edita`): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e "Richiede" (con "almeno N" per un prerequisito a istanze).
-
-![Grafo dei collegamenti](img/master-grafo.png)
-
-Scheda Grafico (`#master-grafo`) sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili.
 
 ---
 
@@ -276,19 +252,25 @@ The system has four layers.
   - [UI conventions](#ui-conventions)
 - [Development and testing](#development-and-testing)
 - [Known limits and roadmap](#known-limits-and-roadmap)
-- [Screenshots](#screenshots)
 
 ## Use case: a treasure hunt
 
 The public instance of the system is a treasure hunt through the streets of Genoa: a game for fewer than 10 players, all friends of the organiser (the *master*, i.e. the curator). The rest of this document uses the game's vocabulary — hunt, player, master, object, gift, loot — because it is the vocabulary of the interface.
 
+<img align="right" width="16%" src="img/giocatore-memoria.png" alt="Memoria: found objects, with ➡️ / 👥 / 🤝 on the gifts that can be passed on" title="Memoria: found objects, with ➡️ / 👥 / 🤝 on the gifts that can be passed on">
+
 The master walks around Genoa and records real objects (doors, handles, clocks, signs...) with the phone camera. Players then go looking for them: when they think they have found one, they frame it with their phone and an image-recognition model running **entirely in the browser** confirms whether it is the right object. A step can also require the player to be within 100 m of the GPS position the master recorded. Some nodes are "gifts" that unlock automatically once their prerequisites are met; a gift can be marked as swappable (it moves from one phone to another), duplicable (a copy is shared, the giver keeps it) or "instanced" (each phone produces its own unique copy, and another node can require several different ones, which forces players to meet). The master can also broadcast messages that every player downloads when opening the app. Photos never leave the phone; nothing is sent to any server other than the static files on GitHub Pages.
 
 ## How to play
 
+<img align="right" width="16%" src="img/giocatore-istruzioni.png" alt="The ❓ panel with the in-game instructions" title="The ❓ panel with the in-game instructions">
+
 The same instructions are shown in the game by tapping ❓.
 
 This page needs permission to use the cameras and GPS, but it does **not** send images or your position to anyone: everything stays on your phone. Interactions between users are **not** mediated by a server and do **not** exchange any personal information.
+
+<img align="right" width="16%" src="img/giocatore-foto.png" alt="Foto: the viewfinder and "Scatta e verifica"" title="Foto: the viewfinder and "Scatta e verifica"">
+<img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: the clue plate and the list of everything that can be looked for right now" title="Cerca › Traccia: the clue plate and the list of everything that can be looked for right now">
 
 At the bottom you have two tabs: **🔍 Cerca** (Search) to find the objects, **💽 Memoria** (Memory) to review the ones you have found.
 
@@ -314,6 +296,8 @@ Tips: use Chrome or Safari and keep the page open; if something seems stuck, rel
 
 Open the game with `#master` at the end of the address. The panel is one page with five tabs — 📷 **Foto** (`#master`), ✏️ **Edita** (`#master-edita`; `#master-collega` is kept as an alias), 🕸️ **Grafico** (`#master-grafo`), 📣 **Messaggi** (`#master-messaggi`) and ⚙️ (`#master-impostazioni`) — under a sticky header shared by all of them (the **Avventura** hunt menu, the working-copy status lines, the tab bar) and above a sticky footer, on computers too, with the three buttons **Bozza** (draft), **Pubblica** (publish) and **Prova qui** (try here). No dark theme, no full-screen mode: those are for players only.
 
+<img align="right" width="33%" src="img/master-pannello.png" alt="The Foto tab (screenshot taken before the tabbed layout): hunt menu, recording, elements" title="The Foto tab (screenshot taken before the tabbed layout): hunt menu, recording, elements">
+
 **Hunt menu.** In the header, a `<select>` lists "+ Nuova caccia" (new hunt), the default hunt ("caccia") every named hunt known from `cacce.json` and, marked "(bozza, non pubblicata)", the hunts that only have a server draft (`lavori.json`). A new hunt asks for a name, which is slugified (lower case, anything that is not a letter or digit becomes `-`) and becomes both the file name (`caccia-<slug>.json`) and the player link (`#c-<slug>`); the link is shown under the menu. "caccia" is a reserved name and is refused. The default hunt has an empty slug: `caccia.json`, link with no `#`. Choosing a hunt loads the most recent (by date) of: local draft on this device (`m-lavoro` in `localStorage`, if it belongs to that hunt), draft on the server (`lavoro*.json`) and published hunt (`caccia*.json`); empty if none exists. Unsaved local changes are never discarded without asking. A published file that is not in the `caccia-3` format is reported as incompatible and not read.
 
 **Registra un nuovo elemento (record a new element).** Turn on the camera (rear), then:
@@ -331,6 +315,8 @@ Open the game with `#master` at the end of the address. The panel is one page wi
 
 **Elementi.** The list of the nodes in the working copy (thumbnail or a colour derived from the name, name, icon), placeholders first with `📷❓`. Tapping a row selects it as the target of the next capture (tap again, or the × next to the heading, to deselect; the target lives in session memory only). Tapping a thumbnail opens it larger in a lightbox.
 
+<img align="right" width="33%" src="img/master-collega.png" alt="The Edita tab (screenshot taken before the tabbed layout): node cards with flags, gift mode and Richiede" title="The Edita tab (screenshot taken before the tabbed layout): node cards with flags, gift mode and Richiede">
+
 **Edita (`#master-edita`).** Designed for a computer, not a phone. Each node is a card (`<template id="tpl-nodo">`) with:
 
 - the photo and an editable **name**;
@@ -342,6 +328,8 @@ Open the game with `#master` at the end of the address. The panel is one page wi
 - **Rimuovi** (Remove), blocked while another node still requires this one.
 
 In the footer, on every tab: **Pubblica** writes `caccia*.json` to GitHub (after `trovaCiclo()` has checked that the `richiede` links contain no cycle `biviImpossibili()` that no node shares a fork with one of its ancestors and `elementiSenzaFoto()` that no node to validate is still a placeholder; each blocks publishing and names the nodes involved), and **Prova qui** (try here) switches the player view on this same phone to a separate, yellow-striped test space (`localStorage` keys with the `-prova` suffix) without touching the published hunt or the network.
+
+<img align="right" width="33%" src="img/master-grafo.png" alt="The graph of richiede links, laid out by dependency level" title="The graph of richiede links, laid out by dependency level">
 
 **Grafico (`#master-grafo`).** The same `richiede` links drawn as a graph, laid out vertically by dependency level (no coordinates are saved). Click the dot of one node and then the dot of another to link them (first = prerequisite, second = the node that requires it); click an arrow to remove it (with confirmation); click a card body to open the same node card in a side panel (same code as "Edita", not a copy). If the links form a cycle the graph is not drawn and a message lists the nodes involved. Each card shows 📷 (to validate), 📍 (position required) or 🎁 (gift), plus the gift-mode icon.
 
@@ -385,6 +373,8 @@ The JSON files next to `index.html` are a read-only database. Players download t
 
 Image recognition is entirely client-side. `index.html` loads **MediaPipe Tasks Vision 1.0.1** (`@mediapipe/tasks-vision` from jsDelivr, `ImageEmbedder`) with the **`mobilenet_v3_small` float32 image-embedder model** from Google's MediaPipe model storage, via a dynamic `import()` only when a camera is first needed (GPU delegate, falling back to CPU). Each frame is cropped to the central square, resized to 256×256 and turned into an L2-normalised embedding; embeddings are stored quantised to 8-bit integers with a scale factor (`pack()` / `unpack()`). A player's shot takes 5 frames in about one second and keeps the best one: the node is valid if that frame's cosine similarity to the object's positives is at least the threshold and higher than its similarity to the negatives. `caccia.json` therefore contains only numeric vectors and one small JPEG thumbnail per node, never the recorded frames. QR reading and generation use `jsqr` 1.4.0 and `qrcode` 1.5.4, also from jsDelivr, loaded lazily when the exchange screen opens.
 
+<img align="right" width="16%" src="img/giocatore-scelta.png" alt="The hunt chooser, shown at the first opening without a #c-<slug> link" title="The hunt chooser, shown at the first opening without a #c-<slug> link">
+
 Routing is by URL hash (`route()`): `#master`, `#master-edita` (alias `#master-collega`), `#master-grafo`, `#master-messaggi`, `#master-impostazioni` open the master tabs; `#c-<slug>` opens a named hunt directly; `#b` / `#b-<slug>` opens a server draft; no hash opens the chooser (or the remembered hunt).
 
 ### Data model
@@ -406,6 +396,9 @@ An instanced gift is produced once per phone (`stato.prodotti`) with a random 3-
 The `richiede` graph must be acyclic; this is not guaranteed by construction, so `trovaCiclo()` runs before every publish. Changing `formato` resets every player's progress; publishing a hunt with the same `formato` keeps progress and adds the new nodes.
 
 ### Serverless exchange
+
+<img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="The receiver's green "done" screen with the code to compare" title="The receiver's green "done" screen with the code to compare">
+<img align="right" width="16%" src="img/giocatore-scambio.png" alt="The exchange screen on the giver's phone during the reading phase" title="The exchange screen on the giver's phone during the reading phase">
 
 A gift with ➡️ or 👥 passes between two phones by mutual QR reading with the **front cameras**, with no server. The giver presses the button in Memoria and gets a full-screen exchange view (front camera on top, own QR below, refreshed every 300 ms). The receiver has no dedicated button: in **📷 Foto** the rear camera is already scanning every frame for a QR with the `gc1:` prefix, and when it sees the giver's screen it switches to the exchange view by itself, front camera on. The QR payload is a short colon-separated string (`gc1:` + type, session id, node id, `seq`, `ack`, private id, instance), 44 bytes at most, so the modules stay large and easy to focus.
 
@@ -448,44 +441,3 @@ The boot banner at the top of the page reads `Avvio del gioco… (versione N)`; 
 
 Tried and dropped: hosting on the INAF GitLab Pages (invalid https certificate, which also blocks the browser camera, plus access control that locked players out) and Netlify Drop (worked, but inconvenient for repeated publishing without a CLI). Also removed on request: an Instagram share button on the end-of-hunt screen.
 
-## Screenshots
-
-![Hunt chooser](img/giocatore-scelta.png)
-
-The hunt chooser, shown at the first opening without a `#c-<slug>` link.
-
-![Cerca › Traccia](img/giocatore-traccia.png)
-
-🔍 Cerca › 👾 Traccia: the clue plate and the list of everything that can be looked for right now.
-
-![Foto tab](img/giocatore-foto.png)
-
-📷 Foto: the viewfinder and "Scatta e verifica".
-
-![Memoria](img/giocatore-memoria.png)
-
-💽 Memoria: found objects, with ➡️ / 👥 / 🤝 on the gifts that can be passed on.
-
-![Instructions](img/giocatore-istruzioni.png)
-
-The ❓ panel with the in-game instructions.
-
-![Exchange, giver](img/giocatore-scambio.png)
-
-The exchange screen on the giver's phone during the reading phase.
-
-![Exchange, receiver done](img/giocatore-scambio-verde.png)
-
-The receiver's green "done" screen with the code to compare (the giver turns green as well once it has read it).
-
-![Master panel](img/master-pannello.png)
-
-The Foto tab (`#master`, screenshot taken before the tabbed layout): hunt menu, recording, elements.
-
-![Scheda Edita, screenshot precedente alla versione a schede](img/master-collega.png)
-
-The Edita tab (`#master-edita`): node cards with flags, gift mode and "Richiede".
-
-![Graph](img/master-grafo.png)
-
-The graph of `richiede` links, laid out by dependency level.
