@@ -230,7 +230,7 @@ Lato ricevente a scambio concluso: la schermata verde persistente con codice e Q
 
 Scheda Foto (`#master`, screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento (Oggetto/Dintorni, Prova/Aggiungi), elenco degli elementi.
 
-![Collega gli elementi](img/master-collega.png)
+![Scheda Edita, screenshot precedente alla versione a schede](img/master-collega.png)
 
 Scheda Edita (`#master-edita`): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e "Richiede" (con "almeno N" per un prerequisito a istanze).
 
@@ -482,7 +482,7 @@ The receiver's green "done" screen with the code to compare (the giver turns gre
 
 The Foto tab (`#master`, screenshot taken before the tabbed layout): hunt menu, recording, elements.
 
-![Collega gli elementi](img/master-collega.png)
+![Scheda Edita, screenshot precedente alla versione a schede](img/master-collega.png)
 
 The Edita tab (`#master-edita`): node cards with flags, gift mode and "Richiede".
 
