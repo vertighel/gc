@@ -46,7 +46,6 @@ Il sistema è composto da quattro strati.
 - **Cooperazione obbligata senza identità.** L'unicità della produzione delle istanze (una stringa per dispositivo) rende alcuni elementi ottenibili solo incontrando altri utilizzatori, senza che il sistema sappia chi è chi.
 - **Commit fra pari su canale ottico.** Il trasferimento fra due dispositivi è un'istanza del ["Problema dei Due Generali"](https://en.wikipedia.org/wiki/Two_Generals%27_Problem), che non ha soluzione perfetta senza arbitro. Il protocollo non finge di risolverlo: è asimmetrico (il ricevente scrive per primo, il cedente cancella solo dopo aver letto la prova) e sceglie l'errore residuo. Tecnicamente, la duplicazione resta possibile in un caso preciso, mentre la perdita è impossibile per costruzione. La prova di presenza dal vivo (*"Freshness"*) si misura con contatori locali crescenti.
 - **Zero infrastruttura.** Un solo file, nessun build, nessun server applicativo: la pubblicazione è un `git push`, il "database" sono due file JSON, e il sistema funziona offline con l'ultima copia scaricata.
-- **Dichiarativo fino all'interfaccia.** Il markup è HTML nativo (`<template>`, `<dialog>`, `<details>`), lo stato visibile è un attributo `data-*` letto dal CSS, i clic sono azioni dichiarate nell'HTML e risolte da un unico listener: il file si legge senza seguire il JavaScript.
 
 ## Indice
 
@@ -64,9 +63,8 @@ Il sistema è composto da quattro strati.
 
 ## Caso d'uso: la caccia al tesoro
 
-L'istanza pubblica del sistema è una caccia al tesoro per le vie di Genova: un gioco per meno di dieci persone, tutte amiche di chi lo organizza (il *master*, cioè il curatore). Nel resto di questo documento si usa il lessico del gioco — caccia, giocatore, master, oggetto, regalo, bottino — perché è quello dell'interfaccia.
-
-Il master gira per la città, fotografa oggetti reali (portoni, maniglie, orologi, cartelli…) e li collega fra loro in una trama. I giocatori aprono un indirizzo web sul telefono, leggono l'indizio, cercano l'oggetto e lo inquadrano: il riconoscimento avviene sul telefono stesso, confrontando *embedding* calcolati nel browser — nessuna foto lascia mai il dispositivo. Una tappa può anche richiedere di trovarsi entro 100 m dal punto in cui il master ha registrato l'oggetto (GPS, controllato solo dopo che la foto è valida).
+Il master gira per la città, fotografa oggetti reali (portoni, maniglie, orologi, cartelli…) e li collega fra loro in una trama. 
+I giocatori aprono un indirizzo web sul telefono, leggono l'indizio, cercano l'oggetto e lo inquadrano: il riconoscimento avviene sul telefono stesso, confrontando *embedding* calcolati nel browser — nessuna foto lascia mai il dispositivo. Una tappa può anche richiedere di trovarsi entro 100 m dal punto in cui il master ha registrato l'oggetto (GPS, controllato solo dopo che la foto è valida).
 
 <img align="right" width="16%" src="img/giocatore-memoria.png" alt="Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con ➡️/👥/🤝 e un'istanza K7X marcata ★ tua" title="Memoria: l'elemento toccato in cima con foto e messaggio, sotto il bottino con ➡️/👥/🤝 e un'istanza K7X marcata ★ tua">
 
@@ -81,6 +79,7 @@ Le stesse istruzioni si leggono nel gioco toccando ❓.
 Questa pagina necessita dei permessi per usare fotocamere e GPS, ma **non** trasmette a terzi né immagini né posizione: tutto resta nel tuo telefono. Le interazioni fra utilizzatori **non** sono mediate da un server e **non** scambiano alcuna informazione personale.
 
 <img align="right" width="16%" src="img/giocatore-foto.png" alt="Cerca › Foto con la fotocamera attiva e "Scatta e verifica" pronto" title="Cerca › Foto con la fotocamera attiva e "Scatta e verifica" pronto">
+
 <img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso" title="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso">
 
 In basso hai due schede: **🔍 Cerca** per trovare gli oggetti, **💽 Memoria** per rivedere quelli trovati.
@@ -93,8 +92,6 @@ In basso hai due schede: **🔍 Cerca** per trovare gli oggetti, **💽 Memoria*
 6. Per barattare: entrambi premete **🤝** in Memoria sull'oggetto che offrite, poi mettete i telefoni schermo contro schermo. Ognuno riceve l'oggetto dell'altro e cede il proprio, nello stesso momento: nessuno dei due deve fidarsi. Se avete già l'oggetto offerto, non c'è niente da barattare e il telefono lo dice. Anche qui vale la schermata verde con il codice.
 7. **✉️** sono i messaggi del master: si scaricano a ogni apertura dell'app.
 8. **⚙️** sono le impostazioni: **Prepara il telefono** chiede fotocamera e posizione e sblocca i suoni una volta sola, prima di partire; **Suoni** accende i segnali durante uno scambio (un bip grave ogni mezzo secondo = fermo, tre note che salgono = sta leggendo, un "plin" = fatto); qui si legge anche la versione; **Cambia caccia** torna alla scelta della caccia; **Ricomincia la caccia** cancella la Memoria e i progressi di questa caccia su questo telefono.
-
-Consigli: usa Chrome o Safari e tieni la pagina aperta; se qualcosa sembra bloccato, ricarica la pagina. Il numero di versione nel banner di avvio ti dice se hai l'ultima versione.
 
 ## Il master: creare una caccia
 
@@ -167,6 +164,7 @@ Formato `caccia-3`: un solo tipo di nodo. La foto di un nodo viene sempre dalla 
 ### Scambio senza server
 
 <img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto" title="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto">
+
 <img align="right" width="16%" src="img/giocatore-scambio.png" alt="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture" title="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture">
 
 Un regalo `scambiabile` o `duplicabile` (e ogni istanza di un regalo a istanze) passa da un telefono all'altro con un handshake dal vivo: i due telefoni si mettono schermo contro schermo e ognuno legge, con la fotocamera anteriore, il QR che l'altro mostra e ridisegna alcune volte al secondo. Il QR contiene solo `gc1:tipo:sessionId:nodo:seq:ack:mioId:istanza` (44 byte al massimo, versione QR 3, così i moduli restano grandi e leggibili). Le prime quattro lettere del `sessionId` sono il codice mostrato grande su entrambi gli schermi.
@@ -184,19 +182,6 @@ Il **baratto** (🤝) è lo stesso protocollo girato due volte nella stessa sess
 
 ## Sviluppo e test
 
-Non c'è nulla da installare per il gioco in sé. Per provarlo in locale:
-
-```sh
-python3 -m http.server 8765
-```
-
-e si apre `http://localhost:8765/` (giocatore) e `http://localhost:8765/#master` (master). Fotocamera, GPS e riconoscimento non si provano da terminale; il pattern usato finora è Playwright con Chromium:
-
-- per il master, intercettare `https://api.github.com/**` con un gestore finto che simula `GET` (sha) e `PUT` (scrittura), invece di scrivere davvero sul repository;
-- per il giocatore, scrivere a mano un `caccia.json` e un `messaggi.json` di prova nella cartella servita;
-- per simulare la fotocamera, `--use-fake-device-for-media-stream`; per simulare un oggetto riconosciuto, iniettare un embedding finto nello stato del master;
-- lo stato del modulo JS non è raggiungibile da `page.evaluate`: si copia `index.html` in una cartella di prova e solo lì si aggiunge un `window.__debug`.
-
 [`tests/scambio.test.mjs`](tests/scambio.test.mjs) fa esattamente questo per il protocollo di scambio: due pagine Playwright fanno da telefoni, lettura e generazione del QR sono sostituite da stub, i giri del ciclo si eseguono uno alla volta. Verifica l'asimmetria (il ricevente scrive per primo), la domanda manuale del cedente e i suoi tempi, "Annulla", "duplica", i timeout, e i regali a istanze (produzione unica, produzione dopo ricezione, rifiuto della stessa istanza, copie di copie, chiusura "almeno ×2", messaggio "Ti manca"). **Non** prova la convergenza ottica reale: quella si vede solo con due telefoni veri. [`tests/sincronizzazione.test.mjs`](tests/sincronizzazione.test.mjs) fa lo stesso per il lato master: due dispositivi (telefono e computer) che si passano la copia di lavoro con "Bozza" e "Pubblica", con un'API di GitHub finta che scrive davvero i file nella cartella servita, compresa una caccia mai pubblicata ritrovata dal computer tramite `lavori.json`. [`tests/bivio.test.mjs`](tests/bivio.test.mjs) copre bivi e convergenza: alternativa bloccata dopo la prima foto, ramo morto, contatore "Trovati N di M" sui soli raggiungibili, ramo riaperto da un regalo ricevuto, controllo di pubblicazione. [`tests/segnaposto.test.mjs`](tests/segnaposto.test.mjs) copre "grafo prima, foto dopo": segnaposto creati senza fotocamera, elemento della lista scelto come bersaglio, cattura che atterra dentro il nodo (nome e collegamenti intatti), foto rifatta, pubblicazione e prova bloccate finché un elemento da validare è senza foto, giocatore che scatta su un segnaposto. Si lanciano con `node tests/<nome>.test.mjs` da una cartella dove `playwright` (con Chromium) è installato.
 
 Sul campo, `?diag` nell'indirizzo (es. `…/gc/?diag#c-casa`) aggiunge alla schermata di scambio una riga di diagnostica: giri del ciclo, dimensione del video, letture, ack, amico agganciato e l'ultimo QR letto con il motivo dello scarto.
@@ -211,233 +196,5 @@ Il banner di avvio mostra `Avvio del gioco… (versione N)` finché il JS non è
 - **Scarsità rimandata.** Un regalo duplicabile si condivide un numero illimitato di volte: un tetto condiviso (`scorta`) richiede un'operazione atomica su un database.
 - Il repository **deve restare pubblico**: GitHub Pages sui repository privati richiede un piano a pagamento.
 
-Strade già provate e scartate, da non riproporre: **GitLab dell'INAF** come hosting (certificato https non valido sui siti Pages, che impedisce alla fotocamera di funzionare, oltre a un controllo di accesso che bloccava i giocatori) e **Netlify Drop** (funzionante, ma scomodo per pubblicazioni ricorrenti senza CLI).
-
-
----
-
-# English
-
-**A system for field visual-recognition paths, running entirely in the browser.** A curator records physical elements of a territory; participants locate them and verify them with the camera of their own device. Elements are organised in a directed acyclic graph of prerequisites, and transfer and replication operations between devices are carried out by a peer-to-peer optical protocol, with no server. There are no identities, no database and no image transmission: the whole state lives on the device.
-
-Public instance: <https://vertighel.github.io/gc/> 
-
-## Abstract
-
-The system has four layers.
-
-1. **Verification.** Each element is described by a set of references acquired on site by the curator: visual embeddings of the element (positives), embeddings of its surroundings (negatives) and a geographic position. A participant's verification is a similarity comparison between the embedding of the current frame and those references, with a threshold calibrated automatically at acquisition time: visual *instance* recognition, one class at a time, with no training and no dataset. An optional second factor is geographic proximity (within a radius of the recorded point), checked after the visual verification.
-2. **Progression.** Elements form a directed acyclic graph; edges are AND prerequisites. An element is acquired by *verification* (camera, plus optionally position) or by *derivation*, automatically, once all its prerequisites are satisfied. Each element carries a text shown before acquisition (trail) and one shown after (unlock content); the curator also has a broadcast channel and can publish several independent paths from the same site.
-3. **Interaction between devices.** Three operations are defined on derived elements: exclusive *transfer* (the element moves from one device to another), *replication* (an identical, non-exclusive copy) and *barter* (two transfers in the same session, atomic by construction: neither side has to trust the other). Each of them can be *instanced*: every device produces a single unique token of the element, and tokens circulate (by transfer, replication or barter) like the element itself. An edge can require "at least N distinct instances": since no device produces two, the constraint can only be met by cooperating. The operations run over a bidirectional optical channel — the two devices read each other's QR code with their front cameras — with an asymmetric commit protocol and no third party.
-4. **Authoring and distribution.** The curator acquires references in the field, edits the graph (with an acyclicity check) and publishes, all from a panel in the same file. The application is a single HTML file on static hosting; published data are read-only JSON files, written by the curator through the GitHub API and downloaded by participants at every start. Each participant's state lives only on their device.
-
-**What sets this project apart**
-
-- **Recognition with no infrastructure and no training.** The model (MobileNet v3 via MediaPipe) runs in the browser; every element is born from a few seconds of capture on site, with a threshold calibrated automatically against the surroundings. No participant image ever leaves the device: verification is local, and only the curator's quantised vectors travel over the network.
-- **Forced cooperation without identity.** The uniqueness of instance production — one token per device — makes some elements obtainable only by meeting other participants, without the system knowing who is who: no accounts, no database, no tracking.
-- **Peer-to-peer commit over an optical channel.** A transfer between two devices is an instance of the Two Generals Problem, which has no perfect solution without an arbiter. The protocol does not pretend to solve it: it is asymmetric (the receiver writes first, the giver deletes only after reading the proof) and chooses the residual error — duplication remains possible in one precise case, loss is impossible by construction. Freshness comes from local increasing counters, never from comparing clocks.
-- **Zero infrastructure.** One file, no build, no application server: deployment is a `git push`, the "database" is two JSON files, and the system works offline with the last downloaded copy.
-- **Declarative down to the UI.** The markup is native HTML (`<template>`, `<dialog>`, `<details>`), visible state is a `data-*` attribute read by CSS, clicks are actions declared in the HTML and dispatched by a single listener: the file can be read without following the JavaScript.
-
-## Contents
-
-- [Use case: a treasure hunt](#use-case-a-treasure-hunt)
-- [How to play](#how-to-play)
-- [The master: creating a hunt](#the-master-creating-a-hunt)
-- [Running your own hunt](#running-your-own-hunt)
-- [Project structure](#project-structure)
-  - [Architecture](#architecture)
-  - [Data model](#data-model)
-  - [Serverless exchange](#serverless-exchange)
-  - [UI conventions](#ui-conventions)
-- [Development and testing](#development-and-testing)
-- [Known limits and roadmap](#known-limits-and-roadmap)
-
-## Use case: a treasure hunt
-
-The public instance of the system is a treasure hunt through the streets of Genoa: a game for fewer than 10 players, all friends of the organiser (the *master*, i.e. the curator). The rest of this document uses the game's vocabulary — hunt, player, master, object, gift, loot — because it is the vocabulary of the interface.
-
-<img align="right" width="16%" src="img/giocatore-memoria.png" alt="Memoria: found objects, with ➡️ / 👥 / 🤝 on the gifts that can be passed on" title="Memoria: found objects, with ➡️ / 👥 / 🤝 on the gifts that can be passed on">
-
-The master walks around Genoa and records real objects (doors, handles, clocks, signs...) with the phone camera. Players then go looking for them: when they think they have found one, they frame it with their phone and an image-recognition model running **entirely in the browser** confirms whether it is the right object. A step can also require the player to be within 100 m of the GPS position the master recorded. Some nodes are "gifts" that unlock automatically once their prerequisites are met; a gift can be marked as swappable (it moves from one phone to another), duplicable (a copy is shared, the giver keeps it) or "instanced" (each phone produces its own unique copy, and another node can require several different ones, which forces players to meet). The master can also broadcast messages that every player downloads when opening the app. Photos never leave the phone; nothing is sent to any server other than the static files on GitHub Pages.
-
-## How to play
-
-<img align="right" width="16%" src="img/giocatore-istruzioni.png" alt="The ❓ panel with the in-game instructions" title="The ❓ panel with the in-game instructions">
-
-The same instructions are shown in the game by tapping ❓.
-
-This page needs permission to use the cameras and GPS, but it does **not** send images or your position to anyone: everything stays on your phone. Interactions between users are **not** mediated by a server and do **not** exchange any personal information.
-
-<img align="right" width="16%" src="img/giocatore-foto.png" alt="Foto: the viewfinder and "Scatta e verifica"" title="Foto: the viewfinder and "Scatta e verifica"">
-<img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: the clue plate and the list of everything that can be looked for right now" title="Cerca › Traccia: the clue plate and the list of everything that can be looked for right now">
-
-At the bottom you have two tabs: **🔍 Cerca** (Search) to find the objects, **💽 Memoria** (Memory) to review the ones you have found.
-
-1. **👾 Traccia** (Trail) shows the clue for the object to look for (text and, sometimes, a photo). Below it is the list of everything you can look for right now: tap one to choose it.
-
-2. Once you have found the object, go to **📷 Foto** (Photo), tap **Attiva la fotocamera** (Turn on the camera), frame it whole and press **Scatta e verifica** (Shoot and check). If the step also requires the position, the GPS is checked only after the photo is valid: turn it on and stay close to the object.
-
-3. In **💽 Memoria** tap a row to see the photo and message again. Some objects can be passed to other users: with **➡️** (swap) you transfer it, and it disappears from your Memoria; with **👥** you duplicate an identical copy; with **🤝** you barter it one-for-one with a 🤝 object of the other player. An object with 🎟️ is different for every player (a seal with a code): you pass a copy of it, and another element can ask for "at least N different ones".
-
-4. To pass it on: you press ➡️ or 👥 in Memoria; the receiver opens **📷 Foto**, turns on the camera and frames your screen. Then put the phones screen to screen: the front cameras read each other. Wait for **Fatto!** (Done!): the receiver sees a green screen with a code and keeps it in view until the other phone has finished. If your phone says «Non ho letto la conferma» (I did not read the confirmation), look at the other screen: answer **Sì** (Yes) only if it is green and shows the same code.
-
-5. To receive it: open **📷 Foto**, turn on the camera and frame the QR on the other screen. After a few moments the front camera will open. Put the phones screen to screen: the front cameras read each other. Wait for **Fatto!**: the receiver sees a green screen with a code and keeps it in view until the other phone has finished. If your phone says «Non ho letto la conferma», look at the other screen: answer **Sì** only if it is green and shows the same code.
-
-6. To barter: both of you press **🤝** in Memoria on the object you offer, then put the phones screen to screen. Each receives the other's object and gives up their own, at the same moment: neither has to trust the other. If you already own the offered object there is nothing to barter and the phone says so. The green screen with the code applies here too.
-
-7. **✉️** are the master's messages: they are downloaded every time the app is opened.
-
-8. **⚙️** are the settings: **Prepara il telefono** asks for camera and location and unlocks sounds once, before you start; **Suoni** turns on the exchange signals (a low beep every half second = stalled, three rising notes = reading, a "plin" = done); the version number is shown here too; **Cambia caccia** (Change hunt) goes back to the hunt chooser; **Ricomincia la caccia** (Restart the hunt) clears the Memoria and the progress of this hunt on this phone.
-
-Tips: use Chrome or Safari and keep the page open; if something seems stuck, reload the page. The version number in the boot banner tells you whether you have the latest version.
-
-## The master: creating a hunt
-
-Open the game with `#master` at the end of the address. The panel is one page with five tabs — 📷 **Foto** (`#master`), ✏️ **Edita** (`#master-edita`; `#master-collega` is kept as an alias), 🕸️ **Grafico** (`#master-grafo`), 📣 **Messaggi** (`#master-messaggi`) and ⚙️ (`#master-impostazioni`) — under a sticky header shared by all of them (the **Avventura** hunt menu, the working-copy status lines, the tab bar) and above a sticky footer, on computers too, with the three buttons **Bozza** (draft), **Pubblica** (publish) and **Prova qui** (try here). No dark theme, no full-screen mode: those are for players only.
-
-<img align="right" width="33%" src="img/master-pannello.png" alt="The Foto tab (screenshot taken before the tabbed layout): hunt menu, recording, elements" title="The Foto tab (screenshot taken before the tabbed layout): hunt menu, recording, elements">
-
-**Hunt menu.** In the header, a `<select>` lists "+ Nuova caccia" (new hunt), the default hunt ("caccia") every named hunt known from `cacce.json` and, marked "(bozza, non pubblicata)", the hunts that only have a server draft (`lavori.json`). A new hunt asks for a name, which is slugified (lower case, anything that is not a letter or digit becomes `-`) and becomes both the file name (`caccia-<slug>.json`) and the player link (`#c-<slug>`); the link is shown under the menu. "caccia" is a reserved name and is refused. The default hunt has an empty slug: `caccia.json`, link with no `#`. Choosing a hunt loads the most recent (by date) of: local draft on this device (`m-lavoro` in `localStorage`, if it belongs to that hunt), draft on the server (`lavoro*.json`) and published hunt (`caccia*.json`); empty if none exists. Unsaved local changes are never discarded without asking. A published file that is not in the `caccia-3` format is reported as incompatible and not read.
-
-**Registra un nuovo elemento (record a new element).** Turn on the camera (rear), then:
-
-- **Oggetto** (Object) records 20 embeddings while you move around the object for about 6 seconds (one every 300 ms), plus one real JPEG snapshot for the thumbnail.
-- **Dintorni** (Surroundings) records 10 embeddings of the environment, used as negatives.
-- Both are stored together with the master's GPS position at that moment (radius 100 m). All four (positives, negatives, snapshot, position) are always captured, whatever the node will be used for later.
-- The recognition **threshold** is computed automatically by `calibrate()`: halfway between the 20th percentile of leave-one-out similarity among the positives and the highest similarity of any negative to the positives. A status line warns when the object looks too much like its surroundings.
-- **Prova** (Try) runs the same 5-frame check a player would run, right there.
-- **Aggiungi** (Add) appends the node to the working copy with default name "Oggetto-N" and default flags (Thumb on, Validare on, Posizione off), without publishing. The camera stays on so you can record the next one.
-
-**Graph first, photos later.** "Aggiungi un segnaposto (senza foto)" creates an empty node ("Elemento-N", no camera needed, works from a computer) that you name and link like any other; it travels with the draft. In the field, tap the element in the **Elementi** list: the heading becomes "Foto per: <name>", and the same Oggetto → Dintorni → Aggiungi sequence writes the capture *into* that node (name, flags and links untouched). The same gesture on an element that already has a photo replaces it (after a confirm). A gift may stay without a photo forever; a node to validate without a photo blocks publishing and the local test. The photo itself only ever comes from the master's camera: no uploads, no hand-written embeddings.
-
-**Draft: local and on the server.** Every change is autosaved to `localStorage` (`m-lavoro`), which protects against an accidental reload. **Bozza** (footer) writes the working copy to `lavoro.json` / `lavoro-<slug>.json` on GitHub: this protects against changing phone and lets anyone test the draft as a real player through the link `#b` / `#b-<slug>` (a real `fetch`, works from any browser). Normal players never read `lavoro*.json`. The first draft save of a named hunt also adds its slug to `lavori.json`, so another device finds it in the menu before it is ever published, and "+ Nuova caccia" with the same name is refused instead of starting an empty copy that would overwrite the draft.
-
-**Elementi.** The list of the nodes in the working copy (thumbnail or a colour derived from the name, name, icon), placeholders first with `📷❓`. Tapping a row selects it as the target of the next capture (tap again, or the × next to the heading, to deselect; the target lives in session memory only). Tapping a thumbnail opens it larger in a lightbox.
-
-<img align="right" width="33%" src="img/master-collega.png" alt="The Edita tab (screenshot taken before the tabbed layout): node cards with flags, gift mode and Richiede" title="The Edita tab (screenshot taken before the tabbed layout): node cards with flags, gift mode and Richiede">
-
-**Edita (`#master-edita`).** Designed for a computer, not a phone. Each node is a card (`<template id="tpl-nodo">`) with:
-
-- the photo and an editable **name**;
-- three flags: **Thumb** (the photo is shown as a clue while the node is still to be found), **Validare** (the player must photograph it and pass the match; if off, the node is owned automatically as soon as its prerequisites are owned), **Posizione** (in addition to the photo match, the player must be within 100 m of the recorded point; checking it also checks Validare, and they cannot be separated);
-- the **gift mode**, visible only when Validare is off, on two independent axes: how it circulates — a radio group, 🎁 Libero (stays with whoever gets it), ➡️ Scambiabile (swappable: passes to a friend, you lose it), 👥 Duplicabile (a copy to a friend, you keep it), 🤝 Barattabile (barterable: one-for-one with any other barterable gift) — and a 🎟️ **A istanze** checkbox (instanced: a different seal for every player), available for the three circulating modes. In the file these are the booleans `scambiabile` / `duplicabile` / `barattabile` (at most one true) and `istanze`;
-- **Indizio** (`testo`, the clue shown while looking for this node) and **Messaggio** (shown at unlock and afterwards in Memoria), both about this node itself;
-- **Bivio** (fork), a 1–9 dropdown shown only when Validare is on: nodes sharing a number are alternatives, the first one photographed blocks the others and whatever depends only on them;
-- **Richiede** (Requires): a checkbox for every other node; when the prerequisite is instanced, an "almeno N" (at least N) numeric field asks for N *different* instances (`istanzeRichieste`); and **Richiede almeno uno di** (requires at least one of), the same list in OR (`richiedeUno`), for converging branches;
-- **Rimuovi** (Remove), blocked while another node still requires this one.
-
-In the footer, on every tab: **Pubblica** writes `caccia*.json` to GitHub (after `trovaCiclo()` has checked that the `richiede` links contain no cycle `biviImpossibili()` that no node shares a fork with one of its ancestors and `elementiSenzaFoto()` that no node to validate is still a placeholder; each blocks publishing and names the nodes involved), and **Prova qui** (try here) switches the player view on this same phone to a separate, yellow-striped test space (`localStorage` keys with the `-prova` suffix) without touching the published hunt or the network.
-
-<img align="right" width="33%" src="img/master-grafo.png" alt="The graph of richiede links, laid out by dependency level" title="The graph of richiede links, laid out by dependency level">
-
-**Grafico (`#master-grafo`).** The same `richiede` links drawn as a graph, laid out vertically by dependency level (no coordinates are saved). Click the dot of one node and then the dot of another to link them (first = prerequisite, second = the node that requires it); click an arrow to remove it (with confirmation); click a card body to open the same node card in a side panel (same code as "Edita", not a copy). If the links form a cycle the graph is not drawn and a message lists the nodes involved. Each card shows 📷 (to validate), 📍 (position required) or 🎁 (gift), plus the gift-mode icon.
-
-**Publishing through the GitHub API.** A `<details>` panel in the ⚙️ tab (which also shows the players' link and the draft link; the gear carries a red dot until GitHub is configured, and any write without configuration jumps to that tab) stores owner, repository, branch and a fine-grained personal access token (Contents: read and write, limited to this repository) in `localStorage` on the master's phone only. `ghPutFile()` does a `GET` on the Contents API to fetch the current `sha`, then a `PUT` with the new content; on a `409` conflict it re-reads the `sha` and retries once. The same function publishes the hunt, the server draft, `cacce.json` (updated by `registraCaccia()` on the first successful publish of a named hunt) and the messages. GitHub Pages serves the new file within about a minute.
-
-**Messages.** A textarea in the Messaggi tab and "Pubblica messaggio": the message is appended to `messaggi.json` (`{ id, quando, testo }`), which is global to all hunts. Players see them in ✉️ with an unread badge; the read state is local to each phone.
-
-## Running your own hunt
-
-Nothing to install and nothing to configure in the code: a copy of the repository on GitHub Pages is enough.
-
-1. **Copy the repository** to your account ("Use this template" for a clean copy, or a fork). It must stay **public**: GitHub Pages on private repositories requires a paid plan.
-2. **Enable GitHub Pages**: Settings → Pages → "Deploy from a branch", branch `main`, folder `/` (root). A minute later the game answers at `https://<user>.github.io/<repository>/`.
-3. **Remove the sample hunts** that come with the copy: delete `caccia-*.json` and `lavoro-*.json`, and empty `cacce.json`, `lavori.json` and `messaggi.json` to `[]`. `caccia.json` (the default hunt) gets replaced when you publish yours.
-4. **Configure the master**: open `…/#master` on your phone and, under "Configura la pubblicazione su GitHub", enter owner, repository, branch and a *fine-grained* token (Settings → Developer settings → Personal access tokens) with the single permission "Contents: Read and write", limited to that repository. The token stays in that phone's `localStorage` and never ends up in a file.
-
-From there everything above applies: record objects on site, link them from a computer, test with `#b`, publish. Recognition, the QR libraries and the MediaPipe model load from public CDNs, so there is nothing else to host.
-
-## Project structure
-
-| File | Role |
-|---|---|
-| `index.html` | The whole application: player, hunt chooser, master panel (Foto, Edita, Grafico, Messaggi, ⚙️ tabs). CSS, HTML and a single `<script type="module">`. |
-| `caccia.json` | The default hunt (empty slug), format `caccia-3`. Written by the master from the panel. |
-| `caccia-<slug>.json` | One file per named hunt, same format. |
-| `lavoro.json`, `lavoro-<slug>.json` | The master's server draft, never read by normal players; reachable with `#b` / `#b-<slug>`. |
-| `cacce.json` | Array of slugs of the named hunts (the default hunt is never listed). |
-| `lavori.json` | Array of slugs of the named hunts that have a server draft; read only by the master panel. |
-| `messaggi.json` | Array of broadcast messages `{ id, quando, testo }`, shared by all hunts. |
-| `img/` | Screenshots used in this README. |
-| `tests/scambio.test.mjs` | Playwright test of the QR exchange protocol. |
-| `tests/sincronizzazione.test.mjs` | Playwright test of the master's draft synchronisation between phone and computer. |
-| `tests/bivio.test.mjs` | Playwright test of forks (`bivio`) and convergence (`richiedeUno`). |
-| `tests/segnaposto.test.mjs` | Playwright test of "graph first, photos later": placeholders, capture target, photo replacement, publish checks. |
-
-### Architecture
-
-One HTML file, no framework, no build step, no dependencies to install. `git push` on `main` is the deployment: GitHub Pages serves the repository as is (the repository must stay public; Pages on private repositories is a paid feature).
-
-The JSON files next to `index.html` are a read-only database. Players download them with `fetch(..., { cache: "no-store" })` at every start; the master writes them through the GitHub REST API (Contents endpoint) with a token that lives only in the master phone's `localStorage`. Nothing else writes anywhere: all player state (downloaded hunt, found nodes, loot, read messages, hunt choice) is in the player's `localStorage`, namespaced by hunt slug (`gioco:<slug>`, `stato:<slug>`; the default hunt keeps the bare `gioco` / `stato` keys). The game works offline with the last copy downloaded.
-
-Image recognition is entirely client-side. `index.html` loads **MediaPipe Tasks Vision 1.0.1** (`@mediapipe/tasks-vision` from jsDelivr, `ImageEmbedder`) with the **`mobilenet_v3_small` float32 image-embedder model** from Google's MediaPipe model storage, via a dynamic `import()` only when a camera is first needed (GPU delegate, falling back to CPU). Each frame is cropped to the central square, resized to 256×256 and turned into an L2-normalised embedding; embeddings are stored quantised to 8-bit integers with a scale factor (`pack()` / `unpack()`). A player's shot takes 5 frames in about one second and keeps the best one: the node is valid if that frame's cosine similarity to the object's positives is at least the threshold and higher than its similarity to the negatives. `caccia.json` therefore contains only numeric vectors and one small JPEG thumbnail per node, never the recorded frames. QR reading and generation use `jsqr` 1.4.0 and `qrcode` 1.5.4, also from jsDelivr, loaded lazily when the exchange screen opens.
-
-<img align="right" width="16%" src="img/giocatore-scelta.png" alt="The hunt chooser, shown at the first opening without a #c-<slug> link" title="The hunt chooser, shown at the first opening without a #c-<slug> link">
-
-Routing is by URL hash (`route()`): `#master`, `#master-edita` (alias `#master-collega`), `#master-grafo`, `#master-messaggi`, `#master-impostazioni` open the master tabs; `#c-<slug>` opens a named hunt directly; `#b` / `#b-<slug>` opens a server draft; no hash opens the chooser (or the remembered hunt).
-
-### Data model
-
-Format `caccia-3`. A hunt is `{ formato, creato, nodi }`; `nodi` is a map from id to node, and every node has the same shape, whatever its role:
-
-- `nome`, `testo` (clue), `messaggio` (unlock message), `immagine` (JPEG data URL), `pos` / `neg` (embeddings), `soglia` (threshold), `luogo` (`{ lat, lon, raggio }`) — in a placeholder (node created before its capture) `pos`/`neg` are empty and `immagine`/`soglia`/`luogo` are `null`;
-- `daValidare`: `true` = the player must photograph it; `false` = a gift, owned automatically as soon as `richiede` is satisfied;
-- `conThumb`: the photo is part of the clue while the node is still to be found;
-- `richiedePosizione`: GPS within `luogo.raggio` is also required (implies `daValidare`);
-- `richiede`: array of node ids, in AND. A reference to a node that no longer exists counts as "no prerequisite";
-- `richiedeUno`: optional array of node ids, "at least one of", ANDed with `richiede`;
-- `bivio`: optional integer 1–9, only with `daValidare: true`. Nodes sharing a number are alternatives: the first one validated blocks the others (they leave the player's list, and whatever depends only on them is never reached); a node already owned is never lost. A shareable gift received from a player on the excluded branch reopens that branch from there on;
-- gift modes, only meaningful when `daValidare` is `false`: one of `scambiabile` (➡️), `duplicabile` (👥), `barattabile` (🤝), plus the independent `istanze` (🎟️);
-- `istanzeRichieste`: `{ "<id>": N }` on the requiring node, "at least N different instances" of that prerequisite.
-
-An instanced gift is produced once per phone (`stato.prodotti`) with a random 3-character id (letter-digit-letter, shown in monospace); instances travel in the exchange QR and circulate as the gift mode says (duplicated, transferred or bartered: giving one away removes that row only, and `prodotti` prevents minting another). Since no phone can produce two, a node that requires two different instances can only be completed by meeting another player: this is how the game forces encounters without identities or a database.
-
-The `richiede` graph must be acyclic; this is not guaranteed by construction, so `trovaCiclo()` runs before every publish. Changing `formato` resets every player's progress; publishing a hunt with the same `formato` keeps progress and adds the new nodes.
-
-### Serverless exchange
-
-<img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="The receiver's green "done" screen with the code to compare" title="The receiver's green "done" screen with the code to compare">
-<img align="right" width="16%" src="img/giocatore-scambio.png" alt="The exchange screen on the giver's phone during the reading phase" title="The exchange screen on the giver's phone during the reading phase">
-
-A gift with ➡️ or 👥 passes between two phones by mutual QR reading with the **front cameras**, with no server. The giver presses the button in Memoria and gets a full-screen exchange view (front camera on top, own QR below, refreshed every 300 ms). The receiver has no dedicated button: in **📷 Foto** the rear camera is already scanning every frame for a QR with the `gc1:` prefix, and when it sees the giver's screen it switches to the exchange view by itself, front camera on. The QR payload is a short colon-separated string (`gc1:` + type, session id, node id, `seq`, `ack`, private id, instance), 44 bytes at most, so the modules stay large and easy to focus.
-
-Two phones agreeing on a transfer over a channel where messages can be lost, with no third party to remember the outcome, is the **Two Generals Problem**: it has no perfect solution, whatever the channel. The protocol therefore chooses which wrong outcome remains possible instead of pretending to remove both. It is deliberately **asymmetric**:
-
-- the **receiver** writes first, as soon as it has read `QR_K` = 3 *increasing* frames from the giver (proof of a live phone, not a printed QR) and has seen `ack ≥ 1` from the giver (optics work both ways). It then shows a persistent green screen with a large 4-letter code and the "done" QR, with no expiry. If it times out (40 s) before writing, nothing was written and it simply fails;
-- the **giver** never fails on time. It deletes (`cedi()`, swap only) **only** after reading the "done" QR, or after the player, asked by a yellow prompt ("does your friend's phone show the green screen with code ABCD?"), answers "Sì" having looked at the other screen. When it does delete, the giver's screen turns green too: it is the only one of the two that knows for sure. The prompt appears after 30 s from the tap and 10 s after the receiver reached the threshold, at most after 60 s; automatic reading continues underneath and closes the prompt on success. If the giver never read the friend at all, the friend cannot have written, and the giver fails safely without any prompt.
-
-Outcome: **loss** (deleted on A, never arrived on B) is impossible by construction. The only residual error is **duplication**, and only if the giver answers "No" while the friend is already green. Clocks of the two phones are never compared; freshness comes from local increasing counters. A swapped-away node is added forever to `stato.ceduti`, so the automatic closure of prerequisites cannot silently give it back.
-
-### UI conventions
-
-- Native HTML: `<dialog>` for the lightbox, `<details>` for the GitHub configuration, `<select>` for the hunt menu, `<template>` elements at the end of the page for every data-driven row or card (`tpl-riga`, `tpl-festa`, `tpl-inbox`, `tpl-pubblicato`, `tpl-grafonode`, `tpl-nodo`, `tpl-richiede`), cloned with `clona(id)`. Texts with several variants (exchange titles and status lines, end-of-hunt messages) are all written in the HTML and CSS shows one.
-- Visible state is a `data-*` attribute on a container, never a set of `hidden` flags toggled by hand: `body[data-view]` (`player`, `chooser`, `master`, `master-edita`, `master-grafo`, `master-messaggi`, `master-impostazioni`), `#view-player[data-tab][data-sub][data-stato]`, `#p-scambio[data-ruolo][data-tipo][data-fase][data-n]`, `.scheda-nodo[data-validare]`. Dark theme, wide layout and full-screen mode are derived by CSS from `data-view`.
-- Clicks are declared actions: every clickable element carries `data-azione="name"` (plus `data-tab`, `data-id`, `data-slug`... as needed), the function with that name is registered in the `AZIONI` object next to the code it belongs to, and a single delegated `document.addEventListener("click")` dispatches it. There is no `onclick =` in the file. Text fields and checkboxes keep their own `oninput` / `onchange`.
-- No test hooks in the real file: tests copy `index.html` and inject `window.__debug` only in the copy.
-
-## Development and testing
-
-Serve the folder locally and open it in a browser:
-
-```
-python3 -m http.server 8765
-```
-
-Camera, GPS and recognition cannot be exercised from a terminal. The pattern used so far is Playwright (or an equivalent headless browser): open both the plain page and the `#master` page; for the master, intercept `https://api.github.com/**` with a fake handler that simulates `GET` (current sha) and `PUT`; for the player, write a `caccia.json` and a `messaggi.json` by hand in the served folder; to simulate a recognised object, inject fake embeddings into the master state (`M.pos`, `M.cal`) through a `window.__debug` hook added to a **copy** of `index.html` in a temporary folder, never to the real file.
-
-`tests/scambio.test.mjs` does exactly this for the exchange protocol. It copies `index.html` to a temporary directory, replaces `window.__avviato = true;` with a `window.__debug` block exposing the internal functions, writes a fake hunt (an object to photograph, a swappable/duplicable gift that requires it, a second object producing an instanced seal, and a final gift requiring two different seals), serves everything with `python3 -m http.server` on a free port and drives two Chromium pages as the two phones. QR reading and generation are replaced by stubs and the protocol loop (`scambioTickCorpo`) is stepped by hand. It covers: the happy path; the receiver not writing when the giver never reads it; the manual prompt, its timing and its "Sì" / "No" answers; the prompt closing by itself when automatic reading succeeds; "Annulla"; "duplica"; receiver timeout; a third phone seeing a "done" QR; instance production, sharing, "Ti manca" at end of hunt and QR compatibility with the older 6-field payload. It does **not** test real optical convergence between two cameras: that is only seen with two real phones. `tests/sincronizzazione.test.mjs` does the same for the master side: two devices (phone and computer) passing the working copy to each other through "Bozza" and "Pubblica", with a fake GitHub API that really writes the files into the served folder; among local draft, server draft and published hunt the most recent wins, and unsaved local edits are never discarded without a confirmation. Run them with `node tests/<name>.test.mjs` from a directory where `playwright` with Chromium is installed.
-
-The boot banner at the top of the page reads `Avvio del gioco… (versione N)`; `N` is incremented at every published change, and is the quickest way to tell, looking at a phone, whether it is running the latest version or a cached one.
-
-## Known limits and roadmap
-
-- `caccia*.json`, `messaggi.json` and `cacce.json` are public: anyone with the address can read names, clues and GPS coordinates of objects not yet found. Accepted for a group of fewer than 10 friends.
-- No player identity: every phone is anonymous to the master and to the other players. Deliberately postponed, not forgotten.
-- No database: anything that needs writes from several phones (activity log visible to the master, a shared stock counter) cannot exist on static hosting. Supabase is the likely choice when it comes.
-- Scarcity (a limited `scorta` on a shareable gift) is postponed for the same reason: a duplicable gift can be shared an unlimited number of times.
-- Messages are global, not per hunt; a published hunt cannot be renamed or deleted from the panel.
-- The real optical convergence of the asymmetric exchange protocol still has to be re-tested with two phones after the version 52 rewrite.
-
-Tried and dropped: hosting on the INAF GitLab Pages (invalid https certificate, which also blocks the browser camera, plus access control that locked players out) and Netlify Drop (worked, but inconvenient for repeated publishing without a CLI). Also removed on request: an Instagram share button on the end-of-hunt screen.
+d Netlify Drop (worked, but inconvenient for repeated publishing without a CLI). Also removed on request: an Instagram share button on the end-of-hunt screen.
 
