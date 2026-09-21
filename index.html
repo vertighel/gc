@@ -61,10 +61,10 @@
     main { max-width: 640px; }
     body[data-view^="master"] main { max-width: 1180px; }
     /* Nella colonna larga la scheda Foto va su due colonne (cattura | Elementi), così il
-       mirino non diventa enorme; Messaggi e ⚙️ restano larghi come un modulo. */
+       mirino non diventa enorme; ⚙️ resta largo come un modulo. */
     body[data-view="master"] #view-master .mpan[data-pan="foto"] { display: grid; /* con #view-master: vince sulla regola "display: block" più sotto */ grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 0 32px; align-items: start; }
     .mpan[data-pan="foto"] .foto-elementi h2 { margin-top: 0; }
-    .mpan:is([data-pan="messaggi"], [data-pan="impostazioni"]) { max-width: 640px; }
+    .mpan[data-pan="impostazioni"] { max-width: 640px; }
   }
 
   /* Modalità giocatore: schermo pieno e fisso come una app (barra in alto, contenuto
@@ -565,7 +565,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 79)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 80)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
