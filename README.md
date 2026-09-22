@@ -227,8 +227,6 @@ stato della copia di lavoro, la barra delle schede) e sopra un piè
 fisso, anche sul computer, con i tre bottoni **Bozza**, **Pubblica** e
 **Prova qui**.
 
-<img align="right" width="33%" src="img/master-pannello.png" alt="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi" title="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi">
-
 **Avventura e Foto (`#master`).** Nella testata, il menu delle cacce:
 la prima voce "+ Nuova caccia" chiede un nome, che diventa lo *slug*
 (minuscole, spazi e simboli trasformati in `-`) e quindi il nome del
@@ -240,8 +238,13 @@ nuovo elemento": si attiva la fotocamera e si registra un oggetto sul
 posto, sempre con la stessa sequenza — **Oggetto** (20 fotogrammi
 mentre ci si muove per circa 6 secondi, più uno scatto compresso per
 la miniatura), **Dintorni** (10 fotogrammi dell'ambiente intorno,
-usati come negativi), la posizione GPS del master in quel momento. La
-soglia di riconoscimento si calcola da sola (`calibrate()`) e un
+usati come negativi), la posizione GPS del master in quel momento. 
+
+
+<img align="right" width="33%" src="img/master-pannello.png" alt="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi" title="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi">
+
+
+La soglia di riconoscimento si calcola da sola (`calibrate()`) e un
 messaggio avvisa se l'oggetto è troppo simile ai dintorni. **Prova**
 verifica subito il riconoscimento con la fotocamera; **Aggiungi**
 mette il nodo nella copia di lavoro (nome di default "Oggetto-N"),
