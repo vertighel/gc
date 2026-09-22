@@ -159,10 +159,6 @@ Questa pagina necessita dei permessi per usare fotocamere e GPS, ma
 proprio telefono. Le interazioni fra utilizzatori **non** sono mediate
 da un server e **non** scambiano alcuna informazione personale.
 
-<img align="right" width="16%" src="img/giocatore-foto.png" alt="Cerca › Foto con la fotocamera attiva e 'Scatta e verifica' pronto" title="Cerca › Foto con la fotocamera attiva e 'Scatta e verifica' pronto">
-
-<img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso" title="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso">
-
 In basso ci sono due schede: **🔍 Cerca** per trovare gli oggetti,
 **💽 Memoria** per rivedere quelli trovati.
 
@@ -189,6 +185,9 @@ In basso ci sono due schede: **🔍 Cerca** per trovare gli oggetti,
    telefono non ha finito. Se il tuo telefono dice «Non ho letto la
    conferma», guarda l'altro schermo: rispondi **Sì** solo se è verde
    e mostra lo stesso codice.
+
+<img align="right" width="16%" src="img/giocatore-foto.png" alt="Cerca › Foto con la fotocamera attiva e 'Scatta e verifica' pronto" title="Cerca › Foto con la fotocamera attiva e 'Scatta e verifica' pronto">
+
 5. Per riceverlo: apri **📷 Foto**, attiva la fotocamera e inquadra il
    QR nell'altro schermo. Dopo pochi istanti si aprirà la camera
    anteriore. Metti i telefoni schermo contro schermo: le fotocamere
@@ -213,6 +212,8 @@ In basso ci sono due schede: **🔍 Cerca** per trovare gli oggetti,
    **Cambia caccia** torna alla scelta della caccia; **Ricomincia la
    caccia** cancella la Memoria e i progressi di questa caccia su
    questo telefono.
+   
+<img align="right" width="16%" src="img/giocatore-traccia.png" alt="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso" title="Cerca › Traccia: la targa con l'indizio e, sotto, l'elenco di ciò che si può cercare adesso">
 
 ## Il master: creare una caccia
 
@@ -277,7 +278,7 @@ Memoria), e due elenchi di spunte verso ogni altro nodo: **Richiede**
 stesso elemento). "Rimuovi" è bloccato se un altro nodo lo richiede
 ancora.
 
-<img align="right" width="33%" src="img/master-grafo.png" alt="Scheda Grafico sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili" title="Scheda Grafico sulla caccia "strada": layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili">
+<img align="right" width="33%" src="img/master-grafo.png" alt="Scheda Grafico sulla caccia 'stradaà: layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili" title="Scheda Grafico sulla caccia 'strada': layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili">
 
 **Grafico (`#master-grafo`).** Gli stessi collegamenti disegnati:
 layout automatico verticale per livello di dipendenza, un'icona per
@@ -334,7 +335,8 @@ sono invece globali, condivisi da tutte le cacce.
 
 ## Usare questo progetto per una caccia tua
 
-Non c'è nulla da installare né da configurare nel codice: basta una copia del repository su GitHub Pages.
+Non c'è nulla da installare né da configurare nel codice: basta una
+copia del repository su GitHub Pages.
 
 1. **Copia il repository** sul tuo account: "Use this template" (copia
    pulita) o un fork. Deve restare **pubblico**: GitHub Pages sui
