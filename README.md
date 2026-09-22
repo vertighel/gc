@@ -241,7 +241,6 @@ la miniatura), **Dintorni** (10 fotogrammi dell'ambiente intorno,
 usati come negativi), la posizione GPS del master in quel momento. 
 
 
-<img align="right" width="33%" src="img/master-pannello.png" alt="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi" title="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi">
 
 
 La soglia di riconoscimento si calcola da sola (`calibrate()`) e un
@@ -258,8 +257,7 @@ su un elemento già fotografato sostituisce la foto. Un regalo può
 restare senza foto; un elemento da validare senza foto blocca
 "Pubblica" e "Prova qui". Le miniature dell'elenco si ingrandiscono in
 una lightbox.
-
-<img align="right" width="33%" src="img/master-collega.png" alt="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede" title="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede">
+<img align="right" width="33%" src="img/master-pannello.png" alt="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi" title="Scheda Foto (screenshot precedente alla versione a schede): menu delle cacce, registrazione di un nuovo elemento, elenco degli elementi">
 
 **Edita (`#master-edita`).** Pensata per un computer. Una scheda per
 nodo con: foto, nome modificabile, le tre spunte **Thumb** (la foto fa
@@ -281,8 +279,6 @@ Memoria), e due elenchi di spunte verso ogni altro nodo: **Richiede**
 stesso elemento). "Rimuovi" è bloccato se un altro nodo lo richiede
 ancora.
 
-<img align="right" width="33%" src="img/master-grafo.png" alt="Scheda Grafico sulla caccia 'stradaà: layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili" title="Scheda Grafico sulla caccia 'strada': layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili">
-
 **Grafico (`#master-grafo`).** Gli stessi collegamenti disegnati:
 layout automatico verticale per livello di dipendenza, un'icona per
 nodo (📷 da validare, 📍 con posizione, 🎁 regalo più l'icona del
@@ -291,6 +287,8 @@ un nodo e poi quello di un altro (il primo è il prerequisito), si
 scollega cliccando una freccia, si apre la stessa scheda di "Edita"
 cliccando il corpo di un nodo. Se c'è un ciclo il grafo non si disegna
 e un messaggio elenca i nodi coinvolti.
+
+<img align="right" width="33%" src="img/master-collega.png" alt="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede" title="Scheda Edita (screenshot precedente alla versione a schede): una scheda per nodo con nome, flag, modo del regalo, indizio, messaggio e Richiede">
 
 **Messaggi (`#master-messaggi`) e ⚙️ (`#master-impostazioni`).** Un
 annuncio per tutti i giocatori, scritto in `messaggi.json`; in ⚙️ i
@@ -319,6 +317,8 @@ alla prima pubblicazione di una caccia con nome la aggiunge a
 telefono in uno spazio separato, segnalato da una striscia gialla,
 senza toccare la caccia pubblicata.
 
+<img align="right" width="33%" src="img/master-grafo.png" alt="Scheda Grafico sulla caccia 'stradaà: layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili" title="Scheda Grafico sulla caccia 'strada': layout per livello di dipendenza, icone per tipo di nodo, frecce cliccabili">
+
 Tutte le scritture passano dall'**API REST di GitHub** (`ghPutFile()`:
 `GET` per lo sha corrente, `PUT` per scrivere, un tentativo in più su
 conflitto 409). Il pannello "Configura la pubblicazione su GitHub"
@@ -326,8 +326,6 @@ salva utente, repository, ramo e un token *fine-grained* con permesso
 "Contents: Read and write" limitato a questo repository. Il token
 resta solo nel `localStorage` di quel telefono. I giocatori vedono il
 file aggiornato entro circa un minuto.
-
-<img align="right" width="16%" src="img/giocatore-scelta.png" alt="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo" title="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo">
 
 **Più cacce.** Ogni caccia è un file a sé: `caccia.json` per quella di
 sempre, `caccia-<slug>.json` per le altre, elencate in
@@ -340,6 +338,8 @@ sono invece globali, condivisi da tutte le cacce.
 
 Non c'è nulla da installare né da configurare nel codice: basta una
 copia del repository su GitHub Pages.
+
+<img align="right" width="16%" src="img/giocatore-scelta.png" alt="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo" title="Schermata di scelta della caccia: si apre la prima volta senza # nell'indirizzo">
 
 1. **Copia il repository** sul tuo account: "Use this template" (copia
    pulita) o un fork. Deve restare **pubblico**: GitHub Pages sui
