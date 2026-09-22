@@ -455,7 +455,7 @@ aggiungono; un `formato` diverso azzera tutto.
 
 ### Scambio senza server
 
-<img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto" title="Lato ricevente a scambio concluso: la schermata verde con codice e QR "fatto", da tenere in vista finché il cedente non ha letto">
+<img align="right" width="16%" src="img/giocatore-scambio-verde.png" alt="Lato ricevente a scambio concluso: la schermata verde con codice e QR 'fatto', da tenere in vista finché il cedente non ha letto" title="Lato ricevente a scambio concluso: la schermata verde con codice e QR 'fatto', da tenere in vista finché il cedente non ha letto">
 
 <img align="right" width="16%" src="img/giocatore-scambio.png" alt="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture" title="Scambio, lato cedente in fase di lettura: anteprima specchiata della fotocamera anteriore, il proprio QR, il codice e il contatore delle letture">
 
