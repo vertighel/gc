@@ -61,10 +61,9 @@
     main { max-width: 640px; }
     body[data-view^="master"] main { max-width: 1180px; }
     /* Nella colonna larga la scheda Foto va su due colonne (cattura | Elementi), così il
-       mirino non diventa enorme; ⚙️ resta largo come un modulo. */
+       mirino non diventa enorme. Le altre schede, ⚙️ compresa, usano tutta la colonna. */
     body[data-view="master"] #view-master .mpan[data-pan="foto"] { display: grid; /* con #view-master: vince sulla regola "display: block" più sotto */ grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 0 32px; align-items: start; }
     .mpan[data-pan="foto"] .foto-elementi h2 { margin-top: 0; }
-    .mpan[data-pan="impostazioni"] { max-width: 640px; }
   }
 
   /* Modalità giocatore: schermo pieno e fisso come una app (barra in alto, contenuto
@@ -226,7 +225,7 @@
   }
   .btn.primary { background: var(--smalto); color: var(--bianco); }
   .btn:disabled { opacity: .4; cursor: default; }
-  .btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--giallo); outline-offset: 2px; }
+  .btn:focus-visible, .occhio:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--giallo); outline-offset: 2px; }
   .btn + .btn { margin-top: 10px; }
   .link { background: none; border: 0; color: var(--grigio); font: inherit; text-decoration: underline; padding: 8px; cursor: pointer; }
 
@@ -362,11 +361,22 @@
   .todo-thumb-wrap { flex: none; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: #ccd2d8; }
 
   label { display: block; font-weight: 500; margin: 12px 0 0; }
-  input[type=text], textarea, select {
+  input[type=text], input[type=password], textarea, select {
     display: block; width: 100%; margin-top: 4px; font: inherit; padding: 10px 12px;
     border: 1.5px solid #B4BDC6; border-radius: 8px; background: #fff; color: var(--grafite);
   }
   textarea { min-height: 72px; resize: vertical; }
+  /* Token: un campo come gli altri (vedi sopra), ma monospaziato — è un codice lungo che
+     si incolla e si rilegge carattere per carattere — con accanto l'occhio per
+     controllare che l'incollaggio sia andato a buon fine. */
+  .campo-token { display: flex; gap: 8px; margin-top: 4px; }
+  .campo-token input { margin-top: 0; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .02em; }
+  .campo-token .occhio {
+    appearance: none; flex: none; width: 48px; cursor: pointer;
+    border: 1.5px solid #B4BDC6; border-radius: 8px; background: #fff;
+    font-size: 20px; line-height: 1; padding: 0;
+  }
+  .campo-token .occhio[aria-pressed="true"] { border-color: var(--smalto); background: var(--cemento); }
   label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 16px; }
   /* flex: none — la label è flex e, se il testo va a capo, senza questo stringerebbe
      anche la casella (visto sul radio "a istanze": 14px invece di 18, ovale). */
@@ -566,7 +576,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 81)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 82)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -979,7 +989,10 @@
           <input type="text" id="cfg-branch" placeholder="main" autocapitalize="off" autocorrect="off">
         </label>
         <label>Token
-          <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off">
+          <span class="campo-token">
+            <input type="password" id="cfg-token" placeholder="github_pat_…" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+            <button type="button" id="cfg-token-occhio" class="occhio" data-azione="mostra-token" aria-pressed="false" aria-label="Mostra il token" title="Mostra il token">👁</button>
+          </span>
         </label>
         <button id="cfg-save" class="btn" data-azione="salva-config">Salva configurazione</button>
         <button id="cfg-clear" class="link" data-azione="dimentica-config">Dimentica il token da questo telefono</button>
@@ -1996,21 +2009,46 @@ function schedaNodo(id, ids) {
 function wireGhConfigPanel() {
   const cfg = ghConfig();
   if (cfg) { $("cfg-owner").value = cfg.owner || ""; $("cfg-repo").value = cfg.repo || ""; $("cfg-branch").value = cfg.branch || ""; }
+  // Il token non si rimette mai nel campo (né qui né dopo un salvataggio): il campo vuoto
+  // significa "tieni quello salvato", e il segnaposto è l'unico posto che lo dice.
+  segnapostoToken();
   Object.assign(AZIONI, { "salva-config": () => {
     const owner = $("cfg-owner").value.trim(), repo = $("cfg-repo").value.trim();
     const branch = $("cfg-branch").value.trim() || "main";
     const token = $("cfg-token").value.trim() || (ghConfig() || {}).token;
     if (!owner || !repo || !token) { setStatus($("cfg-status"), "Compila almeno utente, repository e token.", "ko"); return; }
     store.set("gh-config", { owner, repo, branch, path: "caccia.json", token });
-    $("cfg-token").value = "";
+    $("cfg-token").value = ""; nascondiToken(); segnapostoToken();
     setStatus($("cfg-status"), "Configurazione salvata su questo telefono.", "ok");
     ghConfigStatus();
   }, "dimentica-config": () => {
     store.del("gh-config");
     for (const id of ["cfg-owner", "cfg-repo", "cfg-branch", "cfg-token"]) $(id).value = "";
+    nascondiToken(); segnapostoToken();
     setStatus($("cfg-status"), "Token dimenticato.", "");
     ghConfigStatus();
+  }, "mostra-token": b => {
+    const campo = $("cfg-token"), mostra = campo.type === "password";
+    campo.type = mostra ? "text" : "password";
+    b.setAttribute("aria-pressed", mostra ? "true" : "false");
+    b.title = mostra ? "Nascondi il token" : "Mostra il token";
+    b.setAttribute("aria-label", b.title);
+    campo.focus();
   } });
+}
+
+// Il campo del token resta sempre vuoto, quindi è il segnaposto a dire se ce n'è uno
+// salvato su questo telefono e cosa succede lasciandolo com'è.
+function segnapostoToken() {
+  $("cfg-token").placeholder = (ghConfig() || {}).token ? "salvato — lascia vuoto per tenerlo" : "github_pat_…";
+}
+// Dopo un salvataggio o un "dimentica" il token non deve restare in chiaro a schermo.
+function nascondiToken() {
+  const b = $("cfg-token-occhio");
+  $("cfg-token").type = "password";
+  b.setAttribute("aria-pressed", "false");
+  b.title = "Mostra il token";
+  b.setAttribute("aria-label", b.title);
 }
 
 /* ---------- pagina "Grafo": stessa "richiede" di "Collega gli elementi", vista come
