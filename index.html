@@ -97,7 +97,8 @@
      del master è alta almeno quanto lo schermo e il piè si spinge giù da solo. */
   body[data-view^="master"] main { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; padding-bottom: 0; }
   body[data-view^="master"] #view-master { display: flex; flex-direction: column; flex: 1; }
-  .mtesta { position: sticky; top: 0; z-index: 3; background: var(--cemento); margin: 0 -16px 16px; padding: 0 16px 8px; }
+  /* Non fissa: scorrendo se ne va e lascia tutta l'altezza alla fotocamera. */
+  .mtesta { background: var(--cemento); margin: 0 -16px 16px; padding: 0 16px 8px; }
   .mtesta .bar { margin-bottom: 10px; }
   .mtesta .avventura { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; }
   .mtesta .avventura select { flex: 1; margin: 0; min-width: 0; }
@@ -565,7 +566,7 @@
 </head>
 <body>
 <main>
-  <p id="boot" class="boot">Avvio del gioco… (versione 80)</p>
+  <p id="boot" class="boot">Avvio del gioco… (versione 81)</p>
   <noscript><p class="boot">JavaScript è disattivato in questo browser: attivalo nelle impostazioni di Chrome, alla voce Impostazioni sito.</p></noscript>
 
   <!-- ================= GIOCATORE ================= -->
@@ -870,11 +871,11 @@
        solo .mpan e allarga la colonna per Edita e Grafico. Il JS non sa delle schede:
        stessi id di sempre, solo spostati. -->
   <section id="view-master">
-    <div class="mtesta">
-      <header class="bar">
+    <header class="mtesta">
+      <div class="bar">
         <span class="brand">Caccia</span>
         <span class="tag">Master</span>
-      </header>
+      </div>
       <!-- Ogni caccia è un file a sé: il nome scelto è anche il link da dare ai giocatori. -->
       <label class="avventura">Avventura <select id="m-hunt-select"></select></label>
       <p id="m-base-status" class="status" role="status">Leggo la caccia pubblicata…</p>
@@ -888,7 +889,7 @@
         <a class="ptab" href="#master-messaggi" data-pan="messaggi"><span class="ic">📣</span><span class="lb">Messaggi</span></a>
         <a class="ptab icon" href="#master-impostazioni" data-pan="impostazioni" title="Impostazioni"><span class="ic">⚙️</span></a>
       </nav>
-    </div>
+    </header>
 
     <!-- Foto: la cattura e la lista degli elementi (il telefono sul campo). -->
     <div class="mpan current" data-pan="foto">

@@ -222,10 +222,11 @@ in fondo all'indirizzo: una sola pagina con cinque schede — 📷
 **Foto** (`#master`), ✏️ **Edita** (`#master-edita`; `#master-collega`
 resta come alias), 🕸️ **Grafico** (`#master-grafo`), 📣 **Messaggi**
 (`#master-messaggi`) e ⚙️ (`#master-impostazioni`) — sotto una testata
-fissa uguale per tutte (il menu **Avventura** delle cacce, le righe di
-stato della copia di lavoro, la barra delle schede) e sopra un piè
-fisso, anche sul computer, con i tre bottoni **Bozza**, **Pubblica** e
-**Prova qui**.
+uguale per tutte (il menu **Avventura** delle cacce, le righe di stato
+della copia di lavoro, la barra delle schede), che scorre via con la
+pagina per non rubare altezza al mirino, e sopra un piè fisso, anche
+sul computer, con i tre bottoni **Bozza**, **Pubblica** e **Prova
+qui**.
 
 **Avventura e Foto (`#master`).** Nella testata, il menu delle cacce:
 la prima voce "+ Nuova caccia" chiede un nome, che diventa lo *slug*
