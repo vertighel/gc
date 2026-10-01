@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "salvato": "2026-10-01T08:51:35.980Z",
+  "salvato": "2026-10-01T08:53:03.784Z",
   "nodi": {
     "nmupaotskqdd": {
       "nome": "Elemento-1",
@@ -32,7 +32,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaotskqdd"
+      ]
     },
     "nmupaoul43gw": {
       "nome": "Elemento-3",
@@ -48,7 +50,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaou6f1o7"
+      ]
     },
     "nmupaouxfog7": {
       "nome": "Elemento-4",
@@ -64,7 +68,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaou6f1o7"
+      ]
     },
     "nmupaov9ds25": {
       "nome": "Elemento-5",
@@ -80,7 +86,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaoul43gw"
+      ]
     },
     "nmupaovlt7ml": {
       "nome": "Elemento-6",
@@ -96,7 +104,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaouxfog7"
+      ]
     },
     "nmupaovz04ch": {
       "nome": "Elemento-7",
@@ -112,7 +122,10 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaov9ds25",
+        "nmupaovlt7ml"
+      ]
     },
     "nmupaowe86uq": {
       "nome": "Elemento-8",
@@ -128,7 +141,9 @@
       "richiedePosizione": false,
       "scambiabile": false,
       "duplicabile": false,
-      "richiede": []
+      "richiede": [
+        "nmupaovz04ch"
+      ]
     }
   }
 }
