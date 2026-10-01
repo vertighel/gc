@@ -1,6 +1,6 @@
 {
   "formato": "caccia-3",
-  "salvato": "2026-10-01T08:53:03.784Z",
+  "salvato": "2026-10-01T08:55:22.789Z",
   "nodi": {
     "nmupaotskqdd": {
       "nome": "Elemento-1",
@@ -81,14 +81,16 @@
       "neg": [],
       "soglia": null,
       "luogo": null,
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "scambiabile": false,
-      "duplicabile": false,
+      "duplicabile": true,
       "richiede": [
         "nmupaoul43gw"
-      ]
+      ],
+      "barattabile": false,
+      "istanze": true
     },
     "nmupaovlt7ml": {
       "nome": "Elemento-6",
@@ -99,7 +101,7 @@
       "neg": [],
       "soglia": null,
       "luogo": null,
-      "daValidare": true,
+      "daValidare": false,
       "conThumb": true,
       "richiedePosizione": false,
       "scambiabile": false,
@@ -125,7 +127,10 @@
       "richiede": [
         "nmupaov9ds25",
         "nmupaovlt7ml"
-      ]
+      ],
+      "istanzeRichieste": {
+        "nmupaov9ds25": 2
+      }
     },
     "nmupaowe86uq": {
       "nome": "Elemento-8",
